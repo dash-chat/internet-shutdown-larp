@@ -321,20 +321,20 @@ station variant (relative-near):
 | relative-near | ✓ | ✓ | – | ✓ (milestone 3) |
 | relative-far | ✓ | – | ✓ (identity flashed) | ✓ (milestone 3) |
 
-The base station Pi runs the `base-station` image (`just build-base-station`):
+The base station Pi runs the `base-station` image (`just image::build-base-station`):
 no Pi wifi at all — the mAP lite broadcasts the mesh and the Pi, wired to its
 ethernet port, owns DHCP + wildcard DNS and serves the captive portal
 (`nix/base-station.nix`).
 
 ### Base station: mAP lite + mayor portal
 
-The mAP lite is a plain AP. `just provision` in `../map-lite-portal` applies
+The mAP lite is a plain AP. `just base-station::provision` applies
 one idempotent script over ssh: ether1 moves from WAN into the LAN bridge
 (the cable to the Pi), the built-in DHCP server is turned off, and the wifi
 range is clamped like the Pi stations' (tx power fixed at 1 dBm plus a
 signal gate: clients heard below -60 dBm can't join and are kicked after 10 s
 — RouterOS tracks per-client signal, so this works better than the Pi's
-fail-open RSSI gate; tune with `just tx_power=.. min_signal=.. provision`).
+fail-open RSSI gate; tune with the `tx_power`/`min_signal` arguments of `just base-station::provision`).
 The Pi's wildcard DNS then lands every connectivity probe on its nginx, which
 is what pops the captive-portal screen — RouterOS's hotspot feature (locked
 behind device-mode on current firmware) is not used at all.
@@ -363,14 +363,14 @@ into the image at `services.larp-bot.scenariosDir`.
 
 Provisioning flow (all offline, on the laptop — implemented as `just` recipes):
 
-1. `just larp-keygen <character>` — once per character, into `secrets/`
+1. `just characters::keygen <character>` — once per character, into `secrets/`
    (gitignored; re-generating would invalidate the printed posters).
-2. `just larp-cast` — assembles the public `secrets/larp-cast.toml` from all
+2. `just characters::cast` — assembles the public `secrets/larp-cast.toml` from all
    identities.
-3. `just larp-posters` — renders the QR wall-poster PNGs for printing.
-4. `just larp-station <character>` — assembles `stations/<character>/`
+3. `just characters::posters` — renders the QR wall-poster PNGs for printing.
+4. `just characters::station <character>` — assembles `stations/<character>/`
    (`wifi-ap.env` with `SSID=larp-<character>`, `larp-identity.toml`,
-   `larp-cast.toml`), flashed with `just env_dir=stations/<character> flash`.
+   `larp-cast.toml`), flashed with `just image::flash /dev/sdX stations/<character>`.
 
 The captive portal can additionally serve the station's QR as a fallback
 onboarding path.
@@ -388,7 +388,7 @@ app already knows about.
 deployed secrets (same `keygen` artifacts, delivered via the droplet's secret
 path instead of a FAT partition).
 
-For testing without touching the droplet, `just larp-run journalist
+For testing without touching the droplet, `just characters::run journalist
 [mailbox_url]` runs the bot on the laptop against the cloud mailbox — the
 laptop has internet, which is all the journalist needs. State lives in
 `.run/journalist/` (wipe it to simulate a reset; identity survives, it's in
