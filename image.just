@@ -29,77 +29,14 @@ devices:
     lsblk -do NAME,SIZE,TYPE,TRAN,VENDOR,MODEL,RM
 
 # Flash an image to an SD card, copying env_dir/* (if given) onto its FAT
-# boot partition. With no device given, the SD card is auto-detected: the
-# single removable/USB disk that isn't the system disk (ambiguity aborts —
-# the retype-to-confirm prompt below is still the final gate either way).
-# For character stations use `just characters::flash`, which assembles the
-# env dir and delegates here.
-# The base station card is flashed via `just base-station::flash`.
+# boot partition — via the mailbox image's flash-sd-image helper, which
+# auto-detects the SD card when no device is given (the single removable/
+# USB disk that isn't the system disk; ambiguity aborts) and asks to retype
+# the device path before erasing. For character stations use
+# `just characters::flash`; the base station card via `just base-station::flash`.
 [doc("Flash an image, copying env_dir/* (if given) onto the boot partition; auto-detects the SD card")]
 flash device="" env_dir="" img="larp-station.img":
     #!/usr/bin/env bash
     set -euo pipefail
-    img="{{ img }}"; dev="{{ device }}"; envdir="{{ env_dir }}"
-
-    [ -f "$img" ] || { echo "image '$img' not found — run 'just image::build' (or build-base-station) first"; exit 1; }
-    [ -z "$envdir" ] || [ -d "$envdir" ] || { echo "env dir '$envdir' does not exist"; exit 1; }
-
-    if [ -z "$dev" ]; then
-      # The disk backing / must never be a candidate ([...] strips a btrfs
-      # subvolume suffix from findmnt's SOURCE).
-      root_disk="$(lsblk -no PKNAME "$(findmnt -no SOURCE / | sed 's/\[.*//')" 2>/dev/null | head -1 || true)"
-      mapfile -t cands < <(lsblk -dno NAME,TYPE,RM,TRAN | awk -v rd="$root_disk" \
-        '$2 == "disk" && $1 != rd && ($3 == "1" || $4 == "usb") { print $1 }')
-      case "${#cands[@]}" in
-        0) echo "no removable disk found — insert the SD card, or pass the device (see 'just image::devices')"; exit 1 ;;
-        1) dev="/dev/${cands[0]}"; echo ">> auto-detected SD card: $dev" ;;
-        *) echo "several removable disks found — pass the device explicitly:"
-           for c in "${cands[@]}"; do lsblk -dno NAME,SIZE,TRAN,VENDOR,MODEL "/dev/$c"; done
-           exit 1 ;;
-      esac
-    fi
-
-    [ -b "$dev" ] || { echo "'$dev' is not a block device; run 'just image::devices'"; exit 1; }
-    [ "$(lsblk -dno TYPE "$dev")" = "disk" ] || { echo "'$dev' is not a whole disk"; exit 1; }
-
-    echo "This will ERASE and overwrite:"
-    lsblk -o NAME,SIZE,TYPE,TRAN,VENDOR,MODEL,MOUNTPOINTS "$dev"
-    read -rp "Retype the device path to confirm ($dev): " ok
-    [ "$ok" = "$dev" ] || { echo "no match; aborting"; exit 1; }
-
-    for p in $(lsblk -rno NAME "$dev" | tail -n +2); do sudo umount "/dev/$p" 2>/dev/null || true; done
-
-    echo ">> flashing $img -> $dev"
-    sudo dd if="$img" of="$dev" bs=4M conv=fsync status=progress
-    sync
-    sudo partprobe "$dev" 2>/dev/null || true
-    sudo udevadm settle 2>/dev/null || true
-
-    boot=""
-    for _ in $(seq 10); do
-      boot="$(lsblk -rno NAME,FSTYPE "$dev" | awk '$2=="vfat"{print "/dev/"$1; exit}')"
-      [ -n "$boot" ] && break
-      sudo partprobe "$dev" 2>/dev/null || true; sudo udevadm settle 2>/dev/null || true; sleep 1
-    done
-    if [ -z "$boot" ]; then boot="${dev}1"; [ -b "$boot" ] || boot="${dev}p1"; fi
-    [ -b "$boot" ] || { echo "could not find the FAT boot partition on $dev"; exit 1; }
-
-    if [ -z "$envdir" ]; then
-      echo ">> no env dir given — leaving the boot partition as-is"
-      echo ">> done — $dev is ready to boot"
-      exit 0
-    fi
-
-    mnt="$(mktemp -d)"
-    trap 'sudo umount "$mnt" 2>/dev/null || true; rmdir "$mnt" 2>/dev/null || true' EXIT
-    sudo mount "$boot" "$mnt"
-    shopt -s nullglob
-    files=("$envdir"/*)
-    if [ "${#files[@]}" -eq 0 ]; then
-      echo ">> note: '$envdir/' is empty — nothing to copy"
-    else
-      echo ">> copying ${#files[@]} file(s) from $envdir/ to $boot"
-      for f in "${files[@]}"; do [ -f "$f" ] && sudo cp -v "$f" "$mnt/"; done
-      sync
-    fi
-    echo ">> done — $dev is ready to boot"
+    [ -f "{{ img }}" ] || { echo "image '{{ img }}' not found — run 'just image::build' (or build-base-station) first"; exit 1; }
+    nix run .#flash-sd-image --accept-flake-config -- "{{ img }}" "{{ device }}" "{{ env_dir }}"

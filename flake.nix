@@ -79,6 +79,8 @@
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
         # The base-station variant: mAP lite as the AP, Pi wired behind it.
         sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
+        # The mailbox image's flashing helpers, reused by the just recipes.
+        inherit (mailbox-image.packages.x86_64-linux) detect-sd-card flash-sd-image;
       };
 
       packages.aarch64-linux = {
@@ -86,6 +88,7 @@
         larp-bot = (pkgsWithRust "aarch64-linux").callPackage ./nix/larp-bot-package.nix { };
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
         sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
+        inherit (mailbox-image.packages.aarch64-linux) detect-sd-card flash-sd-image;
       };
 
       # The bot as a reusable NixOS module — e.g. for the journalist's cloud
