@@ -2,7 +2,7 @@
 # This character is NOT in town: she reports from the outside world and is
 # reachable only where there's internet (the hotspot corner of the map).
 
-name = "Journalist"
+name = "Marta the journalist"
 
 greeting = """📰 This is Marta from the national news desk. The whole country is watching your town, but nothing gets in or out since the quake — except through this line. Bring me news from inside and I'll tell the world; I'll pass in whatever the outside knows!"""
 

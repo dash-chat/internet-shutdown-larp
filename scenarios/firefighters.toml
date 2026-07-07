@@ -1,9 +1,9 @@
 # Firefighters mission pack. Texts are sent VERBATIM: recognition by the
 # other bots depends on exact text matching, so edit them here, never live.
 
-name = "Firefighters"
+name = "Cindy the firefighter"
 
-greeting = """🚒 Fire station here! After the earthquake every unit is deployed and our radio is down. If you carry messages to our station, we'll act on them right away."""
+greeting = """🚒 This is Cindy, from the fire station! After the earthquake every unit is deployed and our radio is down. If you carry messages to our station, we'll act on them right away."""
 
 [[missions]]
 to = "hospital"

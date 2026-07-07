@@ -72,9 +72,10 @@ run character mailbox_url="https://mailbox.production.darksoil.studio":
 # Flash a character's station card: the station image plus the character's
 # files (wifi-ap.env with SSID=<ssid_prefix><character>, identity, cast —
 # assembled on the fly from secrets/) on the FAT boot partition. The AP is
-# OPEN by default; pass a password (8-63 chars, WPA2) to lock it.
-[doc("Flash a character's station card; the AP is <ssid_prefix><character>, open unless a password is given")]
-flash character device ssid_prefix="larp-" password="":
+# OPEN by default; pass a password (8-63 chars, WPA2) to lock it. With no
+# device, the SD card is auto-detected (see image::flash).
+[doc("Flash a character's station card; AP is <ssid_prefix><character> (open unless password given); auto-detects the SD card")]
+flash character device="" ssid_prefix="larp-" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
@@ -93,4 +94,4 @@ flash character device ssid_prefix="larp-" password="":
     cp "secrets/{{ character }}-identity.toml" "$envdir/larp-identity.toml"
     cp secrets/larp-cast.toml "$envdir/larp-cast.toml"
     "$just" image::flash {{ quote(device) }} "$envdir"
-    echo ">> {{ device }} is ready to boot as $ssid$([ -z "$password" ] && echo ' (open network)')"
+    echo ">> card is ready to boot as $ssid$([ -z "$password" ] && echo ' (open network)' || true)"

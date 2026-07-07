@@ -8,8 +8,9 @@ mod map-lite
 
 # Flash the base-station Pi card: base-station.img, no env files — the base
 # station hosts no Pi wifi. Build first with `just image::build-base-station`.
-[doc("Flash the base-station Pi card (base-station.img, no env files)")]
-flash device:
+# With no device, the SD card is auto-detected (see image::flash).
+[doc("Flash the base-station Pi card (base-station.img, no env files); auto-detects the SD card")]
+flash device="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}

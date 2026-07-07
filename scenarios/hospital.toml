@@ -1,8 +1,8 @@
 # Hospital mission pack. Texts are sent VERBATIM (see firefighters.toml).
 
-name = "Hospital"
+name = "James the nurse"
 
-greeting = """🏥 County hospital here. We're overwhelmed after the earthquake and the phone lines are dead. Will you help us get our messages through? Every minute counts!"""
+greeting = """🏥 This is James, nurse at the county hospital. We're overwhelmed after the earthquake and the phone lines are dead. Will you help us get our messages through? Every minute counts!"""
 
 [[missions]]
 to = "firefighters"
