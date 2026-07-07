@@ -6,10 +6,10 @@
 build: (build-image "sdImage" "larp-station.img")
 
 # Build the base-station SD image: the mAP lite is the AP, the Pi sits wired
-# behind it (nix/base-station.nix; mAP side: `just base-station::provision`).
-# Flash with `just image::flash /dev/sdX "" base-station.img` — no env dir:
+# behind it (nix/base-station.nix; mAP side: `just base-station::map-lite::provision`).
+# Flash with `just base-station::flash /dev/sdX` — no env files:
 # the base station hosts no Pi wifi (and the image ignores wifi-ap.env).
-[doc("Build the base-station SD image (mAP lite is the AP; flash with no env dir)")]
+[doc("Build the base-station SD image (mAP lite is the AP; flash with base-station::flash)")]
 build-base-station: (build-image "sdImage-base-station" "base-station.img")
 
 [private]
@@ -28,12 +28,12 @@ build-image attr out:
 devices:
     lsblk -do NAME,SIZE,TYPE,TRAN,VENDOR,MODEL,RM
 
-# Flash an image to an SD card and copy env_dir/* onto its FAT boot
-# partition (empty env_dir = copy nothing).
-# Stations:     just image::flash /dev/sdX stations/firefighters
-# Base station: just image::flash /dev/sdX "" base-station.img
-[doc("Flash an image and copy env_dir/* to the boot partition (empty env_dir = nothing)")]
-flash device env_dir="env" img="larp-station.img":
+# Flash an image to an SD card, copying env_dir/* (if given) onto its FAT
+# boot partition. For character stations use `just characters::flash`, which
+# assembles the env dir and delegates here.
+# The base station card is flashed via `just base-station::flash <device>`.
+[doc("Flash an image, copying env_dir/* (if given) onto the boot partition")]
+flash device env_dir="" img="larp-station.img":
     #!/usr/bin/env bash
     set -euo pipefail
     img="{{ img }}"; dev="{{ device }}"; envdir="{{ env_dir }}"
@@ -41,6 +41,7 @@ flash device env_dir="env" img="larp-station.img":
     [ -f "$img" ] || { echo "image '$img' not found — run 'just image::build' (or build-base-station) first"; exit 1; }
     [ -b "$dev" ] || { echo "'$dev' is not a block device; run 'just image::devices'"; exit 1; }
     [ "$(lsblk -dno TYPE "$dev")" = "disk" ] || { echo "'$dev' is not a whole disk"; exit 1; }
+    [ -z "$envdir" ] || [ -d "$envdir" ] || { echo "env dir '$envdir' does not exist"; exit 1; }
 
     echo "This will ERASE and overwrite:"
     lsblk -o NAME,SIZE,TYPE,TRAN,VENDOR,MODEL,MOUNTPOINTS "$dev"

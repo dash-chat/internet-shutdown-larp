@@ -29,10 +29,8 @@ layout, message mechanics, identity bundles, and the milestone plan.
 nix develop                 # rust toolchain + just
 just test                   # unit + e2e tests
 
-just characters::keygen firefighters   # once per character → secrets/
-just characters::cast                  # public cast file
+just characters::generate              # all identities + cast file → secrets/
 just characters::posters               # printable QR posters
-just characters::station firefighters  # per-station env dir
 just image::build                      # station SD image
-just image::flash /dev/sdX stations/firefighters
+just characters::flash firefighters /dev/sdX  # flash + station files
 ```

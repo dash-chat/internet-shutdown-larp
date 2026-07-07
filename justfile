@@ -9,8 +9,8 @@ mod characters
 # Station SD images: build + flash (station and base-station variants).
 mod image
 
-# The base-station mAP lite: turn a stock device into the plain AP that
-# fronts the base-station Pi.
+# The base station: flash the Pi card; the map-lite submodule provisions
+# the mAP lite that broadcasts its wifi.
 mod base-station
 
 # Show available recipes.

@@ -1,10 +1,9 @@
 # cargo
 target/
 
-# character private identities, posters and per-station env dirs
+# character private identities and posters
 # (public halves live in larp-cast.toml, flashed to the cards)
 secrets/
-stations/
 larp-identity*.toml
 
 # nix

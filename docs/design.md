@@ -68,7 +68,7 @@ players agree not to cross it.
 | **hospital** | The town hospital | Pi 5: Wi-Fi AP + mailbox + bot |
 | **journalist** | News desk **outside the town**, telling the world what's happening inside; the hotspot corner is the town's only surviving uplink to her | Phone hotspot (internet); bot on a Digital Ocean droplet syncing through the **existing cloud mailbox** |
 | **relative** | **Aunt Anna**, a relative in Riverside, the nearby town, desperate for news of her family | Two Pi 5s: the on-map one is AP + mailbox + LoRa bridge; the far-away one runs mailbox + bot + LoRa bridge. Messages to/from Anna take a LoRa round-trip |
-| *(base station)* | **The town mayor** — captive portal only, not a chat character | MikroTik mAP lite as a **plain AP** (its radio handles the 30-40 concurrent base-station clients; provisioned with `just base-station::provision`), **wired** to a Pi 5 running the `base-station` image (`nix/base-station.nix`): the Pi owns DHCP + wildcard DNS on the cable and serves the mayor's captive portal + the mailbox. No RouterOS hotspot — that feature is locked behind device-mode (physical button press) on current firmware, and nothing needs gating anyway |
+| *(base station)* | **The town mayor** — captive portal only, not a chat character | MikroTik mAP lite as a **plain AP** (its radio handles the 30-40 concurrent base-station clients; provisioned with `just base-station::map-lite::provision`), **wired** to a Pi 5 running the `base-station` image (`nix/base-station.nix`): the Pi owns DHCP + wildcard DNS on the cable and serves the mayor's captive portal + the mailbox. No RouterOS hotspot — that feature is locked behind device-mode (physical button press) on current firmware, and nothing needs gating anyway |
 
 Total hardware: **5 × Pi 5** (base, firefighters, hospital, relative-near,
 relative-far) + **1 × MikroTik mAP lite** (base AP + mayor portal) + **2 ×
@@ -147,7 +147,7 @@ Ending: the facilitator calls time; the group chat itself is the score sheet
   (header + payload) to the embedding application.
 - **Cloud mailbox**: already running; the journalist bot and any
   hotspot-connected player sync through it.
-- **mAP lite tooling (this repo)**: `just base-station::provision` turns a
+- **mAP lite tooling (this repo)**: `just base-station::map-lite::provision` turns a
   stock device into the base-station AP (ether1 bridged to the Pi, DHCP off,
   range clamped; the Pi serves the portal, see `nix/base-station.nix`). The
   generic `../map-lite-portal` repo is no longer involved; the mayor page is
@@ -328,13 +328,13 @@ ethernet port, owns DHCP + wildcard DNS and serves the captive portal
 
 ### Base station: mAP lite + mayor portal
 
-The mAP lite is a plain AP. `just base-station::provision` applies
+The mAP lite is a plain AP. `just base-station::map-lite::provision` applies
 one idempotent script over ssh: ether1 moves from WAN into the LAN bridge
 (the cable to the Pi), the built-in DHCP server is turned off, and the wifi
 range is clamped like the Pi stations' (tx power fixed at 1 dBm plus a
 signal gate: clients heard below -60 dBm can't join and are kicked after 10 s
 — RouterOS tracks per-client signal, so this works better than the Pi's
-fail-open RSSI gate; tune with the `tx_power`/`min_signal` arguments of `just base-station::provision`).
+fail-open RSSI gate; tune with the `tx_power`/`min_signal` arguments of `just base-station::map-lite::provision`).
 The Pi's wildcard DNS then lands every connectivity probe on its nginx, which
 is what pops the captive-portal screen — RouterOS's hotspot feature (locked
 behind device-mode on current firmware) is not used at all.
@@ -363,14 +363,18 @@ into the image at `services.larp-bot.scenariosDir`.
 
 Provisioning flow (all offline, on the laptop — implemented as `just` recipes):
 
-1. `just characters::keygen <character>` — once per character, into `secrets/`
-   (gitignored; re-generating would invalidate the printed posters).
-2. `just characters::cast` — assembles the public `secrets/larp-cast.toml` from all
-   identities.
-3. `just characters::posters` — renders the QR wall-poster PNGs for printing.
-4. `just characters::station <character>` — assembles `stations/<character>/`
-   (`wifi-ap.env` with `SSID=larp-<character>`, `larp-identity.toml`,
-   `larp-cast.toml`), flashed with `just image::flash /dev/sdX stations/<character>`.
+1. `just characters::generate` — one identity bundle per scenario pack into
+   `secrets/` (gitignored; existing bundles are kept, since re-generating
+   would invalidate the printed posters), plus the public
+   `secrets/larp-cast.toml` assembled from all of them. Idempotent, and the
+   cast is complete by construction: the character list *is*
+   `scenarios/*.toml`.
+2. `just characters::posters` — renders the QR wall-poster PNGs for printing.
+4. `just characters::flash <character> /dev/sdX` — flashes the station image and
+   puts the character's files (`wifi-ap.env` with `SSID=<ssid_prefix><character>`,
+   **open network** unless a password argument is given,
+   `larp-identity.toml`, `larp-cast.toml`, assembled on the fly from
+   `secrets/`) on the card's boot partition.
 
 The captive portal can additionally serve the station's QR as a fallback
 onboarding path.

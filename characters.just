@@ -1,9 +1,27 @@
 # Character provisioning (docs/design.md). Identities are private keys:
-# secrets/ and stations/ are gitignored. Public halves go into larp-cast.toml.
+# secrets/ is gitignored. Public halves go into larp-cast.toml.
 
-# Generate one character's identity bundle (once per character, keep forever —
-# re-generating invalidates the printed QR posters).
-[doc("Generate a character's identity bundle (keep forever: re-generating invalidates the printed posters)")]
+# Generate everything: one identity bundle per scenario pack (existing
+# bundles are kept — re-generating one would invalidate its printed poster)
+# plus the public cast file assembled from all of them. Idempotent; the cast
+# is complete by construction, since the character list IS scenarios/*.toml.
+[doc("Generate all missing character identities + the cast file (idempotent)")]
+generate: && cast
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just={{ quote(just_executable()) }}
+    for f in scenarios/*.toml; do
+      char="$(basename "$f" .toml)"
+      if [ -f "secrets/$char-identity.toml" ]; then
+        echo ">> $char: identity exists, keeping it"
+      else
+        "$just" characters::keygen "$char"
+      fi
+    done
+
+# Generate one character's identity bundle (kept forever — re-generating
+# would invalidate the printed QR posters, hence the overwrite guard).
+[private]
 keygen character:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -12,11 +30,12 @@ keygen character:
     nix run .#larp-bot --accept-flake-config -- keygen --character {{ character }} --out "secrets/{{ character }}-identity.toml"
 
 # Assemble the public cast file from every generated identity.
+[private]
 cast:
     #!/usr/bin/env bash
     set -euo pipefail
     ids=(secrets/*-identity.toml)
-    [ -f "${ids[0]}" ] || { echo "no identities in secrets/ — run 'just characters::keygen <character>' first"; exit 1; }
+    [ -f "${ids[0]}" ] || { echo "no identities in secrets/ — run 'just characters::generate' first"; exit 1; }
     args=(); for f in "${ids[@]}"; do args+=(--identity "$f"); done
     nix run .#larp-bot --accept-flake-config -- cast "${args[@]}" --out secrets/larp-cast.toml
 
@@ -24,22 +43,12 @@ cast:
 posters:
     #!/usr/bin/env bash
     set -euo pipefail
-    for f in secrets/*-identity.toml; do
+    ids=(secrets/*-identity.toml)
+    [ -f "${ids[0]}" ] || { echo "no identities in secrets/ — run 'just characters::generate' first"; exit 1; }
+    for f in "${ids[@]}"; do
       char="$(basename "$f" -identity.toml)"
       nix run .#larp-bot --accept-flake-config -- qr --identity "$f" --out "secrets/$char-qr.png"
     done
-
-# Assemble a station's env dir for flashing: wifi-ap.env + identity + cast.
-station character:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    [ -f "secrets/{{ character }}-identity.toml" ] || { echo "run 'just characters::keygen {{ character }}' first"; exit 1; }
-    [ -f secrets/larp-cast.toml ] || { echo "run 'just characters::cast' first"; exit 1; }
-    mkdir -p "stations/{{ character }}"
-    printf 'SSID=larp-%s\nPASSWORD=dashchat\n' "{{ character }}" > "stations/{{ character }}/wifi-ap.env"
-    cp "secrets/{{ character }}-identity.toml" "stations/{{ character }}/larp-identity.toml"
-    cp secrets/larp-cast.toml "stations/{{ character }}/larp-cast.toml"
-    echo ">> stations/{{ character }}/ ready — flash with: just image::flash /dev/sdX stations/{{ character }}"
 
 # Run a character bot locally against a mailbox — the journalist against the
 # cloud mailbox (no droplet needed for testing), or any character while
@@ -48,8 +57,8 @@ station character:
 run character mailbox_url="https://mailbox.production.darksoil.studio":
     #!/usr/bin/env bash
     set -euo pipefail
-    [ -f "secrets/{{ character }}-identity.toml" ] || { echo "run 'just characters::keygen {{ character }}' first"; exit 1; }
-    [ -f secrets/larp-cast.toml ] || { echo "run 'just characters::cast' first"; exit 1; }
+    [ -f "secrets/{{ character }}-identity.toml" ] || { echo "no secrets/{{ character }}-identity.toml — run 'just characters::generate' first"; exit 1; }
+    [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
     mkdir -p ".run/{{ character }}"
     {
       printf 'mailbox_url = "%s"\n' "{{ mailbox_url }}"
@@ -59,3 +68,29 @@ run character mailbox_url="https://mailbox.production.darksoil.studio":
       printf 'data_dir = "%s/.run/{{ character }}/data"\n' "$PWD"
     } > ".run/{{ character }}/config.toml"
     exec nix run .#larp-bot --accept-flake-config -- run --config ".run/{{ character }}/config.toml"
+
+# Flash a character's station card: the station image plus the character's
+# files (wifi-ap.env with SSID=<ssid_prefix><character>, identity, cast —
+# assembled on the fly from secrets/) on the FAT boot partition. The AP is
+# OPEN by default; pass a password (8-63 chars, WPA2) to lock it.
+[doc("Flash a character's station card; the AP is <ssid_prefix><character>, open unless a password is given")]
+flash character device ssid_prefix="larp-" password="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just={{ quote(just_executable()) }}
+    ssid={{ quote(ssid_prefix) }}{{ quote(character) }}
+    password={{ quote(password) }}
+    [ -f "secrets/{{ character }}-identity.toml" ] || { echo "no secrets/{{ character }}-identity.toml — run 'just characters::generate' first"; exit 1; }
+    [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
+    if [ -n "$password" ] && { [ "${#password}" -lt 8 ] || [ "${#password}" -gt 63 ]; }; then
+      echo "wifi password must be 8-63 characters (WPA2), got ${#password}"; exit 1
+    fi
+    envdir="$(mktemp -d)"
+    trap 'rm -rf "$envdir"' EXIT
+    # An empty PASSWORD= line means an open network (see the mailbox image's
+    # wifi-ap.env semantics).
+    printf 'SSID=%s\nPASSWORD=%s\n' "$ssid" "$password" > "$envdir/wifi-ap.env"
+    cp "secrets/{{ character }}-identity.toml" "$envdir/larp-identity.toml"
+    cp secrets/larp-cast.toml "$envdir/larp-cast.toml"
+    "$just" image::flash {{ quote(device) }} "$envdir"
+    echo ">> {{ device }} is ready to boot as $ssid$([ -z "$password" ] && echo ' (open network)')"
