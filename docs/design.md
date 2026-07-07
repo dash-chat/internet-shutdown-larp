@@ -330,16 +330,20 @@ ethernet port, owns DHCP + wildcard DNS and serves the captive portal
 
 The mAP lite is a plain AP. `just provision` in `../map-lite-portal` applies
 one idempotent script over ssh: ether1 moves from WAN into the LAN bridge
-(the cable to the Pi) and the built-in DHCP server is turned off. The Pi's
-wildcard DNS then lands every connectivity probe on its nginx, which is what
-pops the captive-portal screen — RouterOS's hotspot feature (locked behind
-device-mode on current firmware) is not used at all.
+(the cable to the Pi), the built-in DHCP server is turned off, and the wifi
+range is clamped like the Pi stations' (tx power fixed at 1 dBm plus a
+signal gate: clients heard below -60 dBm can't join and are kicked after 10 s
+— RouterOS tracks per-client signal, so this works better than the Pi's
+fail-open RSSI gate; tune with `just tx_power=.. min_signal=.. provision`).
+The Pi's wildcard DNS then lands every connectivity probe on its nginx, which
+is what pops the captive-portal screen — RouterOS's hotspot feature (locked
+behind device-mode on current firmware) is not used at all.
 
-- **Mayor page**: the mayor content (speech + "I will help" + the
-  step-by-step instruction recap) lives in `../map-lite-portal`'s webapp as
-  RouterOS-hotspot pages; the remaining task is porting it into a plain SPA
-  and overriding `dashchat.captivePortal.package` in the `base-station`
-  config with it. Until then the image serves the generic mailbox portal.
+- **Mayor page** *(implemented)*: `portal/index.html` in this repo — a single
+  static page (mayor's speech + step-by-step instructions + a mailbox health
+  check via the module's `/api/` proxy), no build step. The `base-station`
+  config overrides `dashchat.captivePortal.package` with it;
+  `../map-lite-portal`'s webapp stays generic.
 - **No hotspot bypass needed**: nothing is gated anymore — the portal is
   onboarding UX, and every client (phones, headless Pis) reaches the mailbox
   without logging in to anything.

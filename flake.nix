@@ -126,7 +126,22 @@
       # side is provisioned with ../map-lite-portal). The bot stays flashable
       # like any other card.
       nixosConfigurations.base-station = self.nixosConfigurations.larp-station.extendModules {
-        modules = [ ./nix/base-station.nix ];
+        modules = [
+          ./nix/base-station.nix
+          (
+            { pkgs, ... }:
+            {
+              # The mayor's onboarding page (portal/index.html — a single
+              # static file, no build step) replaces the mailbox image's
+              # generic captive-portal SPA. The module's nginx keeps serving
+              # it and proxying /api/ to the mailbox.
+              dashchat.captivePortal.package = pkgs.runCommand "mayor-portal" { } ''
+                mkdir -p $out
+                cp ${./portal/index.html} $out/index.html
+              '';
+            }
+          )
+        ];
       };
     };
 }

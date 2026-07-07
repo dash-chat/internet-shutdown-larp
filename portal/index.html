@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Town Hall — Emergency Broadcast</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0; padding: 24px 16px 48px;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f4efe6; color: #2b2620;
+    display: flex; justify-content: center;
+  }
+  main { max-width: 34rem; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  h2 { font-size: 1.05rem; margin: 28px 0 8px; }
+  .from { font-style: italic; color: #6b6257; margin: 0 0 16px; }
+  blockquote { margin: 0; padding: 0 0 0 14px; border-left: 3px solid #b3a48c; }
+  blockquote p { margin: 10px 0; }
+  ol { padding-left: 22px; }
+  li { margin: 8px 0; }
+  .status { margin-top: 26px; font-size: 0.92rem; color: #6b6257; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+         margin-right: 6px; background: #c0b8a8; }
+  .dot.ok { background: #3d8b40; }
+  .dot.bad { background: #b3402e; }
+  .note { margin-top: 18px; font-size: 0.85rem; color: #6b6257; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🏛️ Town Hall — Emergency Broadcast</h1>
+  <p class="from">A message from the mayor:</p>
+  <blockquote>
+    <p>
+      “Neighbours — this morning an earthquake struck our town. The phone
+      network is gone, the roads are blocked, and the quake has opened a
+      crevasse that splits the town in two. Nobody can cross it.”
+    </p>
+    <p>
+      “Only a handful of relief stations survived, each with its own
+      short-range radio post: the firefighters, the hospital, the uplink to
+      the outside world, the long-range link to Riverside next door — and
+      this town hall. They cannot talk to each other any more. Their messages
+      must now travel in your pockets.”
+    </p>
+    <p>“Will you help us carry them?”</p>
+  </blockquote>
+
+  <h2>📋 Your instructions</h2>
+  <ol>
+    <li>Open <strong>Dash Chat</strong> and add your partner as a contact
+      (scan each other’s QR code).</li>
+    <li>Scan the <strong>four QR posters on the wall</strong> around you:
+      the firefighters, the hospital, the journalist, and Aunt Anna in
+      Riverside, the town next door.</li>
+    <li>Create a <strong>group</strong> with your partner and all four of
+      them.</li>
+    <li>Split up: <strong>one of you on each side of the crevasse</strong>.
+      Only this town hall square is shared ground.</li>
+    <li>Walk into a station’s Wi-Fi to pick up its messages and to deliver
+      the ones you carry. Deliver each message to the station it asks
+      for.</li>
+    <li>Messages for the far side of the crevasse: bring them
+      <strong>here</strong> — the town hall notice board keeps them until
+      your partner passes by.</li>
+    <li>Keep <strong>mobile data OFF</strong> — the town’s networks are down.
+      Wi-Fi only.</li>
+  </ol>
+
+  <p class="status" id="status"><span class="dot"></span>Checking the notice board…</p>
+  <p class="note">
+    This network has no internet. You can safely dismiss any sign-in screen
+    and keep using the town network.
+  </p>
+</main>
+<script>
+  // Same-origin: the captive-portal nginx proxies /api/ to the mailbox.
+  fetch('/api/health')
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function () {
+      document.getElementById('status').innerHTML =
+        '<span class="dot ok"></span>The town hall notice board (mailbox) is online.';
+    })
+    .catch(function () {
+      document.getElementById('status').innerHTML =
+        '<span class="dot bad"></span>The notice board is not answering — tell the facilitator.';
+    });
+</script>
+</body>
+</html>

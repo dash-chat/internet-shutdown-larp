@@ -289,15 +289,14 @@
           "mailbox-image",
           "nixos-raspberrypi",
           "nixpkgs"
-        ],
-        "rust-overlay": "rust-overlay_3"
+        ]
       },
       "locked": {
-        "lastModified": 1783441872,
-        "narHash": "sha256-D6ZpKgNa5r2TYcgHnb054aYBIWPR9xhVIOeBI+czMGc=",
+        "lastModified": 1783450798,
+        "narHash": "sha256-fYwhSpkmOxq/jX+coP8rnSo9bK/zRATxZteZFoLHKuU=",
         "owner": "dash-chat",
         "repo": "raspberry-pi-mailbox-server",
-        "rev": "74a984c4a60ef474522642917e16c8216e469a61",
+        "rev": "655551d54fe8f5a50ee817565f1b17b1ef13e775",
         "type": "github"
       },
       "original": {
@@ -488,7 +487,7 @@
           "mailbox-image",
           "nixpkgs"
         ],
-        "rust-overlay": "rust-overlay_4"
+        "rust-overlay": "rust-overlay_3"
       }
     },
     "rust-overlay": {
@@ -534,27 +533,6 @@
       }
     },
     "rust-overlay_3": {
-      "inputs": {
-        "nixpkgs": [
-          "mailbox-image",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1783404876,
-        "narHash": "sha256-DAh1CfiRVwr8Szkj5PiHmsqh10NHPb8SKPx7w/B+l9E=",
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "rev": "3c161f20193bd91a73913b417e5b06d41860336d",
-        "type": "github"
-      },
-      "original": {
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "type": "github"
-      }
-    },
-    "rust-overlay_4": {
       "inputs": {
         "nixpkgs": [
           "nixpkgs"
