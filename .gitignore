@@ -1,0 +1,17 @@
+# cargo
+target/
+
+# character private identities, posters and per-station env dirs
+# (public halves live in larp-cast.toml, flashed to the cards)
+secrets/
+stations/
+larp-identity*.toml
+
+# nix
+.direnv/
+.envrc
+result*
+
+# flashing
+*.img
+*.log

@@ -1,0 +1,22 @@
+# End-to-end tests, split out of larp-bot so the bot crate itself carries no
+# dev-dependency on dashchat-node's `testing` feature. Note that cargo still
+# feature-unifies workspace members' dev-deps into every build, so `testing`
+# is compiled into workspace builds of the bot (harmless dead code); the nix
+# package (nix/larp-bot-package.nix) papers over its workspace-root
+# include_str! when building from vendored sources.
+[package]
+name = "larp-e2e"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dev-dependencies]
+larp-bot = { path = "../larp-bot" }
+dashchat-node = { workspace = true, features = ["testing"] }
+# Same git source as dashchat-node's own p2panda deps (cargo unifies them);
+# only needed to name VerifyingKey / Access in the test.
+p2panda = { git = "https://github.com/dash-chat/p2panda", branch = "dashchat" }
+p2panda-auth = { git = "https://github.com/dash-chat/p2panda", branch = "dashchat" }
+anyhow = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }
