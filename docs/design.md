@@ -379,6 +379,21 @@ Provisioning flow (all offline, on the laptop — implemented as `just` recipes)
 The captive portal can additionally serve the station's QR as a fallback
 onboarding path.
 
+**Seed the base mailbox with the cast's profiles** (once, after the bots have
+booted): each character's profile lives on its bot's announcements topic,
+seeded only at its own station (Marta: only in the cloud) — and replication
+never introduces a mailbox to topics it doesn't know. Without seeding,
+contacts added from the wall posters appear *nameless* at the base station,
+right when players are telling the four characters apart to create the group.
+The fix uses the client push path: on a phone with internet, add all four
+characters (Marta's profile arrives via the cloud; the others via their
+stations — or plug all the Pis into one ethernet switch, where the mailboxes
+discover and push to each other), then stand on the base station's Wi-Fi for
+a minute. The phone pushes all four announcements topics into the base
+mailbox, permanently. Do NOT seed by running a character bot against the
+base mailbox with a fresh data dir — same identity, second op log, forked
+history.
+
 ### Journalist: cloud host (or laptop)
 
 The journalist is just the same `larp-bot` service pointed at the cloud
@@ -428,6 +443,9 @@ usually within seconds.
 
 ## 7. Risks & open questions
 
+- **Nameless contacts at the base station** — profiles ride each bot's
+  announcements topic, which the base mailbox doesn't know until seeded (see
+  the seeding step in §5). Re-seed if a profile ever changes.
 - **QR encoding fidelity** — the printed QR must decode in the real app.
   Verify with a phone in week 1; this gates the whole onboarding flow.
 - **QR/inbox expiry semantics** — besides the bundle's inbox expiry, check

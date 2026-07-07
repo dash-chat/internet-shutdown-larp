@@ -292,11 +292,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783458134,
-        "narHash": "sha256-9r2WPnTFKZ3vxZDlcaqWvFzP1H7fg2t8JI3UdErnUYc=",
+        "lastModified": 1783460306,
+        "narHash": "sha256-uEINZaEvVc26Ih++u3n11yeu8Krceo5V4K7L6Lsan0M=",
         "owner": "dash-chat",
         "repo": "raspberry-pi-mailbox-server",
-        "rev": "8722f20f84265b0a90bab089209f863a955cac5f",
+        "rev": "f1af3f4209f6a7dd242ce8668885c03daea277b4",
         "type": "github"
       },
       "original": {

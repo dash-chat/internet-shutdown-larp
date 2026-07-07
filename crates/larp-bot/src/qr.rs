@@ -48,11 +48,18 @@ pub fn decode_contact_code(code: &str) -> Result<QrCode> {
 }
 
 /// Render the QR string to a PNG (for the printed wall posters).
+///
+/// The background (light modules and the surrounding quiet zone) is left fully
+/// transparent so the poster's own background shows through; only the dark
+/// modules are painted opaque black. Uses grayscale+alpha (`LumaA`) to keep the
+/// file small.
 pub fn render_png(code: &str, path: &std::path::Path, module_px: u32) -> Result<()> {
     let qr = qrcode::QrCode::new(code.as_bytes()).context("building QR code")?;
     let image = qr
-        .render::<image::Luma<u8>>()
+        .render::<image::LumaA<u8>>()
         .min_dimensions(qr.width() as u32 * module_px, qr.width() as u32 * module_px)
+        .dark_color(image::LumaA([0, 255])) // opaque black
+        .light_color(image::LumaA([0, 0])) // transparent
         .build();
     image
         .save(path)
