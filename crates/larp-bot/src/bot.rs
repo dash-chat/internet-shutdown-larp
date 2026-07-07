@@ -142,40 +142,25 @@ pub async fn build_node(
     Ok((node, notification_rx))
 }
 
-/// Node config for a bot: fully offline-capable — no relay, no mDNS, no p2p,
-/// no blob sync. Everything flows through the one configured mailbox.
+/// Node config for a bot: the v0.18.9 node exposes no networking knobs —
+/// only mailbox polling and the contact-code expiry are configurable.
 pub fn bot_node_config() -> NodeConfig {
-    let mut config = NodeConfig::default().no_p2p().no_blob_sync();
+    let mut config = NodeConfig::default();
     // Runtime QR minting isn't used (the QR comes from the bundle), but keep
     // any incidental inbox registration far-lived anyway.
     config.contact_code_expiry = chrono::Duration::days(365 * 5);
     config
 }
 
-/// Register the configured mailbox on the node, retrying until it's up
-/// (the mailbox on the same Pi may come up after us).
+/// Register the configured mailbox on the node. v0.18.9's MailboxId is a
+/// plain client-side string key — the URL is stable and unique, so it doubles
+/// as the id. Registration is offline; the manager itself keeps retrying an
+/// unreachable mailbox (e.g. while the Pi's own mailbox is still booting).
 async fn register_mailbox(node: &Node, url: &str) {
-    loop {
-        match dashchat_node::mailbox::fetch_mailbox_health(url).await {
-            Ok(health) => {
-                if !node.mailboxes.is_tracked(&health.mailbox_id).await {
-                    let client = mailbox_client::toy::ToyMailboxClient::new(
-                        health.mailbox_id,
-                        url.to_string(),
-                        node.endpoint_id(),
-                        node.unfetched_blob_tracker(),
-                    );
-                    node.mailboxes.register(client).await;
-                }
-                info!(%url, "mailbox registered");
-                return;
-            }
-            Err(err) => {
-                warn!(%url, ?err, "mailbox not reachable yet, retrying in 5s");
-                tokio::time::sleep(Duration::from_secs(5)).await;
-            }
-        }
-    }
+    let id: mailbox_client::MailboxId = url.to_string();
+    let client = mailbox_client::toy::ToyMailboxClient::new(id, url.to_string());
+    node.mailboxes.register(client).await;
+    info!(%url, "mailbox registered");
 }
 
 pub struct Bot {
@@ -321,7 +306,7 @@ impl Bot {
                     .greeting
                     .clone();
                 info!(group = %key, "greeting new group");
-                self.node.send_message(group, greeting, None).await?;
+                self.node.send_message(group, dashchat_node::ChatMessageContent::text_only(greeting)).await?;
                 self.state.greeted.insert(key.clone());
                 self.state.save(&self.state_path)?;
                 // Schedule the group's first mission.
@@ -357,7 +342,7 @@ impl Bot {
             let Some(Payload::Chat(ChatPayload::Message(content))) = payload else {
                 continue;
             };
-            let author = dashchat_node::DeviceId::from(header.verifying_key);
+            let author = dashchat_node::DeviceId::from(header.public_key);
             if author == my_device {
                 continue;
             }
@@ -395,7 +380,7 @@ impl Bot {
             }
         }
         for reply in replies {
-            self.node.send_message(group, reply, None).await?;
+            self.node.send_message(group, dashchat_node::ChatMessageContent::text_only(reply)).await?;
         }
         if dirty {
             self.state.save(&self.state_path)?;
@@ -427,7 +412,10 @@ impl Bot {
         };
         info!(to = %mission.to, group = %key, "firing mission");
         self.node
-            .send_message(group, mission.text.clone(), None)
+            .send_message(
+                group,
+                dashchat_node::ChatMessageContent::text_only(mission.text.clone()),
+            )
             .await?;
         self.state.fired.entry(key.to_string()).or_default().push(FiredMission {
             to: mission.to,

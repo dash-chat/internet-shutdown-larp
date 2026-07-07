@@ -15,3 +15,6 @@ result*
 # flashing
 *.img
 *.log
+
+# local bot runs (larp-run)
+.run/

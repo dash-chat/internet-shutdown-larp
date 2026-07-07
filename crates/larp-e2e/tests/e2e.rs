@@ -11,8 +11,10 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use dashchat_node::testing::{TestMailbox, TestNode};
+use dashchat_node::mailbox::MailboxOperation;
+use dashchat_node::testing::TestNode;
 use dashchat_node::{NodeConfig, ShareIntent};
+use mailbox_client::mem::MemMailbox;
 use p2panda_auth::Access;
 
 use larp_bot::bot::{Bot, BotState, build_node};
@@ -58,11 +60,11 @@ fn test_scenarios() -> Scenarios {
     scenarios
 }
 
-/// Hermetic node config: no p2p, no mDNS, no relay, no blobs. Everything
-/// flows through the shared in-memory mailbox — deterministic, and keeps the
-/// test off the real internet relay.
+/// Test node config: fast mailbox polling. The v0.18.9 node has no further
+/// networking knobs; all transport in this test is the shared in-memory
+/// mailbox.
 fn test_node_config() -> NodeConfig {
-    NodeConfig::testing().no_p2p().no_blob_sync()
+    NodeConfig::testing()
 }
 
 fn fast_timing() -> Timing {
@@ -113,12 +115,12 @@ async fn start_bot(
     data_dir: &std::path::Path,
     bundle: &IdentityBundle,
     cast: &Cast,
-    mailbox: &TestMailbox,
+    mailbox: &MemMailbox<MailboxOperation>,
 ) -> RunningBot {
     let (node, rx) = build_node(data_dir, bundle, test_node_config())
         .await
         .expect("bot node builds");
-    mailbox.register_on(&node).await;
+    node.mailboxes.register(mailbox.client()).await;
     let bot = Bot::new(
         node.clone(),
         bundle.clone(),
@@ -135,7 +137,7 @@ async fn start_bot(
 #[tokio::test(flavor = "multi_thread")]
 async fn mission_ack_roundtrip_and_wipe_survival() {
     dashchat_node::testing::setup_tracing(&["info"], false);
-    let mailbox = TestMailbox::from_env();
+    let mailbox = MemMailbox::<MailboxOperation>::new();
 
     // --- The cast: two characters, generated offline like `larp-bot keygen`.
     let ff_bundle = IdentityBundle::generate("firefighters");
@@ -158,9 +160,9 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
 
     // --- The players arrive and pair up.
     let p1 = TestNode::new(test_node_config(), "p1").await;
-    p1.add_mailbox(&mailbox).await;
+    p1.add_mailbox_client(mailbox.client()).await;
     let p2 = TestNode::new(test_node_config(), "p2").await;
-    p2.add_mailbox(&mailbox).await;
+    p2.add_mailbox_client(mailbox.client()).await;
     p1.behavior()
         .initiate_and_establish_contact(&p2, ShareIntent::AddContact)
         .await
@@ -187,7 +189,7 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
         .expect("hospital bot accepted p1");
 
     // --- p1 creates the group: pair + both characters.
-    let mut members: BTreeMap<p2panda::VerifyingKey, Access> = BTreeMap::new();
+    let mut members = BTreeMap::new();
     members.insert(*p2.device_id(), Access::write());
     members.insert(*ff_device, Access::write());
     members.insert(*hosp_device, Access::write());
@@ -245,7 +247,7 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
         .expect("rebuilt firefighters bot accepted p2");
 
     // ...and the character keeps working in a fresh group.
-    let mut members: BTreeMap<p2panda::VerifyingKey, Access> = BTreeMap::new();
+    let mut members = BTreeMap::new();
     members.insert(*ff_device, Access::write());
     let chat2 = p2.create_group(members).await.expect("post-wipe group");
     // Generous: the rebuilt bot first re-syncs the entire pre-wipe history

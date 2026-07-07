@@ -43,16 +43,6 @@ rustPlatform.buildRustPackage {
   nativeBuildInputs = [ pkg-config ];
   buildInputs = [ openssl ];
 
-  # Cargo feature-unifies workspace members' dev-deps into every build, so
-  # dashchat-node compiles with its `testing` feature (pulled in by larp-e2e)
-  # even for `cargo build -p larp-bot`. That module include_str!s a file from
-  # its own workspace root, which cargo vendoring drops; the vendored path
-  # resolves to $NIX_BUILD_TOP. An empty allowlist satisfies it — the testing
-  # module is dead code in the shipped binary.
-  preBuild = ''
-    echo '[]' > "$NIX_BUILD_TOP/allowed-test-mailbox-url-patterns.json"
-  '';
-
   # The unit tests run in the dev shell / CI shell; the e2e test spawns whole
   # p2panda nodes, which the build sandbox is the wrong place for.
   doCheck = false;

@@ -121,3 +121,21 @@ larp-station character:
 # Run all tests (unit + e2e).
 test:
     cargo test --workspace
+
+# Run a character bot locally against a mailbox — the journalist against the
+# cloud mailbox (no droplet needed for testing), or any character while
+# developing. State lives in .run/<character>/ (wipe it to simulate a reset).
+larp-run character mailbox_url="https://mailbox.production.darksoil.studio":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ -f "secrets/{{character}}-identity.toml" ] || { echo "run 'just larp-keygen {{character}}' first"; exit 1; }
+    [ -f secrets/larp-cast.toml ] || { echo "run 'just larp-cast' first"; exit 1; }
+    mkdir -p ".run/{{character}}"
+    {
+      printf 'mailbox_url = "%s"\n' "{{mailbox_url}}"
+      printf 'identity = "%s/secrets/{{character}}-identity.toml"\n' "$PWD"
+      printf 'cast = "%s/secrets/larp-cast.toml"\n' "$PWD"
+      printf 'scenarios_dir = "%s/scenarios"\n' "$PWD"
+      printf 'data_dir = "%s/.run/{{character}}/data"\n' "$PWD"
+    } > ".run/{{character}}/config.toml"
+    exec nix run .#larp-bot --accept-flake-config -- run --config ".run/{{character}}/config.toml"

@@ -85,6 +85,20 @@
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
       };
 
+      # The bot as a reusable NixOS module — e.g. for the journalist's cloud
+      # host, which runs only the bot against the cloud mailbox:
+      #
+      #   imports = [ internet-shutdown-larp.nixosModules.larp-bot ];
+      #   services.larp-bot = {
+      #     enable = true;
+      #     package = internet-shutdown-larp.packages.x86_64-linux.larp-bot;
+      #     scenariosDir = "${internet-shutdown-larp}/scenarios";
+      #     mailboxUrl = "<the cloud mailbox URL the players' app uses>";
+      #     identityFile = "/var/lib/larp-secrets/journalist-identity.toml";
+      #     castFile = "/var/lib/larp-secrets/larp-cast.toml";
+      #   };
+      nixosModules.larp-bot = ./nix/larp-bot.nix;
+
       # The station image: the plain mailbox appliance extended with the
       # character bot. One image serves every station — the bot only starts on
       # cards whose FAT boot partition carries larp-identity.toml +

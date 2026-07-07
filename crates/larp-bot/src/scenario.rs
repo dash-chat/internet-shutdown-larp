@@ -172,7 +172,7 @@ mod tests {
     fn shipped_packs_lint() {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../scenarios");
         let s = Scenarios::load_dir(dir).unwrap();
-        for character in ["firefighters", "hospital", "journalist", "relative"] {
+        for character in ["firefighters", "hospital", "journalist", "neighbor-mayor"] {
             assert!(s.pack(character).is_some(), "missing pack {character}");
         }
     }

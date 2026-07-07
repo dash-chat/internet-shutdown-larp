@@ -1,0 +1,63 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Substituters mirror the flake's nixConfig — set here too so the CI nix
+# daemon trusts them without prompting.
+env:
+  NIX_CONFIG: |
+    extra-substituters = https://dash-chat.cachix.org https://nixos-raspberrypi.cachix.org
+    extra-trusted-public-keys = dash-chat.cachix.org-1:oAsoaEZ7e4UJlveRXF45MJ1P+Tf3OKFN5QkB8BuPaiM= nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI=
+
+jobs:
+  # The bot package, as consumed by the journalist's cloud host (x86_64).
+  larp-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: ${{ env.NIX_CONFIG }}
+
+      - name: Build larp-bot
+        run: nix build .#larp-bot -L --accept-flake-config
+
+  # The flashable station SD image. Built natively on the free arm64 runner
+  # instead of binfmt emulation (which the justfile's `just build` needs on
+  # x86_64 machines).
+  sd-image:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      # The image closure + the assembled .img don't fit in the runner's
+      # default free space alongside the preinstalled toolchains.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: ${{ env.NIX_CONFIG }}
+
+      - name: Build station SD image
+        run: nix build .#sdImage -L --accept-flake-config
+
+      - name: Collect image
+        run: |
+          cp result/sd-image/*.img.zst .
+          ls -lh ./*.img.zst
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: larp-station-sd-image
+          path: "*.img.zst"
+          retention-days: 7
+          if-no-files-found: error

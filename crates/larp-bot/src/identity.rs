@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result, ensure};
 use chrono::{DateTime, Utc};
-use dashchat_node::{AgentId, DeviceId, QrCode, SigningKey};
+use dashchat_node::{AgentId, DeviceId, PrivateKey, QrCode};
 use serde::{Deserialize, Serialize};
 
 /// The flashable identity bundle (`larp-identity.toml`): everything that must
@@ -30,11 +30,11 @@ pub struct IdentityBundle {
 
 impl IdentityBundle {
     pub fn generate(character: &str) -> Self {
-        let device_key = SigningKey::generate();
+        let device_key = PrivateKey::new();
         // Upstream mints the agent id from a throwaway key's public half
         // (stores/local_store.rs); mirror that.
         let agent_id = AgentId::from(dashchat_node::ActorId::from(
-            SigningKey::generate().verifying_key(),
+            PrivateKey::new().public_key(),
         ));
         // Inbox topics are plain random 32 bytes (Topic::inbox()).
         let inbox: [u8; 32] = rand::random();
@@ -70,16 +70,16 @@ impl IdentityBundle {
         Ok(())
     }
 
-    pub fn signing_key(&self) -> Result<SigningKey> {
+    pub fn signing_key(&self) -> Result<PrivateKey> {
         let bytes: [u8; 32] = hex::decode(&self.device_private_key)
             .context("device_private_key is not hex")?
             .try_into()
             .map_err(|_| anyhow::anyhow!("device_private_key is not 32 bytes"))?;
-        Ok(SigningKey::from_bytes(&bytes))
+        Ok(PrivateKey::from_bytes(&bytes))
     }
 
     pub fn device_id(&self) -> Result<DeviceId> {
-        Ok(DeviceId::from(self.signing_key()?.verifying_key()))
+        Ok(DeviceId::from(self.signing_key()?.public_key()))
     }
 
     pub fn agent_id(&self) -> Result<AgentId> {
