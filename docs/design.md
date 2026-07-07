@@ -49,11 +49,11 @@ carries it to the destination.
         │       both sides; QRs on the wall)      │
         │                    ║                    │
         └────────────────────╨────────────────────┘
-   LINK to the NEIGHBORING TOWN          UPLINK to the JOURNALIST
+   LINK to RIVERSIDE (nearby town)       UPLINK to the JOURNALIST
    (near Pi: AP + mailbox + LoRa)       (phone hotspot with internet; the
         ~ LoRa link ~                    journalist herself is OUTSIDE the
-   NEIGHBOR TOWN HALL (far Pi:           town — her bot runs on Digital
-   mailbox + neighbor-mayor bot + LoRa)  Ocean via the existing cloud mailbox)
+   RIVERSIDE (far Pi: mailbox +          town — her bot runs on Digital
+   Aunt Anna bot + LoRa)                 Ocean via the existing cloud mailbox)
 ```
 
 Corner assignment is arbitrary — the only requirement is two characters per
@@ -67,12 +67,12 @@ players agree not to cross it.
 | **firefighters** | The fire brigade HQ | Pi 5: Wi-Fi AP + mailbox + bot |
 | **hospital** | The town hospital | Pi 5: Wi-Fi AP + mailbox + bot |
 | **journalist** | News desk **outside the town**, telling the world what's happening inside; the hotspot corner is the town's only surviving uplink to her | Phone hotspot (internet); bot on a Digital Ocean droplet syncing through the **existing cloud mailbox** |
-| **neighbor-mayor** | The mayor of the neighboring town, coordinating aid and relaying her citizens' worries | Two Pi 5s: the on-map one is AP + mailbox + LoRa bridge; the far-away one runs mailbox + bot + LoRa bridge. Messages to/from the neighboring town take a LoRa round-trip |
+| **relative** | **Aunt Anna**, a relative in Riverside, the nearby town, desperate for news of her family | Two Pi 5s: the on-map one is AP + mailbox + LoRa bridge; the far-away one runs mailbox + bot + LoRa bridge. Messages to/from Anna take a LoRa round-trip |
 | *(base station)* | **The town mayor** — captive portal only, not a chat character | MikroTik mAP lite as a **plain AP** (its radio handles the 30-40 concurrent base-station clients; provisioned with `../map-lite-portal`), **wired** to a Pi 5 running the `base-station` image (`nix/base-station.nix`): the Pi owns DHCP + wildcard DNS on the cable and serves the mayor's captive portal + the mailbox. No RouterOS hotspot — that feature is locked behind device-mode (physical button press) on current firmware, and nothing needs gating anyway |
 
-Total hardware: **5 × Pi 5** (base, firefighters, hospital, neighbor-near,
-neighbor-far) + **1 × MikroTik mAP lite** (base AP + mayor portal) + **2 ×
-Heltec V4 LoRa dev kits** (USB-C serial on the two neighbor-link Pis) + **1 phone**
+Total hardware: **5 × Pi 5** (base, firefighters, hospital, relative-near,
+relative-far) + **1 × MikroTik mAP lite** (base AP + mayor portal) + **2 ×
+Heltec V4 LoRa dev kits** (USB-C serial on the two relative-link Pis) + **1 phone**
 (journalist hotspot) + **1 DO droplet** (already running the cloud mailbox;
 gains the journalist bot).
 
@@ -269,7 +269,7 @@ each pack, `to` values valid.
 
 ## 4. New component: `lora-bridge` crate
 
-Carries mailbox sync between the neighbor-link's two Pis over **Heltec V4 dev kits
+Carries mailbox sync between the relative's two Pis over **Heltec V4 dev kits
 attached via USB-C serial** — beyond Wi-Fi range, no infrastructure.
 
 - **Radio firmware: Meshtastic.** Flash stock Meshtastic on both Heltecs and
@@ -287,14 +287,14 @@ attached via USB-C serial** — beyond Wi-Fi range, no infrastructure.
   local* mailbox over HTTP and mirrors the delta to the other side.
 - **Scope: text blips only, no blobs.** At LoRa's effective ~1–5 kbps a text
   mission (~300 B compressed) takes seconds — fine. Attachments are out of
-  scope for the neighbor link (players learn: "photos don't reach the next town").
+  scope for the relative (players learn: "photos don't reach Anna").
 - **Topic seeding.** Replication only syncs topics a mailbox already knows.
-  The neighbor-far mailbox knows the group topic because the bot (a member)
-  seeds it locally; the neighbor-near mailbox learns it when the first player
+  The relative-far mailbox knows the group topic because the bot (a member)
+  seeds it locally; the relative-near mailbox learns it when the first player
   syncs there. The bridge exchanges topic-id lists in its digest so both sides
   converge on the union.
 
-Deployment: `lora-bridge` runs on both neighbor-link Pis (`--serial /dev/ttyACM0
+Deployment: `lora-bridge` runs on both relative-link Pis (`--serial /dev/ttyACM0
 --peer <meshtastic-node-id> --mailbox http://127.0.0.1:8080`).
 
 ## 5. NixOS & deployment changes
@@ -312,14 +312,14 @@ carry, next to `wifi-ap.env`:
 
 No file → no bot: the card is a plain mailbox appliance. A `STATION=` env
 switch is deferred to milestone 3, when the LoRa bridge needs a bot-less
-station variant (neighbor-near):
+station variant (relative-near):
 
 | Station | mailbox | AP (hostapd) | larp-bot | lora-bridge |
 |---|---|---|---|---|
 | base | ✓ | – (the mAP lite is the AP; the Pi is wired behind it — `base-station` image) | – | – |
 | firefighters / hospital | ✓ | ✓ | ✓ (identity flashed) | – |
-| neighbor-near | ✓ | ✓ | – | ✓ (milestone 3) |
-| neighbor-far | ✓ | – | ✓ (identity flashed) | ✓ (milestone 3) |
+| relative-near | ✓ | ✓ | – | ✓ (milestone 3) |
+| relative-far | ✓ | – | ✓ (identity flashed) | ✓ (milestone 3) |
 
 The base station Pi runs the `base-station` image (`just build-base-station`):
 no Pi wifi at all — the mAP lite broadcasts the mesh and the Pi, wired to its
@@ -413,7 +413,7 @@ mailbox — plain prose, no visible metadata.
    the firefighters' agent id matching that success line reaches *its*
    mailbox.
 
-For the neighbor-mayor, steps 4–5 gain a LoRa hop (near-Pi → far-Pi) before the bot
+For Aunt Anna, steps 4–5 gain a LoRa hop (near-Pi → far-Pi) before the bot
 sees it, and the ack hops back. For the journalist, step 4 is "join the
 hotspot", the deposit goes to the cloud mailbox, and the DO bot answers
 usually within seconds.
@@ -468,7 +468,7 @@ usually within seconds.
    group, gets greeted, receives mission — and at the base, portal opens,
    phone syncs with the base mailbox through the mAP's bridge.
 3. **`lora-bridge`** — Meshtastic bench test, then the bridge protocol with a
-   mocked serial transport, then the two neighbor-link Pis end-to-end.
+   mocked serial transport, then the two relative-link Pis end-to-end.
 4. **Journalist droplet** — NixOS config on DO against the cloud mailbox;
    test through a real phone hotspot.
 5. **Scenario content + dress rehearsal** — write the four template packs,
