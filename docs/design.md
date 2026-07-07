@@ -147,11 +147,11 @@ Ending: the facilitator calls time; the group chat itself is the score sheet
   (header + payload) to the embedding application.
 - **Cloud mailbox**: already running; the journalist bot and any
   hotspot-connected player sync through it.
-- **`../map-lite-portal` repo**: MikroTik mAP lite tooling — `just provision`
-  turns a stock device into the base-station AP (ether1 bridged to the Pi,
-  DHCP off; the Pi serves the portal, see `nix/base-station.nix`). Also holds
-  the mayor-portal webapp content from the RouterOS-hotspot era, pending its
-  port into the Pi-served portal SPA.
+- **mAP lite tooling (this repo)**: `just base-station::provision` turns a
+  stock device into the base-station AP (ether1 bridged to the Pi, DHCP off,
+  range clamped; the Pi serves the portal, see `nix/base-station.nix`). The
+  generic `../map-lite-portal` repo is no longer involved; the mayor page is
+  `portal/index.html` here.
 
 ## 3. New component: `larp-bot` crate
 
