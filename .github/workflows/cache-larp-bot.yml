@@ -1,0 +1,30 @@
+name: Cache larp-bot
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Both systems the flake exposes: x86_64 for the cloud journalist
+          # host / dev machines, aarch64 for the Pi station image.
+          - runner: ubuntu-latest
+          - runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+
+      - uses: cachix/cachix-action@v16
+        with:
+          name: dash-chat
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Build larp-bot
+        run: nix build .#larp-bot --print-build-logs --accept-flake-config

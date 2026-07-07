@@ -177,16 +177,19 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
     p1.add_contact(qr::decode_contact_code(&hosp_poster).unwrap())
         .await
         .expect("p1 adds hospital");
-    // The bots' capability announcements arriving at p1 proves the contact
-    // handshake completed on the bot side.
-    p1.behavior()
-        .await_first_capabilities(ff_device)
-        .await
-        .expect("firefighters bot accepted p1");
-    p1.behavior()
-        .await_first_capabilities(hosp_device)
-        .await
-        .expect("hospital bot accepted p1");
+    // The bots' announcements (profile + capabilities ride the same topic)
+    // arriving at p1 proves their announcement topics synced. Deliberately a
+    // poll, not Behavior::await_first_capabilities: that helper consumes p1's
+    // notification stream, so waiting for one bot would swallow the other
+    // bot's (single, startup-time) announcement.
+    let ff_agent = ff_bundle.agent_id().unwrap();
+    let hosp_agent = hosp_bundle.agent_id().unwrap();
+    wait_until("bot profiles reach p1", Duration::from_secs(60), || async {
+        let ff = p1.local_store.get_profile(ff_agent).await.ok().flatten();
+        let hosp = p1.local_store.get_profile(hosp_agent).await.ok().flatten();
+        ff.is_some() && hosp.is_some()
+    })
+    .await;
 
     // --- p1 creates the group: pair + both characters.
     let mut members = BTreeMap::new();
@@ -241,10 +244,15 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
     p2.add_contact(qr::decode_contact_code(&ff_poster).unwrap())
         .await
         .expect("p2 adds firefighters after the wipe");
-    p2.behavior()
-        .await_first_capabilities(ff_device)
-        .await
-        .expect("rebuilt firefighters bot accepted p2");
+    wait_until("rebuilt bot's profile reaches p2", Duration::from_secs(60), || async {
+        p2.local_store
+            .get_profile(ff_agent)
+            .await
+            .ok()
+            .flatten()
+            .is_some()
+    })
+    .await;
 
     // ...and the character keeps working in a fresh group.
     let mut members = BTreeMap::new();

@@ -16,9 +16,9 @@ text = """🚒 The creek bridge was damaged and could collapse at any moment. Ev
 success = """📰 Publishing it right now on every channel: CREEK BRIDGE CLOSED. Thanks for bringing this to me!"""
 
 [[missions]]
-to = "relative"
-text = """🚒 We found Grandma Rosa safe and sound at the school shelter. Her family lives out of town and is worried sick. Get the news to her relative!"""
-success = """💌 What a relief, thank you!!! I was fearing the worst. Tell Grandma Rosa we love her and we'll be there soon!"""
+to = "neighbor-mayor"
+text = """🚒 We found Grandma Rosa safe and sound at the school shelter. Her family fled to Riverside and is worried sick. Get the news to Riverside's mayor!"""
+success = """🏘️ Wonderful news — the Rosa family is beside me and they're crying with relief. Tell Grandma Rosa that Riverside is taking good care of her people!"""
 
 [[missions]]
 to = "hospital"

@@ -42,11 +42,11 @@ carries it to the destination.
         │    Player A's      ║     Player B's     │
         │      side          ║       side         │
         │                BASE STATION             │
-        │      (MikroTik mAP lite: AP + captive   │
-        │       portal = the town mayor; plus a   │
-        │       Pi mailbox joining its Wi-Fi as   │
-        │       a client — reachable from both    │
-        │       sides; character QRs on the wall) │
+        │      (MikroTik mAP lite as the AP; a    │
+        │       Pi wired behind it serves DHCP/   │
+        │       DNS, the mayor captive portal     │
+        │       and the mailbox — reachable from  │
+        │       both sides; QRs on the wall)      │
         │                    ║                    │
         └────────────────────╨────────────────────┘
    LINK to the NEIGHBORING TOWN          UPLINK to the JOURNALIST
@@ -68,7 +68,7 @@ players agree not to cross it.
 | **hospital** | The town hospital | Pi 5: Wi-Fi AP + mailbox + bot |
 | **journalist** | News desk **outside the town**, telling the world what's happening inside; the hotspot corner is the town's only surviving uplink to her | Phone hotspot (internet); bot on a Digital Ocean droplet syncing through the **existing cloud mailbox** |
 | **neighbor-mayor** | The mayor of the neighboring town, coordinating aid and relaying her citizens' worries | Two Pi 5s: the on-map one is AP + mailbox + LoRa bridge; the far-away one runs mailbox + bot + LoRa bridge. Messages to/from the neighboring town take a LoRa round-trip |
-| *(base station)* | **The town mayor** — captive portal only, not a chat character | MikroTik mAP lite: Wi-Fi AP + RouterOS hotspot serving the mayor's portal (built from the `../map-lite-portal` repo); plus a Pi 5 running the mailbox, joining the mAP lite's Wi-Fi as a **client** (the image's existing `wifi.env` client mode) so the base keeps dead-drop relay semantics |
+| *(base station)* | **The town mayor** — captive portal only, not a chat character | MikroTik mAP lite as a **plain AP** (its radio handles the 30-40 concurrent base-station clients; provisioned with `../map-lite-portal`), **wired** to a Pi 5 running the `base-station` image (`nix/base-station.nix`): the Pi owns DHCP + wildcard DNS on the cable and serves the mayor's captive portal + the mailbox. No RouterOS hotspot — that feature is locked behind device-mode (physical button press) on current firmware, and nothing needs gating anyway |
 
 Total hardware: **5 × Pi 5** (base, firefighters, hospital, neighbor-near,
 neighbor-far) + **1 × MikroTik mAP lite** (base AP + mayor portal) + **2 ×
@@ -147,12 +147,11 @@ Ending: the facilitator calls time; the group chat itself is the score sheet
   (header + payload) to the embedding application.
 - **Cloud mailbox**: already running; the journalist bot and any
   hotspot-connected player sync through it.
-- **`../map-lite-portal` repo**: captive-portal tooling for MikroTik mAP
-  lites — a Svelte portal webapp served from the router's flash by the
-  RouterOS hotspot (passwordless trial login), plus `just provision` /
-  `just netinstall` to configure devices. The base station's mayor portal is
-  a content variant of this webapp, built and provisioned with that repo's
-  existing tooling.
+- **`../map-lite-portal` repo**: MikroTik mAP lite tooling — `just provision`
+  turns a stock device into the base-station AP (ether1 bridged to the Pi,
+  DHCP off; the Pi serves the portal, see `nix/base-station.nix`). Also holds
+  the mayor-portal webapp content from the RouterOS-hotspot era, pending its
+  port into the Pi-served portal SPA.
 
 ## 3. New component: `larp-bot` crate
 
@@ -317,35 +316,36 @@ station variant (neighbor-near):
 
 | Station | mailbox | AP (hostapd) | larp-bot | lora-bridge |
 |---|---|---|---|---|
-| base | ✓ | – (client mode: `wifi.env` names the mAP lite's SSID) | – | – |
+| base | ✓ | – (the mAP lite is the AP; the Pi is wired behind it — `base-station` image) | – | – |
 | firefighters / hospital | ✓ | ✓ | ✓ (identity flashed) | – |
 | neighbor-near | ✓ | ✓ | – | ✓ (milestone 3) |
 | neighbor-far | ✓ | – | ✓ (identity flashed) | ✓ (milestone 3) |
 
-The base station Pi is exactly today's plain appliance in client mode — only
-a `wifi.env` pointing at the mAP lite's network.
+The base station Pi runs the `base-station` image (`just build-base-station`):
+no Pi wifi at all — the mAP lite broadcasts the mesh and the Pi, wired to its
+ethernet port, owns DHCP + wildcard DNS and serves the captive portal
+(`nix/base-station.nix`).
 
 ### Base station: mAP lite + mayor portal
 
-The mAP lite is provisioned with the `../map-lite-portal` repo's tooling; the
-work here is content + one config detail:
+The mAP lite is a plain AP. `just provision` in `../map-lite-portal` applies
+one idempotent script over ssh: ether1 moves from WAN into the LAN bridge
+(the cable to the Pi) and the built-in DHCP server is turned off. The Pi's
+wildcard DNS then lands every connectivity probe on its nginx, which is what
+pops the captive-portal screen — RouterOS's hotspot feature (locked behind
+device-mode on current firmware) is not used at all.
 
-- **Mayor page** *(implemented)*: the portal webapp's pages carry the mayor
-  content directly — the login page is the mayor's speech (situation + plea,
-  Connect button reads "I will help"), the post-login status page is the
-  step-by-step instruction recap (add your partner, scan the four QR posters
-  on the wall, create the group, split up, drop cross-cliff messages at the
-  town hall, keep mobile data off). Pure static content served from the
-  router's flash.
-- **Hotspot bypass for the mailbox Pi** *(implemented)*: the RouterOS hotspot
-  walls off every client until it logs in. Players get through via the
-  portal's trial-login Connect button, but the base Pi (a headless Wi-Fi
-  client) can't click — set `bypass_macs="<pi mac>"` in the device's
-  `devices/*.conf` and provisioning adds an `ip hotspot ip-binding` bypass
-  for it.
-- **mDNS across the hotspot**: phones discover the mailbox via
-  `_dashchat._tcp.local.`; verify the hotspot bridge passes multicast between
-  authenticated clients (and doesn't isolate them from each other).
+- **Mayor page**: the mayor content (speech + "I will help" + the
+  step-by-step instruction recap) lives in `../map-lite-portal`'s webapp as
+  RouterOS-hotspot pages; the remaining task is porting it into a plain SPA
+  and overriding `dashchat.captivePortal.package` in the `base-station`
+  config with it. Until then the image serves the generic mailbox portal.
+- **No hotspot bypass needed**: nothing is gated anymore — the portal is
+  onboarding UX, and every client (phones, headless Pis) reaches the mailbox
+  without logging in to anything.
+- **mDNS across the bridge**: phones discover the mailbox via
+  `_dashchat._tcp.local.`; the mAP bridges wlan and ethernet at L2 with no
+  hotspot isolation in play, so multicast passes.
 
 Also per-station: the AP SSID defaults to the station name
 (`SSID=larp-firefighters` etc. via `wifi-ap.env`), so the facilitator can see
@@ -462,11 +462,11 @@ usually within seconds.
    dir, restart it, and assert the same identity/QR still onboards.
 2. **Nix integration + base station** — `nix/larp.nix`, `larp.env` station
    switch, per-station env dirs with flashed identity bundles, packages,
-   image build for a bot station; the mayor portal page in
-   `../map-lite-portal` plus the Pi's hotspot ip-binding bypass; live tests:
+   image build for a bot station; the base-station image (mAP lite as AP,
+   Pi wired behind it serving DHCP/DNS + portal); live tests:
    phone joins a bot station's AP, scans the printed QR poster, creates
    group, gets greeted, receives mission — and at the base, portal opens,
-   phone syncs with the base mailbox through the hotspot.
+   phone syncs with the base mailbox through the mAP's bridge.
 3. **`lora-bridge`** — Meshtastic bench test, then the bridge protocol with a
    mocked serial transport, then the two neighbor-link Pis end-to-end.
 4. **Journalist droplet** — NixOS config on DO against the cloud mailbox;

@@ -77,12 +77,15 @@
         # The flashable station image (aarch64 build; needs binfmt emulation
         # on an x86_64 builder, same as the mailbox image).
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
+        # The base-station variant: mAP lite as the AP, Pi wired behind it.
+        sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
       };
 
       packages.aarch64-linux = {
         default = self.packages.aarch64-linux.larp-bot;
         larp-bot = (pkgsWithRust "aarch64-linux").callPackage ./nix/larp-bot-package.nix { };
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
+        sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
       };
 
       # The bot as a reusable NixOS module — e.g. for the journalist's cloud
@@ -114,6 +117,16 @@
             };
           }
         ];
+      };
+
+      # The base-station image: the station image minus Pi-hosted wifi — a
+      # MikroTik mAP lite broadcasts the mesh (a real AP, comfortable with
+      # 30-40 clients) and the Pi, wired behind it, owns DHCP/DNS and serves
+      # the captive portal + the mailbox (see nix/base-station.nix; the mAP
+      # side is provisioned with ../map-lite-portal). The bot stays flashable
+      # like any other card.
+      nixosConfigurations.base-station = self.nixosConfigurations.larp-station.extendModules {
+        modules = [ ./nix/base-station.nix ];
       };
     };
 }

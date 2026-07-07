@@ -1,32 +1,32 @@
-# Distant relative mission pack. Texts are sent VERBATIM (see
-# firefighters.toml). This character lives far away: messages reach the map
-# only over the LoRa link, so keep them shortish.
+# Neighbor-mayor mission pack. Texts are sent VERBATIM (see
+# firefighters.toml). This character is the mayor of the NEIGHBORING town:
+# her messages reach the map only over the LoRa link, so keep them shortish.
 
-name = "Distant Relative"
+name = "Mayor of Riverside"
 
-greeting = """💌 Hello?? This is Anna, writing from the next town over. My whole family lives where the earthquake hit and I can't reach anyone. Please, please carry my messages — you're my only connection!"""
+greeting = """🏘️ This is Teresa, mayor of Riverside, your neighbor town. The quake barely touched us, but the road between our towns is buried and the phone lines are gone — this radio link is all we have. Riverside stands with you: tell us what you need, and carry my messages to your people!"""
 
 [[missions]]
 to = "hospital"
-text = """💌 My father Peter takes heart medication and only had two days' worth left. Is he registered at the hospital? Please take my question to them!"""
-success = """🏥 Peter is here, stable, and we've restocked his medication. He sends his love — tell Anna not to worry."""
+text = """🏘️ Several families from your town are sheltering here in Riverside. One of them is desperate: their father Peter takes heart medication and only had two days' worth left. Is he registered at the hospital? Please take my question to them!"""
+success = """🏥 Peter is here, stable, and we've restocked his medication. He sends his love — tell his family in Riverside not to worry."""
 
 [[missions]]
 to = "firefighters"
-text = """💌 Our family house at 5 Willow Lane looked cracked in the photos. Can the firefighters check whether it's safe before anyone goes back in? Please bring them my request!"""
+text = """🏘️ The Riera family, refugees here in Riverside, saw photos of their house at 5 Willow Lane looking cracked. Can the firefighters check whether it's safe before anyone goes back? Bring them my request!"""
 success = """🚒 We inspected 5 Willow Lane: the facade is cracked but the structure holds. Nobody should use the balcony until we brace it."""
 
 [[missions]]
 to = "journalist"
-text = """💌 People here want to help! We've gathered blankets, water and food. Where should the trucks go? Ask the journalist to find out and publish it!"""
-success = """📰 Published the answer: AID TRUCKS TO THE SPORTS HALL PARKING LOT. Tell your neighbors the town says thank you!"""
+text = """🏘️ Riverside wants to help! We've gathered blankets, water and food, and our trucks can take the mountain track. Where should they go? Ask the journalist to find out and broadcast it!"""
+success = """📰 Broadcast out: RIVERSIDE AID TRUCKS TO THE SPORTS HALL PARKING LOT, VIA THE MOUNTAIN TRACK. Tell your people the whole valley thanks them!"""
 
 [[missions]]
 to = "hospital"
-text = """💌 My niece Clara is diabetic and was staying near the market square. If she shows up at the hospital, she needs insulin. Please get this to the hospital staff!"""
-success = """🏥 Noted on our watch list: Clara, diabetic. If she comes in, insulin is ready. We'll take good care of her."""
+text = """🏘️ A girl from Riverside, Clara, is diabetic and was visiting your market square when the quake hit. If she shows up at the hospital, she needs insulin. Please get this to the hospital staff!"""
+success = """🏥 Noted on our watch list: Clara from Riverside, diabetic. If she comes in, insulin is ready. We'll take good care of her."""
 
 [[missions]]
 to = "firefighters"
-text = """💌 Our old dog Max ran off during the quake — last seen by the fountain. I know it's silly with everything going on... but could the firefighters keep an eye out? Take them my plea!"""
-success = """🚒 Not silly at all. Crews have Max's description and the fountain is on our patrol route. If he turns up, we'll bring him to the shelter."""
+text = """🏘️ Our fire brigade can send you a relief crew with cutting gear at dawn, but they need to know where to report. Ask your firefighters and carry their answer back to me!"""
+success = """🚒 Tell Riverside: their crew reports to the market square staging point at dawn. We'll take every pair of hands they can spare!"""

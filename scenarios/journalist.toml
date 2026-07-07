@@ -17,9 +17,9 @@ text = """📰 A field medic team from the regional capital is on its way and as
 success = """🏥 Perfect timing: send them straight to our emergency ward, we'll have assignments ready. Thank you, messenger!"""
 
 [[missions]]
-to = "relative"
-text = """📰 I'm broadcasting a list of people confirmed safe so families everywhere can breathe again. Ask the distant relative which names they're still missing — take them this note!"""
-success = """💌 Bless you! I'm still waiting for news about my cousins from the mill neighborhood — please add them to your list!"""
+to = "neighbor-mayor"
+text = """📰 I'm broadcasting a list of people confirmed safe so families everywhere can breathe again. Ask Riverside's mayor which names her sheltered families are still missing — take her this note!"""
+success = """🏘️ Bless you! The families here are still waiting for news of the Milà cousins from the mill neighborhood — please add them to your list!"""
 
 [[missions]]
 to = "hospital"

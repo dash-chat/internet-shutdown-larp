@@ -15,9 +15,9 @@ text = """🏥 We urgently need blood donors, especially type O negative. Please
 success = """📰 Call published: O NEGATIVE DONORS NEEDED AT THE HOSPITAL. It's spreading everywhere already!"""
 
 [[missions]]
-to = "relative"
-text = """🏥 We've admitted John with a broken leg, but he's out of danger and in good spirits. His family is out of town and doesn't know. Get them the news!"""
-success = """💌 Thank you from the bottom of my heart! We were so worried. Tell John we'll bring him the chocolates he likes!"""
+to = "neighbor-mayor"
+text = """🏥 We've admitted John with a broken leg, but he's out of danger and in good spirits. His family is sheltering in Riverside and doesn't know. Get the news to Riverside's mayor!"""
+success = """🏘️ I've just told John's family — thank you from all of Riverside! They say to tell him they'll bring the chocolates he likes!"""
 
 [[missions]]
 to = "firefighters"

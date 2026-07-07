@@ -12,16 +12,25 @@ _default:
 
 # Build the station SD image and decompress it for flashing (aarch64 build;
 # on x86_64 this needs `boot.binfmt.emulatedSystems = [ "aarch64-linux" ]`).
-build:
+build: (build-image "sdImage" image)
+
+# Build the base-station SD image: the mAP lite is the AP, the Pi sits wired
+# behind it (nix/base-station.nix; mAP side: ../map-lite-portal). Flash with
+# `just image=base-station.img flash /dev/sdX` — leave wifi-ap.env/wifi.env
+# off the card: the base station hosts no Pi wifi (and the image ignores them).
+build-base-station: (build-image "sdImage-base-station" "base-station.img")
+
+[private]
+build-image attr out:
     #!/usr/bin/env bash
     set -euo pipefail
-    nix build .#sdImage -L --accept-flake-config
+    nix build .#{{attr}} -L --accept-flake-config
     zst="$(echo result/sd-image/*.img.zst)"
     [ -f "$zst" ] || { echo "no *.img.zst under result/sd-image/ — did the build succeed?"; exit 1; }
-    echo ">> decompressing $zst -> {{image}}"
-    rm -f "{{image}}"
-    zstd -d "$zst" -o "{{image}}"
-    ls -lh "{{image}}"
+    echo ">> decompressing $zst -> {{out}}"
+    rm -f "{{out}}"
+    zstd -d "$zst" -o "{{out}}"
+    ls -lh "{{out}}"
 
 # List candidate block devices, to pick the SD-card target for `flash`.
 devices:
