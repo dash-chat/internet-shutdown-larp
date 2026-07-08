@@ -98,8 +98,10 @@ producing missions. There is no separate facilitator trigger (auto-start on
 group join was the chosen design).
 
 **Game rule that must be enforced socially:** players keep **mobile data off**
-(Wi-Fi on). A phone with LTE would sync everything through the cloud mailbox
-from anywhere and short-circuit the entire sneakernet.
+(Wi-Fi on) and **forget all other saved Wi-Fi networks**. A phone with LTE
+would sync everything through the cloud mailbox from anywhere and
+short-circuit the entire sneakernet, and a phone with saved networks in range
+keeps auto-switching away from the station APs.
 
 ### Play loop
 
@@ -133,16 +135,17 @@ somewhere on the map instead of hanging on the base-station wall.
 
 A player who scans it sends a contact request that travels, like everything
 else, through the mailboxes in players' pockets. **Two** stations run the
-informant daemon (`larp-bot anonymous`, flashed with
-`just characters::flash <character> ... anonymous=portal|code`) — ideally one
-per side of the fire line. When a request reaches one of them, the bot accepts
+informant daemon (`larp-bot anonymous`): `just characters::flash` always arms
+the firefighters card with the `portal` variant and the hospital card with the
+`code` variant — one per side of the fire line. When a request reaches one of
+them, the bot accepts
 and whispers into the direct chat: the mayor is lying — he lit the fires, he
 shut down the internet, and he is using the emergency to control the town.
 Then each station adds *its half* of the secret (`anonymous.toml`):
 
-- the **portal** station: tapping the mayor's head on his portrait in the
-  base-station captive portal pops up a hidden code box;
-- the **code** station: the code is `ahawegotyou`.
+- the **portal** station (firefighters): tapping the mayor's head on his
+  portrait in the base-station captive portal pops up a hidden code box;
+- the **code** station (hospital): the code is `ahawegotyou`.
 
 The pair must combine their halves. Entering the code in the portal replaces
 the mayor's broadcast with the endgame page: his files are out and **the
@@ -365,7 +368,7 @@ the station image with the captive portal re-enabled and the mayor page in
 place of the generic captive-portal SPA — it is the only station with a
 portal at all. It hosts its own wifi like every other station —
 `just base-station::flash` writes the `wifi-ap.env` (SSID
-`base-larp` by default).
+`town-hall-larp` by default).
 
 ### Base station: mayor portal
 

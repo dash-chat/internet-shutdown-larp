@@ -85,7 +85,7 @@ in
         The anonymous informant's script (anonymous.toml, baked into the
         image). When set, a second service runs the informant next to the
         character bot — gated, like the bot, on its own flashed identity, so
-        only cards written with characters::flash's anonymous argument
+        only cards characters::flash arms (firefighters=portal, hospital=code)
         actually start it.
       '';
     };
@@ -157,7 +157,7 @@ in
 
     # The anonymous informant (docs/design.md): same binary, second identity,
     # own data dir. Dormant unless the card was flashed with an anonymous
-    # identity + variant (characters::flash's anonymous argument).
+    # identity + variant (characters::flash arms firefighters and hospital).
     systemd.services.larp-bot-anonymous = lib.mkIf (cfg.anonymousSpec != null) {
       description = "LARP anonymous informant bot (Dash Chat node)";
       wantedBy = [ "multi-user.target" ];

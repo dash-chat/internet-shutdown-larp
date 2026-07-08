@@ -12,7 +12,7 @@ mod map-lite
 # first with `just image::build-base-station`. With no device, the SD card
 # is auto-detected (see image::flash).
 [doc("Flash the base-station Pi card; AP is <ssid> (open unless password given); auto-detects the SD card")]
-flash device="" ssid="base-larp" password="":
+flash device="" ssid="town-hall-larp" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}

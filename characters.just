@@ -106,19 +106,24 @@ run-anonymous variant mailbox_url="https://mailbox.production.darksoil.studio":
 # OPEN by default; pass a password (8-63 chars, WPA2) to lock it. With no
 # device, the SD card is auto-detected (see image::flash).
 #
-# Pass an anonymous variant ("portal" or "code" — see anonymous.toml) to also
-# run the anonymous informant on this station: the card gets the shared
-# anonymous identity with the variant appended, which arms the dormant
-# larp-bot-anonymous service. Flash ONE station with each variant, on
-# opposite sides of the fire line.
-[doc("Flash a character's station card; AP is <character><ssid_suffix> (open unless password given); auto-detects the SD card; anonymous=portal|code also runs the informant")]
-flash character device="" ssid_suffix="-larp" password="" anonymous="":
+# The anonymous informant rides along on a fixed pair of stations, one per
+# side of the fire line: the firefighters card always gets the "portal"
+# variant and the hospital card always gets the "code" variant (see
+# anonymous.toml). Those cards get the shared anonymous identity with the
+# variant appended, which arms the dormant larp-bot-anonymous service; other
+# characters' cards never do.
+[doc("Flash a character's station card; AP is <character><ssid_suffix> (open unless password given); auto-detects the SD card; firefighters/hospital also run the anonymous informant (portal/code)")]
+flash character device="" ssid_suffix="-larp" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
     ssid={{ quote(character) }}{{ quote(ssid_suffix) }}
     password={{ quote(password) }}
-    anonymous={{ quote(anonymous) }}
+    case {{ quote(character) }} in
+      firefighters) anonymous=portal ;;
+      hospital) anonymous=code ;;
+      *) anonymous="" ;;
+    esac
     [ -f "secrets/{{ character }}-identity.toml" ] || { echo "no secrets/{{ character }}-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
     if [ -n "$password" ] && { [ "${#password}" -lt 8 ] || [ "${#password}" -gt 63 ]; }; then
