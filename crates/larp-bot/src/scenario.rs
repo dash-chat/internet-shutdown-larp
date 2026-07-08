@@ -26,8 +26,20 @@ pub struct Pack {
     pub name: String,
     /// Sent once per group when the bot joins it.
     pub greeting: String,
+    /// Reply to the first player message after a quiet spell, if configured.
+    #[serde(default)]
+    pub comeback: Option<Comeback>,
     #[serde(default)]
     pub missions: Vec<Mission>,
+}
+
+/// After `after_secs` without any player message in a group, the character
+/// answers the next player message with `text` (sent verbatim, once per
+/// quiet spell).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Comeback {
+    pub after_secs: u64,
+    pub text: String,
 }
 
 /// All packs, keyed by character. Every bot loads all of them: recognizing a
@@ -101,6 +113,21 @@ impl Scenarios {
         if let Some(overlap) = texts.intersection(&successes).next() {
             bail!("a success line equals a mission text: {overlap:?}");
         }
+        // Comeback lines are never looked up, but they must not collide with
+        // texts that are: an identical mission text or success line would be
+        // misrecognized by the other bots.
+        for (character, pack) in &self.packs {
+            if let Some(comeback) = &pack.comeback {
+                if comeback.text.trim().is_empty() {
+                    bail!("pack {character}: empty comeback text");
+                }
+                if texts.contains(comeback.text.as_str())
+                    || successes.contains(comeback.text.as_str())
+                {
+                    bail!("pack {character}: comeback text collides with a mission");
+                }
+            }
+        }
         Ok(())
     }
 
@@ -135,6 +162,7 @@ mod tests {
         Pack {
             name: "Test".into(),
             greeting: "hello".into(),
+            comeback: None,
             missions,
         }
     }
@@ -175,6 +203,16 @@ mod tests {
         for character in ["firefighters", "hospital", "journalist", "relative"] {
             assert!(s.pack(character).is_some(), "missing pack {character}");
         }
+        // Aunt Anna answers the first player message after a quiet spell.
+        assert!(s.pack("relative").unwrap().comeback.is_some());
+    }
+
+    #[test]
+    fn lint_rejects_comeback_colliding_with_a_mission() {
+        let mut p = pack(vec![mission("b", "t1", "s1")]);
+        p.comeback = Some(Comeback { after_secs: 60, text: "s1".into() });
+        let s = scenarios(&[("a", p), ("b", pack(vec![]))]);
+        assert!(s.lint().is_err());
     }
 
     #[test]

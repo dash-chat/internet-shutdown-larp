@@ -180,7 +180,7 @@ provision ssid wifi_key="" admin_password="" tx_power="1" min_signal="-60" route
         Router address:  $router_ip
 
         Wire the mAP lite's ethernet port to the base-station Pi
-        ('just image::build-base-station', then 'just base-station::flash
+        ('just base-station::build', then 'just base-station::flash
         /dev/sdX'). The Pi serves DHCP/DNS and the
         captive portal — until it's up and cabled, clients joining '$ssid'
         will get no IP address (this machine's current lease survives until

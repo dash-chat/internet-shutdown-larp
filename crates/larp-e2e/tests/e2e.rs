@@ -36,6 +36,7 @@ fn test_scenarios() -> Scenarios {
         Pack {
             name: "Firefighters".into(),
             greeting: "FF-GREETING: fire station online.".into(),
+            comeback: None,
             missions: vec![Mission {
                 to: "hospital".into(),
                 text: FF_MISSION.into(),
@@ -48,6 +49,7 @@ fn test_scenarios() -> Scenarios {
         Pack {
             name: "Hospital".into(),
             greeting: "HOSP-GREETING: hospital online.".into(),
+            comeback: None,
             missions: vec![Mission {
                 to: "firefighters".into(),
                 text: HOSP_MISSION.into(),

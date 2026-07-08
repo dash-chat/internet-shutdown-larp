@@ -6,11 +6,20 @@
 # The mAP lite AP tooling (currently unused): connect / cli / provision.
 mod map-lite
 
+# Build the base-station SD image: the station image with the mayor portal
+# in place of the generic captive-portal SPA. The Pi hosts its own wifi like
+# the other stations. Flash with `just base-station::flash`, which writes
+# the wifi-ap.env. (Shells out to image::build-image — cross-module
+# dependencies are not a thing in just.)
+[doc("Build the base-station SD image (mayor portal; flash with base-station::flash)")]
+build:
+    {{ just_executable() }} image::build-image sdImage-base-station base-station.img
+
 # Flash the base-station Pi card: base-station.img plus wifi-ap.env — the
 # base station broadcasts its own wifi, like the character stations. The AP
 # is OPEN by default; pass a password (8-63 chars, WPA2) to lock it. Build
-# first with `just image::build-base-station`. With no device, the SD card
-# is auto-detected (see image::flash).
+# first with `just base-station::build`. With no device, the SD card is
+# auto-detected (see image::flash).
 [doc("Flash the base-station Pi card; AP is <ssid> (open unless password given); auto-detects the SD card")]
 flash device="" ssid="town-hall-larp" password="":
     #!/usr/bin/env bash

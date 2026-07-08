@@ -304,6 +304,13 @@ content, no code. All four character packs live in this repo under
 see above). A unit test lints the packs: `text` and `success` unique across
 each pack, `to` values valid.
 
+A pack may also carry an optional `[comeback]` (`after_secs` + `text`): after
+that long without any *player* message in a group, the character answers the
+next player message with `text`, once per quiet spell. Only Aunt Anna uses it
+("Hey! How is everything over there?") — a sign of life from the far end of
+the LoRa link when players resurface. Tracking is in-memory and baselined on
+the first scan, so bot restarts never trigger it.
+
 ## 4. New component: the RNS mailbox gateway (`gateway/`)
 
 *Implemented — full design in [rns-gateway.md](rns-gateway.md).*
@@ -363,7 +370,7 @@ just combinations of flashed files:
 | relative-near | ✓ | ✓ | – | ✓ (lora.env flashed) |
 | relative-far | ✓ | ✓ (out-of-play SSID: the gateway↔mailbox mDNS hop needs a live multicast interface; doubles as debug access) | ✓ (identity flashed) | ✓ (lora.env flashed) |
 
-The base station Pi runs the `base-station` image (`just image::build-base-station`):
+The base station Pi runs the `base-station` image (`just base-station::build`):
 the station image with the captive portal re-enabled and the mayor page in
 place of the generic captive-portal SPA — it is the only station with a
 portal at all. It hosts its own wifi like every other station —

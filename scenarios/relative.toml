@@ -6,6 +6,12 @@ name = "Aunt Anna"
 
 greeting = """💌 Hello?? This is Anna, writing from Riverside, the next town over. My whole family lives where the fires are burning and I can't reach anyone — this radio link is all I have. Please, please carry my messages, you're my only connection!"""
 
+# Anna answers the first message from the players after this long without
+# hearing from them — she's been glued to the radio the whole time.
+[comeback]
+after_secs = 600
+text = """💌 Hey! How is everything over there?"""
+
 [[missions]]
 to = "hospital"
 text = """❓ 💌 My father Peter takes heart medication and only had two days' worth left. Is he registered at the hospital? Please take my question to them — Anna from Riverside is asking!"""

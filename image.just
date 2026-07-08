@@ -5,13 +5,8 @@
 [doc("Build the station SD image (aarch64; x86_64 builders need binfmt emulation)")]
 build: (build-image "sdImage" "larp-station.img")
 
-# Build the base-station SD image: the station image with the mayor portal
-# in place of the generic captive-portal SPA. The Pi hosts its own wifi like
-# the other stations. Flash with `just base-station::flash /dev/sdX`, which
-# writes the wifi-ap.env.
-[doc("Build the base-station SD image (mayor portal; flash with base-station::flash)")]
-build-base-station: (build-image "sdImage-base-station" "base-station.img")
-
+# Also invoked by `just base-station::build` (cross-module dependencies are
+# not a thing in just, so that recipe shells out to this one).
 [private]
 build-image attr out:
     #!/usr/bin/env bash
@@ -38,5 +33,5 @@ devices:
 flash device="" env_dir="" img="larp-station.img":
     #!/usr/bin/env bash
     set -euo pipefail
-    [ -f "{{ img }}" ] || { echo "image '{{ img }}' not found — run 'just image::build' (or build-base-station) first"; exit 1; }
+    [ -f "{{ img }}" ] || { echo "image '{{ img }}' not found — run 'just image::build' (or base-station::build) first"; exit 1; }
     nix run .#flash-sd-image --accept-flake-config -- "{{ img }}" "{{ device }}" "{{ env_dir }}"

@@ -173,6 +173,12 @@ pub struct Bot {
     state_path: PathBuf,
     /// Per-group next mission fire time (in-memory; reseeded on restart).
     next_fire: BTreeMap<String, Instant>,
+    /// Player-message op hashes already seen, per group (in-memory; only
+    /// tracked when the pack has a comeback line). The first scan of a group
+    /// baselines its history, so restarts never trigger the comeback.
+    seen_player_ops: BTreeMap<String, std::collections::BTreeSet<String>>,
+    /// When each group last produced a NEW player message (or was baselined).
+    last_player_msg: BTreeMap<String, Instant>,
 }
 
 /// Run the bot daemon: seed identity, start the node, register the mailbox,
@@ -221,6 +227,8 @@ impl Bot {
             state: BotState::load(&state_path),
             state_path,
             next_fire: BTreeMap::new(),
+            seen_player_ops: BTreeMap::new(),
+            last_player_msg: BTreeMap::new(),
         })
     }
 
@@ -339,6 +347,21 @@ impl Bot {
             .get_interleaved_logs(group.into(), authors.into_iter().collect())
             .await?;
 
+        let comeback = self
+            .scenarios
+            .pack(&self.bundle.character)
+            .expect("checked at startup")
+            .comeback
+            .clone();
+        let baseline_scan = comeback.is_some() && !self.seen_player_ops.contains_key(key);
+        if comeback.is_some() {
+            self.seen_player_ops.entry(key.to_string()).or_default();
+            self.last_player_msg
+                .entry(key.to_string())
+                .or_insert_with(Instant::now);
+        }
+        let mut comeback_due = false;
+
         let mut dirty = false;
         let mut replies: Vec<String> = Vec::new();
         for (header, payload) in ops {
@@ -350,7 +373,23 @@ impl Bot {
                 continue;
             }
             let Some(author_character) = self.cast.character_of_device(&author) else {
-                continue; // a player, not a cast bot
+                // A player, not a cast bot. If this character has a comeback
+                // line, their first message after a quiet spell gets it.
+                if let Some(cb) = &comeback {
+                    let op_hash = hex::encode(header.hash().as_bytes());
+                    let seen = self.seen_player_ops.entry(key.to_string()).or_default();
+                    if seen.insert(op_hash) {
+                        let quiet = self
+                            .last_player_msg
+                            .get(key)
+                            .is_some_and(|t| t.elapsed() >= Duration::from_secs(cb.after_secs));
+                        if quiet && !baseline_scan {
+                            comeback_due = true;
+                        }
+                        self.last_player_msg.insert(key.to_string(), Instant::now());
+                    }
+                }
+                continue;
             };
             let author_character = author_character.to_string();
             let op_hash = hex::encode(header.hash().as_bytes());
@@ -381,6 +420,11 @@ impl Bot {
                     }
                 }
             }
+        }
+        if comeback_due {
+            let cb = comeback.expect("comeback_due implies a comeback line");
+            info!(group = %key, "player message after a quiet spell, greeting");
+            replies.insert(0, cb.text);
         }
         for reply in replies {
             self.node.send_message(group, dashchat_node::ChatMessageContent::text_only(reply)).await?;
