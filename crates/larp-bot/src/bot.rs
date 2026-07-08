@@ -309,8 +309,11 @@ impl Bot {
                 self.node.send_message(group, dashchat_node::ChatMessageContent::text_only(greeting)).await?;
                 self.state.greeted.insert(key.clone());
                 self.state.save(&self.state_path)?;
-                // Schedule the group's first mission.
-                self.next_fire.insert(key.clone(), self.draw_next_fire());
+                // The group's first mission follows the welcome closely.
+                self.next_fire.insert(
+                    key.clone(),
+                    Instant::now() + Duration::from_secs(self.timing.first_mission_delay_secs),
+                );
             }
 
             self.process_group_messages(group, &key).await?;
@@ -393,12 +396,19 @@ impl Bot {
         group: dashchat_node::ChatId,
         key: &str,
     ) -> Result<()> {
+        let fired_before = self.state.fired.get(key).is_some_and(|v| !v.is_empty());
         let due = self
             .next_fire
             .entry(key.to_string())
             .or_insert_with(|| {
-                // Restart: don't fire instantly, draw a fresh interval.
-                Instant::now() + rand_interval(&self.timing)
+                // Restart: a group that never got a mission keeps the short
+                // post-welcome delay; otherwise draw a fresh interval rather
+                // than firing instantly.
+                if fired_before {
+                    Instant::now() + rand_interval(&self.timing)
+                } else {
+                    Instant::now() + Duration::from_secs(self.timing.first_mission_delay_secs)
+                }
             });
         if Instant::now() < *due {
             return Ok(());
