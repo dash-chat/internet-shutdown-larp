@@ -124,6 +124,38 @@ To avoid flooding, a bot caps its **outstanding unacked missions per group**
 Ending: the facilitator calls time; the group chat itself is the score sheet
 (count success replies). No formal end state in software.
 
+### The anonymous informant (side plot)
+
+A hidden sixth character, **Anonymous**, has an identity but **no scenario
+pack and no cast entry** — no other character knows he exists
+(`characters.just` keeps him out of `larp-cast.toml`). His QR poster is hidden
+somewhere on the map instead of hanging on the base-station wall.
+
+A player who scans it sends a contact request that travels, like everything
+else, through the mailboxes in players' pockets. **Two** stations run the
+informant daemon (`larp-bot anonymous`, flashed with
+`just characters::flash <character> ... anonymous=portal|code`) — ideally one
+per side of the fire line. When a request reaches one of them, the bot accepts
+and whispers into the direct chat: the mayor is lying — he lit the fires, he
+shut down the internet, and he is using the emergency to control the town.
+Then each station adds *its half* of the secret (`anonymous.toml`):
+
+- the **portal** station: tapping the mayor's head on his portrait in the
+  base-station captive portal pops up a hidden code box;
+- the **code** station: the code is `ahawegotyou`.
+
+The pair must combine their halves. Entering the code in the portal replaces
+the mayor's broadcast with the endgame page: his files are out and **the
+mayor flees town**.
+
+Both stations run the **same** identity (one printed poster). p2panda logs
+are per `(device, topic)`, and a failed op ingest is dropped per-op, so the
+two instances only ever collide on the announcements topic (both branches
+carry the same "Anonymous" profile — first one in wins) and on a direct chat
+when both stations accept the *same* player (that player keeps the first
+station's chat; the pair still assembles both hints through their own
+accepts). Degradation, not breakage.
+
 ---
 
 ## 2. What already exists (reused unmodified)
@@ -334,14 +366,17 @@ the station image with the captive portal re-enabled and the mayor page in
 place of the generic captive-portal SPA — it is the only station with a
 portal at all. It hosts its own wifi like every other station —
 `just base-station::flash` writes the `wifi-ap.env` (SSID
-`base-internet-shutdown-larp` by default).
+`base-larp` by default).
 
 ### Base station: mayor portal
 
 - **Mayor page** *(implemented)*: `portal/index.html` in this repo — a single
-  static page (mayor's speech + step-by-step instructions + a mailbox health
-  check via the module's `/api/` proxy), no build step. The `base-station`
-  config overrides `dashchat.captivePortal.package` with it.
+  static page (mayor's speech + portrait + step-by-step instructions + a
+  mailbox health check via the module's `/api/` proxy), no build step. The
+  `base-station` config overrides `dashchat.captivePortal.package` with it.
+  The portrait hides the informant side plot's endgame: tapping the mayor's
+  head pops a code box, and `ahawegotyou` swaps the broadcast for the
+  mayor-flees-town page (per device, remembered in `localStorage`).
 - **Nothing is gated**: the portal is onboarding UX, and every client
   (phones, headless Pis) reaches the mailbox without logging in to anything.
 
@@ -356,7 +391,7 @@ Pi's fail-open RSSI gate). mDNS passes the mAP's L2 bridge, and no RouterOS
 hotspot is involved.
 
 Also per-station: the AP SSID defaults to the station name plus a game
-suffix (`SSID=firefighters-internet-shutdown-larp` etc. via `wifi-ap.env`),
+suffix (`SSID=firefighters-larp` etc. via `wifi-ap.env`),
 so the facilitator can see at a glance which bubble they're in. Character
 stations run **no captive portal** (`dashchat.captivePortal.enable = false`
 in the station image): joining one looks like a dead network, and the app

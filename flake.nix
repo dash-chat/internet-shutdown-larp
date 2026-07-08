@@ -183,6 +183,9 @@
               enable = true;
               package = self.packages.aarch64-linux.larp-bot;
               scenariosDir = ./scenarios;
+              # Arms the informant service on every station card; it only
+              # starts where characters::flash wrote an anonymous identity.
+              anonymousSpec = ./anonymous.toml;
             };
             # The LoRa gateway (relative link, docs/rns-gateway.md), gated
             # like the bot: no lora.env on the card → no gateway.

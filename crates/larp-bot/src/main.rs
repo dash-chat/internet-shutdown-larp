@@ -50,6 +50,11 @@ enum Command {
         #[arg(long, default_value = "/etc/larp-bot/config.toml")]
         config: PathBuf,
     },
+    /// Run the anonymous informant daemon (the hidden character).
+    Anonymous {
+        #[arg(long, default_value = "/etc/larp-bot/anonymous.toml")]
+        config: PathBuf,
+    },
 }
 
 #[tokio::main]
@@ -99,6 +104,10 @@ async fn main() -> Result<()> {
         Command::Run { config } => {
             let config = BotConfig::load(&config)?;
             larp_bot::bot::run(config).await?;
+        }
+        Command::Anonymous { config } => {
+            let config = larp_bot::anonymous::AnonymousConfig::load(&config)?;
+            larp_bot::anonymous::run(config).await?;
         }
     }
     Ok(())

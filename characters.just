@@ -81,22 +81,55 @@ run character mailbox_url="https://mailbox.production.darksoil.studio":
     } > ".run/{{ character }}/config.toml"
     exec nix run .#larp-bot --accept-flake-config -- run --config ".run/{{ character }}/config.toml"
 
+# Run the anonymous informant locally against a mailbox, with one of the
+# variants from anonymous.toml ("portal" or "code"). State lives in
+# .run/anonymous-<variant>/ (wipe it to simulate a reset).
+[doc("Run the anonymous informant locally (variant: portal|code); state in .run/anonymous-<variant>/")]
+run-anonymous variant mailbox_url="https://mailbox.production.darksoil.studio":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ -f secrets/anonymous-identity.toml ] || { echo "no secrets/anonymous-identity.toml — run 'just characters::generate' first"; exit 1; }
+    grep -q "^{{ variant }} = \[" anonymous.toml || { echo "unknown anonymous variant '{{ variant }}' — see [variants] in anonymous.toml"; exit 1; }
+    mkdir -p ".run/anonymous-{{ variant }}"
+    { cat secrets/anonymous-identity.toml; printf 'variant = "%s"\n' "{{ variant }}"; } > ".run/anonymous-{{ variant }}/identity.toml"
+    {
+      printf 'mailbox_url = "%s"\n' "{{ mailbox_url }}"
+      printf 'identity = "%s/.run/anonymous-{{ variant }}/identity.toml"\n' "$PWD"
+      printf 'spec = "%s/anonymous.toml"\n' "$PWD"
+      printf 'data_dir = "%s/.run/anonymous-{{ variant }}/data"\n' "$PWD"
+    } > ".run/anonymous-{{ variant }}/config.toml"
+    exec nix run .#larp-bot --accept-flake-config -- anonymous --config ".run/anonymous-{{ variant }}/config.toml"
+
 # Flash a character's station card: the station image plus the character's
 # files (wifi-ap.env with SSID=<character><ssid_suffix>, identity, cast —
 # assembled on the fly from secrets/) on the FAT boot partition. The AP is
 # OPEN by default; pass a password (8-63 chars, WPA2) to lock it. With no
 # device, the SD card is auto-detected (see image::flash).
-[doc("Flash a character's station card; AP is <character><ssid_suffix> (open unless password given); auto-detects the SD card")]
-flash character device="" ssid_suffix="-internet-shutdown-larp" password="":
+#
+# Pass an anonymous variant ("portal" or "code" — see anonymous.toml) to also
+# run the anonymous informant on this station: the card gets the shared
+# anonymous identity with the variant appended, which arms the dormant
+# larp-bot-anonymous service. Flash ONE station with each variant, on
+# opposite sides of the fire line.
+[doc("Flash a character's station card; AP is <character><ssid_suffix> (open unless password given); auto-detects the SD card; anonymous=portal|code also runs the informant")]
+flash character device="" ssid_suffix="-larp" password="" anonymous="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
     ssid={{ quote(character) }}{{ quote(ssid_suffix) }}
     password={{ quote(password) }}
+    anonymous={{ quote(anonymous) }}
     [ -f "secrets/{{ character }}-identity.toml" ] || { echo "no secrets/{{ character }}-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
     if [ -n "$password" ] && { [ "${#password}" -lt 8 ] || [ "${#password}" -gt 63 ]; }; then
       echo "wifi password must be 8-63 characters (WPA2), got ${#password}"; exit 1
+    fi
+    if [ "${#ssid}" -gt 32 ]; then
+      echo "SSID must be at most 32 bytes (802.11 limit; hostapd refuses longer), got ${#ssid}: $ssid"; exit 1
+    fi
+    if [ -n "$anonymous" ]; then
+      [ -f secrets/anonymous-identity.toml ] || { echo "no secrets/anonymous-identity.toml — run 'just characters::generate' first"; exit 1; }
+      grep -q "^$anonymous = \[" anonymous.toml || { echo "unknown anonymous variant '$anonymous' — see [variants] in anonymous.toml"; exit 1; }
     fi
     envdir="$(mktemp -d)"
     trap 'rm -rf "$envdir"' EXIT
@@ -105,5 +138,10 @@ flash character device="" ssid_suffix="-internet-shutdown-larp" password="":
     printf 'SSID=%s\nPASSWORD=%s\n' "$ssid" "$password" > "$envdir/wifi-ap.env"
     cp "secrets/{{ character }}-identity.toml" "$envdir/larp-identity.toml"
     cp secrets/larp-cast.toml "$envdir/larp-cast.toml"
+    if [ -n "$anonymous" ]; then
+      # The bundle plus the one flash-time field (the bundle toml is flat
+      # key-value, so appending a line keeps it valid).
+      { cat secrets/anonymous-identity.toml; printf 'variant = "%s"\n' "$anonymous"; } > "$envdir/larp-anonymous.toml"
+    fi
     "$just" image::flash {{ quote(device) }} "$envdir"
-    echo ">> card is ready to boot as $ssid$([ -z "$password" ] && echo ' (open network)' || true)"
+    echo ">> card is ready to boot as $ssid$([ -z "$password" ] && echo ' (open network)' || true)$([ -n "$anonymous" ] && echo " + anonymous informant ($anonymous)" || true)"

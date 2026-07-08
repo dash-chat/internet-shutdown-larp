@@ -12,7 +12,7 @@ mod map-lite
 # first with `just image::build-base-station`. With no device, the SD card
 # is auto-detected (see image::flash).
 [doc("Flash the base-station Pi card; AP is <ssid> (open unless password given); auto-detects the SD card")]
-flash device="" ssid="base-internet-shutdown-larp" password="":
+flash device="" ssid="base-larp" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
@@ -21,6 +21,7 @@ flash device="" ssid="base-internet-shutdown-larp" password="":
     if [ -n "$password" ] && { [ "${#password}" -lt 8 ] || [ "${#password}" -gt 63 ]; }; then
       echo "wifi password must be 8-63 characters (WPA2), got ${#password}"; exit 1
     fi
+    [ "${#ssid}" -le 32 ] || { echo "SSID must be at most 32 bytes (802.11 limit), got ${#ssid}: $ssid"; exit 1; }
     envdir="$(mktemp -d)"
     trap 'rm -rf "$envdir"' EXIT
     # An empty PASSWORD= line means an open network (see the mailbox image's

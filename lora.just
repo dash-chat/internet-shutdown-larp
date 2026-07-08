@@ -30,13 +30,15 @@ lora-env dir serial freq sf:
 # plus the gateway. Players deposit Anna's messages here; the gateway
 # carries them to Riverside.
 [doc("Flash the relative-near card: AP + mailbox + LoRa gateway (no bot)")]
-flash-near device="" ssid="larp-relative" password="" serial="/dev/ttyACM0" freq="869525000" sf="8":
+flash-near device="" ssid="nearby-town-radio-link-larp" password="" serial="/dev/ttyACM0" freq="869525000" sf="8":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
+    ssid={{ quote(ssid) }}
+    [ "${#ssid}" -le 32 ] || { echo "SSID must be at most 32 bytes (802.11 limit), got ${#ssid}: $ssid"; exit 1; }
     envdir="$(mktemp -d)"
     trap 'rm -rf "$envdir"' EXIT
-    printf 'SSID=%s\nPASSWORD=%s\n' {{ quote(ssid) }} {{ quote(password) }} > "$envdir/wifi-ap.env"
+    printf 'SSID=%s\nPASSWORD=%s\n' "$ssid" {{ quote(password) }} > "$envdir/wifi-ap.env"
     "$just" lora::lora-env "$envdir" {{ quote(serial) }} {{ quote(freq) }} {{ quote(sf) }}
     "$just" image::flash {{ quote(device) }} "$envdir"
     echo ">> relative-near card ready ({{ ssid }} + LoRa gateway)"
@@ -46,15 +48,17 @@ flash-near device="" ssid="larp-relative" password="" serial="/dev/ttyACM0" freq
 # live multicast interface, and the bubble doubles as facilitator debug
 # access in the far location.
 [doc("Flash the relative-far card: bot + mailbox + LoRa gateway (+ debug AP)")]
-flash-far character="relative" device="" ssid="larp-riverside" password="" serial="/dev/ttyACM0" freq="869525000" sf="8":
+flash-far character="relative" device="" ssid="riverside-larp" password="" serial="/dev/ttyACM0" freq="869525000" sf="8":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
     [ -f "secrets/{{ character }}-identity.toml" ] || { echo "no secrets/{{ character }}-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
+    ssid={{ quote(ssid) }}
+    [ "${#ssid}" -le 32 ] || { echo "SSID must be at most 32 bytes (802.11 limit), got ${#ssid}: $ssid"; exit 1; }
     envdir="$(mktemp -d)"
     trap 'rm -rf "$envdir"' EXIT
-    printf 'SSID=%s\nPASSWORD=%s\n' {{ quote(ssid) }} {{ quote(password) }} > "$envdir/wifi-ap.env"
+    printf 'SSID=%s\nPASSWORD=%s\n' "$ssid" {{ quote(password) }} > "$envdir/wifi-ap.env"
     cp "secrets/{{ character }}-identity.toml" "$envdir/larp-identity.toml"
     cp secrets/larp-cast.toml "$envdir/larp-cast.toml"
     "$just" lora::lora-env "$envdir" {{ quote(serial) }} {{ quote(freq) }} {{ quote(sf) }}

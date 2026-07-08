@@ -156,7 +156,7 @@ pub fn bot_node_config() -> NodeConfig {
 /// plain client-side string key — the URL is stable and unique, so it doubles
 /// as the id. Registration is offline; the manager itself keeps retrying an
 /// unreachable mailbox (e.g. while the Pi's own mailbox is still booting).
-async fn register_mailbox(node: &Node, url: &str) {
+pub(crate) async fn register_mailbox(node: &Node, url: &str) {
     let id: mailbox_client::MailboxId = url.to_string();
     let client = mailbox_client::toy::ToyMailboxClient::new(id, url.to_string());
     node.mailboxes.register(client).await;

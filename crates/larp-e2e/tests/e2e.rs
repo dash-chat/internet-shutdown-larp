@@ -71,6 +71,7 @@ fn fast_timing() -> Timing {
     Timing {
         min_interval_secs: 1,
         max_interval_secs: 2,
+        first_mission_delay_secs: 1,
         max_outstanding: 3,
         poll_interval_secs: 1,
     }

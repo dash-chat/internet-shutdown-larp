@@ -32,6 +32,13 @@ let
     max_outstanding = ${toString cfg.timing.maxOutstanding}
     poll_interval_secs = ${toString cfg.timing.pollIntervalSecs}
   '';
+
+  anonymousConfigFile = pkgs.writeText "larp-bot-anonymous.toml" ''
+    mailbox_url = "${cfg.mailboxUrl}"
+    identity = "${cfg.anonymousIdentityFile}"
+    spec = "${cfg.anonymousSpec}"
+    data_dir = "/var/lib/larp-bot-anonymous"
+  '';
 in
 {
   options.services.larp-bot = {
@@ -70,6 +77,27 @@ in
     scenariosDir = lib.mkOption {
       type = lib.types.path;
       description = "Directory with all characters' scenario packs (baked into the image).";
+    };
+
+    anonymousSpec = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        The anonymous informant's script (anonymous.toml, baked into the
+        image). When set, a second service runs the informant next to the
+        character bot — gated, like the bot, on its own flashed identity, so
+        only cards written with characters::flash's anonymous argument
+        actually start it.
+      '';
+    };
+
+    anonymousIdentityFile = lib.mkOption {
+      type = lib.types.str;
+      default = "/boot/firmware/larp-anonymous.toml";
+      description = ''
+        The flashed anonymous identity bundle (with its flash-time `variant`
+        line). The informant service is gated on this path existing.
+      '';
     };
 
     timing = {
@@ -120,6 +148,36 @@ in
       serviceConfig = {
         ExecStart = "${lib.getExe' cfg.package "larp-bot"} run --config ${configFile}";
         StateDirectory = "larp-bot";
+        Restart = "always";
+        RestartSec = 5;
+        DynamicUser = true;
+
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+      };
+
+      environment.RUST_LOG = lib.mkDefault "larp_bot=info,dashchat_node=warn,mailbox_client=warn";
+    };
+
+    # The anonymous informant (docs/design.md): same binary, second identity,
+    # own data dir. Dormant unless the card was flashed with an anonymous
+    # identity + variant (characters::flash's anonymous argument).
+    systemd.services.larp-bot-anonymous = lib.mkIf (cfg.anonymousSpec != null) {
+      description = "LARP anonymous informant bot (Dash Chat node)";
+      wantedBy = [ "multi-user.target" ];
+      after = [
+        "network-online.target"
+        "dashchat-mailbox.service"
+      ];
+      wants = [ "network-online.target" ];
+
+      unitConfig.ConditionPathExists = [ cfg.anonymousIdentityFile ];
+
+      serviceConfig = {
+        ExecStart = "${lib.getExe' cfg.package "larp-bot"} anonymous --config ${anonymousConfigFile}";
+        StateDirectory = "larp-bot-anonymous";
         Restart = "always";
         RestartSec = 5;
         DynamicUser = true;
