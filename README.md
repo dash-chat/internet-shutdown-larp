@@ -33,4 +33,5 @@ just characters::generate              # all identities + cast file → secrets/
 just characters::posters               # printable QR posters
 just image::build                      # station SD image
 just characters::flash firefighters    # flash + station files (auto-detects the SD card)
+just journalist::deploy                # journalist bot → Digital Ocean droplet (doctl)
 ```

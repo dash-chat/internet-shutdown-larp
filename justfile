@@ -13,6 +13,10 @@ mod image
 # the mAP lite that broadcasts its wifi.
 mod base-station
 
+# The journalist's cloud host: deploy the bot to a Digital Ocean droplet
+# (doctl + nixos-infect), plus ssh/logs/destroy.
+mod journalist
+
 # Show available recipes.
 _default:
     @just --list --list-submodules

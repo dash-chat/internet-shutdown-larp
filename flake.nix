@@ -66,6 +66,7 @@
             rustToolchain # larp-bot workspace (crates/)
             pkg-config # native deps of the dash-chat crate tree
             openssl
+            doctl # journalist droplet recipes (just journalist::*)
           ];
         };
 

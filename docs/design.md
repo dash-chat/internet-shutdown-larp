@@ -401,11 +401,16 @@ mailbox — no new mailbox is deployed (chosen design), and the phone hotspot
 needs zero config: any internet gets players to the cloud mailbox, which the
 app already knows about.
 
-*Implemented:* the flake exports `nixosModules.larp-bot` with a usage example
-(see flake.nix) for wiring into the droplet's existing NixOS config — set
-`mailboxUrl` to the cloud mailbox and point `identityFile`/`castFile` at the
-deployed secrets (same `keygen` artifacts, delivered via the droplet's secret
-path instead of a FAT partition).
+*Implemented:* `just journalist::deploy` provisions the whole thing with
+doctl — first run creates an Ubuntu droplet whose cloud-init converts it to
+NixOS in place (nixos-infect), then pushes the flake's `journalist-droplet`
+config plus the secrets (same `keygen` artifacts, delivered over SSH to
+`/var/lib/larp-secrets/` instead of a FAT partition); later runs skip
+straight to the push. `journalist::logs` follows the bot's journal,
+`journalist::destroy` tears the droplet down (the identity survives in
+`secrets/`). The flake also still exports `nixosModules.larp-bot` with a
+usage example (see flake.nix) for wiring the bot into an existing NixOS
+host instead — e.g. the droplet already running the cloud mailbox.
 
 For testing without touching the droplet, `just characters::run journalist
 [mailbox_url]` runs the bot on the laptop against the cloud mailbox — the

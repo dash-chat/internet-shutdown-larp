@@ -1,7 +1,8 @@
 # The journalist's cloud host (docs/design.md §Journalist): a Digital Ocean
 # droplet running only the bot against the cloud mailbox. One-time setup:
-# `nix run nixpkgs#doctl -- auth init` with a DO API token, and at least one
-# SSH key registered in the account (`doctl compute ssh-key import`).
+# `doctl auth init` with a DO API token, and at least one SSH key registered
+# in the account (`doctl compute ssh-key import`). doctl comes with the
+# devShell (flake.nix).
 
 droplet_name := "larp-journalist"
 
@@ -13,18 +14,17 @@ droplet_name := "larp-journalist"
 deploy region="ams3" size="s-1vcpu-1gb":
     #!/usr/bin/env bash
     set -euo pipefail
-    doctl() { nix run nixpkgs#doctl -- "$@"; }
     ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
     name={{ quote(droplet_name) }}
 
     [ -f secrets/journalist-identity.toml ] || { echo "no secrets/journalist-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
-    doctl account get > /dev/null || { echo "doctl is not authorized — run: nix run nixpkgs#doctl -- auth init"; exit 1; }
+    doctl account get > /dev/null || { echo "doctl is not authorized — run 'doctl auth init'"; exit 1; }
 
     ip="$(doctl compute droplet get "$name" --format PublicIPv4 --no-header 2>/dev/null || true)"
     if [ -z "$ip" ]; then
       keys="$(doctl compute ssh-key list --format FingerPrint --no-header | paste -sd, -)"
-      [ -n "$keys" ] || { echo "no SSH keys in the DO account — run: nix run nixpkgs#doctl -- compute ssh-key import my-key --public-key-file ~/.ssh/id_ed25519.pub"; exit 1; }
+      [ -n "$keys" ] || { echo "no SSH keys in the DO account — run: doctl compute ssh-key import my-key --public-key-file ~/.ssh/id_ed25519.pub"; exit 1; }
       echo ">> creating droplet $name ({{ region }}, {{ size }})"
       ip="$(doctl compute droplet create "$name" \
         --image ubuntu-24-04-x64 --region {{ quote(region) }} --size {{ quote(size) }} \
@@ -58,15 +58,14 @@ deploy region="ams3" size="s-1vcpu-1gb":
 ssh *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    ip="$(nix run nixpkgs#doctl -- compute droplet get {{ quote(droplet_name) }} --format PublicIPv4 --no-header)"
+    ip="$(doctl compute droplet get {{ quote(droplet_name) }} --format PublicIPv4 --no-header)"
     exec ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "root@$ip" {{ args }}
 
 # Follow the journalist bot's journal on the droplet.
 logs:
     @just journalist::ssh journalctl -u larp-bot -f
 
-# Tear the droplet down (the identity survives in secrets/ — a later deploy
-# recreates the same character).
+[doc("Tear the droplet down (the identity survives in secrets/ — a later deploy recreates the same character)")]
 [confirm("destroy the journalist droplet? [y/N]")]
 destroy:
-    nix run nixpkgs#doctl -- compute droplet delete {{ quote(droplet_name) }} --force
+    doctl compute droplet delete {{ quote(droplet_name) }} --force
