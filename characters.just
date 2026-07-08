@@ -4,7 +4,9 @@
 # Generate everything: one identity bundle per scenario pack (existing
 # bundles are kept — re-generating one would invalidate its printed poster)
 # plus the public cast file assembled from all of them. Idempotent; the cast
-# is complete by construction, since the character list IS scenarios/*.toml.
+# is complete by construction, since the character list IS scenarios/*.toml —
+# plus the secret "anonymous" character, who has no scenario pack and stays
+# OUT of the cast (no other character knows he exists).
 [doc("Generate all missing character identities + the cast file (idempotent)")]
 generate: && cast
     #!/usr/bin/env bash
@@ -18,6 +20,11 @@ generate: && cast
         "$just" characters::keygen "$char"
       fi
     done
+    if [ -f "secrets/anonymous-identity.toml" ]; then
+      echo ">> anonymous: identity exists, keeping it"
+    else
+      "$just" characters::keygen anonymous
+    fi
 
 # Generate one character's identity bundle (kept forever — re-generating
 # would invalidate the printed QR posters, hence the overwrite guard).
@@ -29,14 +36,19 @@ keygen character:
     [ ! -f "secrets/{{ character }}-identity.toml" ] || { echo "secrets/{{ character }}-identity.toml already exists — refusing to overwrite"; exit 1; }
     nix run .#larp-bot --accept-flake-config -- keygen --character {{ character }} --out "secrets/{{ character }}-identity.toml"
 
-# Assemble the public cast file from every generated identity.
+# Assemble the public cast file from every generated identity — except
+# anonymous, who must never appear in the cast the stations receive.
 [private]
 cast:
     #!/usr/bin/env bash
     set -euo pipefail
     ids=(secrets/*-identity.toml)
     [ -f "${ids[0]}" ] || { echo "no identities in secrets/ — run 'just characters::generate' first"; exit 1; }
-    args=(); for f in "${ids[@]}"; do args+=(--identity "$f"); done
+    args=()
+    for f in "${ids[@]}"; do
+      [ "$(basename "$f")" = anonymous-identity.toml ] && continue
+      args+=(--identity "$f")
+    done
     nix run .#larp-bot --accept-flake-config -- cast "${args[@]}" --out secrets/larp-cast.toml
 
 # Render the QR wall posters (PNG per character) into secrets/.
