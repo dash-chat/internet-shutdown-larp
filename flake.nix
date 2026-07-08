@@ -78,7 +78,7 @@
         # The flashable station image (aarch64 build; needs binfmt emulation
         # on an x86_64 builder, same as the mailbox image).
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
-        # The base-station variant: mAP lite as the AP, Pi wired behind it.
+        # The base-station variant: the station image plus the mayor portal.
         sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
         # The mailbox image's flashing helpers, reused by the just recipes.
         inherit (mailbox-image.packages.x86_64-linux) detect-sd-card flash-sd-image;
@@ -142,7 +142,9 @@
               scenariosDir = ./scenarios;
               # Must match the mailbox the players' app build uses — release
               # builds sync through the production mailbox (docs/design.md).
-              mailboxUrl = "https://mailbox.production.darksoil.studio";
+              # Same URL as dash-chat's PRODUCTION_MAILBOX_URL: plain http,
+              # the server has no TLS listener on 443.
+              mailboxUrl = "http://mailbox.darksoil.studio";
               identityFile = "/var/lib/larp-secrets/journalist-identity.toml";
               castFile = "/var/lib/larp-secrets/larp-cast.toml";
             };
@@ -168,15 +170,13 @@
         ];
       };
 
-      # The base-station image: the station image minus Pi-hosted wifi — a
-      # MikroTik mAP lite broadcasts the mesh (a real AP, comfortable with
-      # 30-40 clients) and the Pi, wired behind it, owns DHCP/DNS and serves
-      # the captive portal + the mailbox (see nix/base-station.nix; the mAP
-      # side is provisioned with ../map-lite-portal). The bot stays flashable
-      # like any other card.
+      # The base-station image: the station image with the mayor portal in
+      # place of the generic captive-portal SPA. The Pi hosts its own wifi
+      # like every other station (wifi-ap.env on the boot partition — see
+      # base-station.just). The mAP-lite-as-AP variant (nix/base-station.nix,
+      # Pi wired behind a MikroTik mAP lite) is kept but currently unused.
       nixosConfigurations.base-station = self.nixosConfigurations.larp-station.extendModules {
         modules = [
-          ./nix/base-station.nix
           (
             { pkgs, ... }:
             {

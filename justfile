@@ -9,8 +9,8 @@ mod characters
 # Station SD images: build + flash (station and base-station variants).
 mod image
 
-# The base station: flash the Pi card; the map-lite submodule provisions
-# the mAP lite that broadcasts its wifi.
+# The base station: flash the Pi card (hosts its own wifi, like the other
+# stations); the map-lite submodule is the currently-unused mAP-lite tooling.
 mod base-station
 
 # The journalist's cloud host: deploy the bot to a Digital Ocean droplet

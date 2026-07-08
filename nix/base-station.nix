@@ -1,3 +1,7 @@
+# CURRENTLY UNUSED: the flake no longer imports this module — for now the
+# base station hosts its own Pi wifi like every other station (wifi-ap.env).
+# Kept for the mAP-lite setup below, should the Pi AP prove too weak.
+#
 # Base-station networking: a MikroTik mAP lite broadcasts the mesh (a real AP
 # that comfortably carries 30-40 concurrent clients — the Pi's brcmfmac AP
 # mode does not), wired to this Pi over ethernet (the Pi can even power it,
