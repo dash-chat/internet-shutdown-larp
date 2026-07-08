@@ -166,6 +166,12 @@
               package = self.packages.aarch64-linux.larp-bot;
               scenariosDir = ./scenarios;
             };
+
+            # Character stations pop no portal — joining their wifi should
+            # look like a dead network (the app finds the mailbox via mDNS +
+            # its own port, not through the portal nginx). Only the base
+            # station onboards through a portal; it re-enables this below.
+            dashchat.captivePortal.enable = false;
           }
         ];
       };
@@ -178,8 +184,12 @@
       nixosConfigurations.base-station = self.nixosConfigurations.larp-station.extendModules {
         modules = [
           (
-            { pkgs, ... }:
+            { pkgs, lib, ... }:
             {
+              # The one station that keeps the captive portal (the station
+              # image above turns it off for the character stations).
+              dashchat.captivePortal.enable = lib.mkForce true;
+
               # The mayor's onboarding page (portal/index.html — a single
               # static file, no build step) replaces the mailbox image's
               # generic captive-portal SPA. The module's nginx keeps serving

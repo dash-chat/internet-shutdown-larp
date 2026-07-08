@@ -82,16 +82,16 @@ run character mailbox_url="https://mailbox.production.darksoil.studio":
     exec nix run .#larp-bot --accept-flake-config -- run --config ".run/{{ character }}/config.toml"
 
 # Flash a character's station card: the station image plus the character's
-# files (wifi-ap.env with SSID=<ssid_prefix><character>, identity, cast —
+# files (wifi-ap.env with SSID=<character><ssid_suffix>, identity, cast —
 # assembled on the fly from secrets/) on the FAT boot partition. The AP is
 # OPEN by default; pass a password (8-63 chars, WPA2) to lock it. With no
 # device, the SD card is auto-detected (see image::flash).
-[doc("Flash a character's station card; AP is <ssid_prefix><character> (open unless password given); auto-detects the SD card")]
-flash character device="" ssid_prefix="larp-" password="":
+[doc("Flash a character's station card; AP is <character><ssid_suffix> (open unless password given); auto-detects the SD card")]
+flash character device="" ssid_suffix="-internet-shutdown-larp" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
-    ssid={{ quote(ssid_prefix) }}{{ quote(character) }}
+    ssid={{ quote(character) }}{{ quote(ssid_suffix) }}
     password={{ quote(password) }}
     [ -f "secrets/{{ character }}-identity.toml" ] || { echo "no secrets/{{ character }}-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }

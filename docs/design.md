@@ -323,10 +323,11 @@ station variant (relative-near):
 | relative-far | ✓ | – | ✓ (identity flashed) | ✓ (milestone 3) |
 
 The base station Pi runs the `base-station` image (`just image::build-base-station`):
-the station image with the mayor portal in place of the generic
-captive-portal SPA. It hosts its own wifi like every other station —
-`just base-station::flash` writes the `wifi-ap.env` (SSID `larp-base` by
-default).
+the station image with the captive portal re-enabled and the mayor page in
+place of the generic captive-portal SPA — it is the only station with a
+portal at all. It hosts its own wifi like every other station —
+`just base-station::flash` writes the `wifi-ap.env` (SSID
+`base-internet-shutdown-larp` by default).
 
 ### Base station: mayor portal
 
@@ -347,9 +348,13 @@ off, range clamped natively — RouterOS tracks per-client signal, unlike the
 Pi's fail-open RSSI gate). mDNS passes the mAP's L2 bridge, and no RouterOS
 hotspot is involved.
 
-Also per-station: the AP SSID defaults to the station name
-(`SSID=larp-firefighters` etc. via `wifi-ap.env`), so the facilitator can see
-at a glance which bubble they're in.
+Also per-station: the AP SSID defaults to the station name plus a game
+suffix (`SSID=firefighters-internet-shutdown-larp` etc. via `wifi-ap.env`),
+so the facilitator can see at a glance which bubble they're in. Character
+stations run **no captive portal** (`dashchat.captivePortal.enable = false`
+in the station image): joining one looks like a dead network, and the app
+still finds the mailbox via mDNS + its own port. Only the base station pops
+a portal (the mayor).
 
 `larp-bot` (and later `lora-bridge`) build with `rustPlatform.buildRustPackage`
 from this repo's workspace (git deps via `cargoLock.allowBuiltinFetchGit`, so
@@ -367,13 +372,13 @@ Provisioning flow (all offline, on the laptop — implemented as `just` recipes)
    `scenarios/*.toml`.
 2. `just characters::posters` — renders the QR wall-poster PNGs for printing.
 4. `just characters::flash <character> /dev/sdX` — flashes the station image and
-   puts the character's files (`wifi-ap.env` with `SSID=<ssid_prefix><character>`,
+   puts the character's files (`wifi-ap.env` with `SSID=<character><ssid_suffix>`,
    **open network** unless a password argument is given,
    `larp-identity.toml`, `larp-cast.toml`, assembled on the fly from
    `secrets/`) on the card's boot partition.
 
-The captive portal can additionally serve the station's QR as a fallback
-onboarding path.
+The base station's portal can additionally serve the mayor's QR as a
+fallback onboarding path (the character stations run no portal).
 
 **Seed the base mailbox with the cast's profiles** (once, after the bots have
 booted): each character's profile lives on its bot's announcements topic,
@@ -471,8 +476,9 @@ usually within seconds.
   bot's random timers only need monotonic time. QR expiry comparison uses
   wall clock though — set expiry to years, not days.
 - **Player phones auto-leaving the AP** — phones drop Wi-Fi networks with no
-  internet. The existing captive portal mitigates; test with the actual
-  target phones.
+  internet. The base station's captive portal mitigates there; character
+  stations now run no portal, so this risk is live on them — test with the
+  actual target phones.
 - **Base station hotspot plumbing** — the mailbox Pi must be reachable by
   phones through the RouterOS hotspot (MAC bypass via ip-binding) and mDNS
   multicast must cross the hotspot bridge; verify both with real hardware
