@@ -47,6 +47,14 @@ jobs:
         with:
           extra_nix_config: ${{ env.NIX_CONFIG }}
 
+      # Push the whole image closure (larp-bot, system units, the assembled
+      # image derivations) so a local `just image::build` on an x86_64 machine
+      # substitutes everything instead of recompiling under binfmt emulation.
+      - uses: cachix/cachix-action@v16
+        with:
+          name: dash-chat
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
       - name: Build station SD image
         run: nix build .#sdImage -L --accept-flake-config
 
