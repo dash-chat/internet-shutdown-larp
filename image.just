@@ -5,11 +5,11 @@
 [doc("Build the station SD image (aarch64; x86_64 builders need binfmt emulation)")]
 build: (build-image "sdImage" "larp-station.img")
 
-# Build the base-station SD image: the mAP lite is the AP, the Pi sits wired
-# behind it (nix/base-station.nix; mAP side: `just base-station::map-lite::provision`).
-# Flash with `just base-station::flash /dev/sdX` — no env files:
-# the base station hosts no Pi wifi (and the image ignores wifi-ap.env).
-[doc("Build the base-station SD image (mAP lite is the AP; flash with base-station::flash)")]
+# Build the base-station SD image: the station image with the mayor portal
+# in place of the generic captive-portal SPA. The Pi hosts its own wifi like
+# the other stations. Flash with `just base-station::flash /dev/sdX`, which
+# writes the wifi-ap.env.
+[doc("Build the base-station SD image (mayor portal; flash with base-station::flash)")]
 build-base-station: (build-image "sdImage-base-station" "base-station.img")
 
 [private]

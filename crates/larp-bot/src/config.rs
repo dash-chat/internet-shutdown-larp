@@ -28,6 +28,8 @@ pub struct Timing {
     /// Mission firing interval bounds, per group (uniform random draw).
     pub min_interval_secs: u64,
     pub max_interval_secs: u64,
+    /// Delay between a group's welcome message and its first mission.
+    pub first_mission_delay_secs: u64,
     /// Max missions per group awaiting a success reply before the bot
     /// pauses its timer for that group.
     pub max_outstanding: usize,
@@ -40,6 +42,7 @@ impl Default for Timing {
         Self {
             min_interval_secs: 180,
             max_interval_secs: 480,
+            first_mission_delay_secs: 5,
             max_outstanding: 3,
             poll_interval_secs: 3,
         }

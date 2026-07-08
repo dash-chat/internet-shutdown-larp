@@ -42,10 +42,9 @@ carries it to the destination.
         │    Player A's      ║     Player B's     │
         │      side          ║       side         │
         │                BASE STATION             │
-        │      (MikroTik mAP lite as the AP; a    │
-        │       Pi wired behind it serves DHCP/   │
-        │       DNS, the mayor captive portal     │
-        │       and the mailbox — reachable from  │
+        │      (Pi 5 hosting its own Wi-Fi AP,    │
+        │       the mayor captive portal and      │
+        │       the mailbox — reachable from      │
         │       both sides; QRs on the wall)      │
         │                    ║                    │
         └────────────────────╨────────────────────┘
@@ -68,10 +67,10 @@ players agree not to cross it.
 | **hospital** | **James the nurse**, at the town hospital | Pi 5: Wi-Fi AP + mailbox + bot |
 | **journalist** | **Marta the journalist** — news desk **outside the town**, telling the world what's happening inside; the hotspot corner is the town's only surviving uplink to her | Phone hotspot (internet); bot on a Digital Ocean droplet syncing through the **existing cloud mailbox** |
 | **relative** | **Aunt Anna**, a relative in Riverside, the nearby town, desperate for news of her family | Two Pi 5s: the on-map one is AP + mailbox + RNS gateway; the far-away one runs mailbox + bot + RNS gateway. Messages to/from Anna take a LoRa round-trip (§4) |
-| *(base station)* | **The town mayor** — captive portal only, not a chat character | MikroTik mAP lite as a **plain AP** (its radio handles the 30-40 concurrent base-station clients; provisioned with `just base-station::map-lite::provision`), **wired** to a Pi 5 running the `base-station` image (`nix/base-station.nix`): the Pi owns DHCP + wildcard DNS on the cable and serves the mayor's captive portal + the mailbox. No RouterOS hotspot — that feature is locked behind device-mode (physical button press) on current firmware, and nothing needs gating anyway |
+| *(base station)* | **The town mayor** — captive portal only, not a chat character | Pi 5 running the `base-station` image: hosts its own Wi-Fi AP like the character stations and serves the mayor's captive portal + the mailbox. *(The mAP-lite-as-AP variant — a MikroTik mAP lite broadcasting the wifi with the Pi wired behind it, `nix/base-station.nix` — is kept but currently unused, in case the Pi's radio can't carry the 30-40 concurrent base-station clients)* |
 
 Total hardware: **5 × Pi 5** (base, firefighters, hospital, relative-near,
-relative-far) + **1 × MikroTik mAP lite** (base AP + mayor portal) + **2 ×
+relative-far) + **2 ×
 Heltec LoRa dev kits flashed with RNode firmware** (USB-C serial on the two
 relative-link Pis) + **1 phone**
 (journalist hotspot) + **1 DO droplet** (already running the cloud mailbox;
@@ -80,7 +79,7 @@ gains the journalist bot).
 ### Game setup (at the base station)
 
 The game begins at the base station — the mayor's office. Players join the
-mAP lite's Wi-Fi and the captive portal opens: **the town mayor** explains
+base station's Wi-Fi and the captive portal opens: **the town mayor** explains
 the fires, pleads for help, and gives the first instructions —
 
 1. Add **each other** as Dash Chat contacts (mutual QR scan, in person).
@@ -149,11 +148,13 @@ Ending: the facilitator calls time; the group chat itself is the score sheet
   (header + payload) to the embedding application.
 - **Cloud mailbox**: already running; the journalist bot and any
   hotspot-connected player sync through it.
-- **mAP lite tooling (this repo)**: `just base-station::map-lite::provision` turns a
-  stock device into the base-station AP (ether1 bridged to the Pi, DHCP off,
-  range clamped; the Pi serves the portal, see `nix/base-station.nix`). The
-  generic `../map-lite-portal` repo is no longer involved; the mayor page is
-  `portal/index.html` here.
+- **mAP lite tooling (this repo, currently unused)**: `just
+  base-station::map-lite::provision` turns a stock device into the
+  base-station AP (ether1 bridged to the Pi, DHCP off, range clamped; the Pi
+  serves the portal, see `nix/base-station.nix`). Kept in case the Pi's own
+  AP can't carry the base-station load; for now the base station hosts its
+  own Pi wifi like every other station. The generic `../map-lite-portal`
+  repo is no longer involved; the mayor page is `portal/index.html` here.
 
 ## 3. New component: `larp-bot` crate
 
@@ -323,44 +324,44 @@ just combinations of flashed files:
 
 | Station | mailbox | AP (hostapd) | larp-bot | rns-gateway |
 |---|---|---|---|---|
-| base | ✓ | – (the mAP lite is the AP; the Pi is wired behind it — `base-station` image) | – | – |
+| base | ✓ | ✓ (`base-station` image) | – | – |
 | firefighters / hospital | ✓ | ✓ | ✓ (identity flashed) | – |
 | relative-near | ✓ | ✓ | – | ✓ (lora.env flashed) |
 | relative-far | ✓ | ✓ (out-of-play SSID: the gateway↔mailbox mDNS hop needs a live multicast interface; doubles as debug access) | ✓ (identity flashed) | ✓ (lora.env flashed) |
 
 The base station Pi runs the `base-station` image (`just image::build-base-station`):
-no Pi wifi at all — the mAP lite broadcasts the mesh and the Pi, wired to its
-ethernet port, owns DHCP + wildcard DNS and serves the captive portal
-(`nix/base-station.nix`).
+the station image with the captive portal re-enabled and the mayor page in
+place of the generic captive-portal SPA — it is the only station with a
+portal at all. It hosts its own wifi like every other station —
+`just base-station::flash` writes the `wifi-ap.env` (SSID
+`base-internet-shutdown-larp` by default).
 
-### Base station: mAP lite + mayor portal
-
-The mAP lite is a plain AP. `just base-station::map-lite::provision` applies
-one idempotent script over ssh: ether1 moves from WAN into the LAN bridge
-(the cable to the Pi), the built-in DHCP server is turned off, and the wifi
-range is clamped like the Pi stations' (tx power fixed at 1 dBm plus a
-signal gate: clients heard below -60 dBm can't join and are kicked after 10 s
-— RouterOS tracks per-client signal, so this works better than the Pi's
-fail-open RSSI gate; tune with the `tx_power`/`min_signal` arguments of `just base-station::map-lite::provision`).
-The Pi's wildcard DNS then lands every connectivity probe on its nginx, which
-is what pops the captive-portal screen — RouterOS's hotspot feature (locked
-behind device-mode on current firmware) is not used at all.
+### Base station: mayor portal
 
 - **Mayor page** *(implemented)*: `portal/index.html` in this repo — a single
   static page (mayor's speech + step-by-step instructions + a mailbox health
   check via the module's `/api/` proxy), no build step. The `base-station`
-  config overrides `dashchat.captivePortal.package` with it;
-  `../map-lite-portal`'s webapp stays generic.
-- **No hotspot bypass needed**: nothing is gated anymore — the portal is
-  onboarding UX, and every client (phones, headless Pis) reaches the mailbox
-  without logging in to anything.
-- **mDNS across the bridge**: phones discover the mailbox via
-  `_dashchat._tcp.local.`; the mAP bridges wlan and ethernet at L2 with no
-  hotspot isolation in play, so multicast passes.
+  config overrides `dashchat.captivePortal.package` with it.
+- **Nothing is gated**: the portal is onboarding UX, and every client
+  (phones, headless Pis) reaches the mailbox without logging in to anything.
 
-Also per-station: the AP SSID defaults to the station name
-(`SSID=larp-firefighters` etc. via `wifi-ap.env`), so the facilitator can see
-at a glance which bubble they're in.
+*(Currently unused alternative)* If the Pi's brcmfmac AP can't carry the
+30-40 concurrent base-station clients, the mAP-lite variant is kept:
+`nix/base-station.nix` (re-add it to the `base-station` modules in
+`flake.nix`) makes the Pi host no wifi and instead own DHCP + wildcard DNS
+on the cable to a MikroTik mAP lite, provisioned as a plain AP with
+`just base-station::map-lite::provision` (ether1 bridged to the Pi, DHCP
+off, range clamped natively — RouterOS tracks per-client signal, unlike the
+Pi's fail-open RSSI gate). mDNS passes the mAP's L2 bridge, and no RouterOS
+hotspot is involved.
+
+Also per-station: the AP SSID defaults to the station name plus a game
+suffix (`SSID=firefighters-internet-shutdown-larp` etc. via `wifi-ap.env`),
+so the facilitator can see at a glance which bubble they're in. Character
+stations run **no captive portal** (`dashchat.captivePortal.enable = false`
+in the station image): joining one looks like a dead network, and the app
+still finds the mailbox via mDNS + its own port. Only the base station pops
+a portal (the mayor).
 
 `larp-bot` builds with `rustPlatform.buildRustPackage` from this repo's
 workspace (git deps via `cargoLock.allowBuiltinFetchGit`, so no outputHashes
@@ -380,13 +381,13 @@ Provisioning flow (all offline, on the laptop — implemented as `just` recipes)
    `scenarios/*.toml`.
 2. `just characters::posters` — renders the QR wall-poster PNGs for printing.
 4. `just characters::flash <character> /dev/sdX` — flashes the station image and
-   puts the character's files (`wifi-ap.env` with `SSID=<ssid_prefix><character>`,
+   puts the character's files (`wifi-ap.env` with `SSID=<character><ssid_suffix>`,
    **open network** unless a password argument is given,
    `larp-identity.toml`, `larp-cast.toml`, assembled on the fly from
    `secrets/`) on the card's boot partition.
 
-The captive portal can additionally serve the station's QR as a fallback
-onboarding path.
+The base station's portal can additionally serve the mayor's QR as a
+fallback onboarding path (the character stations run no portal).
 
 **Seed the base mailbox with the cast's profiles** (once, after the bots have
 booted): each character's profile lives on its bot's announcements topic,
@@ -486,8 +487,9 @@ usually within seconds.
   bot's random timers only need monotonic time. QR expiry comparison uses
   wall clock though — set expiry to years, not days.
 - **Player phones auto-leaving the AP** — phones drop Wi-Fi networks with no
-  internet. The existing captive portal mitigates; test with the actual
-  target phones.
+  internet. The base station's captive portal mitigates there; character
+  stations now run no portal, so this risk is live on them — test with the
+  actual target phones.
 - **Base station hotspot plumbing** — the mailbox Pi must be reachable by
   phones through the RouterOS hotspot (MAC bypass via ip-binding) and mDNS
   multicast must cross the hotspot bridge; verify both with real hardware

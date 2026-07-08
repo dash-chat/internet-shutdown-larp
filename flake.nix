@@ -93,7 +93,7 @@
         # The flashable station image (aarch64 build; needs binfmt emulation
         # on an x86_64 builder, same as the mailbox image).
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
-        # The base-station variant: mAP lite as the AP, Pi wired behind it.
+        # The base-station variant: the station image plus the mayor portal.
         sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
         # The mailbox image's flashing helpers, reused by the just recipes.
         inherit (mailbox-image.packages.x86_64-linux) detect-sd-card flash-sd-image;
@@ -142,6 +142,14 @@
               fsType = "ext4";
             };
             networking.hostName = "larp-journalist";
+            # nixos-infect leaves DNS to DHCP; when that hands nothing over
+            # the bot dies with "dns error" on every mailbox sync. Pin DO's
+            # resolvers with a public fallback.
+            networking.nameservers = [
+              "67.207.67.2"
+              "67.207.67.3"
+              "1.1.1.1"
+            ];
             time.timeZone = "Europe/Madrid"; # match the stations' log clock
             system.stateVersion = "25.11";
 
@@ -151,7 +159,9 @@
               scenariosDir = ./scenarios;
               # Must match the mailbox the players' app build uses — release
               # builds sync through the production mailbox (docs/design.md).
-              mailboxUrl = "https://mailbox.production.darksoil.studio";
+              # Same URL as dash-chat's PRODUCTION_MAILBOX_URL: plain http,
+              # the server has no TLS listener on 443.
+              mailboxUrl = "http://mailbox.darksoil.studio";
               identityFile = "/var/lib/larp-secrets/journalist-identity.toml";
               castFile = "/var/lib/larp-secrets/larp-cast.toml";
             };
@@ -180,22 +190,30 @@
               enable = true;
               package = self.packages.aarch64-linux.rns-gateway;
             };
+
+            # Character stations pop no portal — joining their wifi should
+            # look like a dead network (the app finds the mailbox via mDNS +
+            # its own port, not through the portal nginx). Only the base
+            # station onboards through a portal; it re-enables this below.
+            dashchat.captivePortal.enable = false;
           }
         ];
       };
 
-      # The base-station image: the station image minus Pi-hosted wifi — a
-      # MikroTik mAP lite broadcasts the mesh (a real AP, comfortable with
-      # 30-40 clients) and the Pi, wired behind it, owns DHCP/DNS and serves
-      # the captive portal + the mailbox (see nix/base-station.nix; the mAP
-      # side is provisioned with ../map-lite-portal). The bot stays flashable
-      # like any other card.
+      # The base-station image: the station image with the mayor portal in
+      # place of the generic captive-portal SPA. The Pi hosts its own wifi
+      # like every other station (wifi-ap.env on the boot partition — see
+      # base-station.just). The mAP-lite-as-AP variant (nix/base-station.nix,
+      # Pi wired behind a MikroTik mAP lite) is kept but currently unused.
       nixosConfigurations.base-station = self.nixosConfigurations.larp-station.extendModules {
         modules = [
-          ./nix/base-station.nix
           (
-            { pkgs, ... }:
+            { pkgs, lib, ... }:
             {
+              # The one station that keeps the captive portal (the station
+              # image above turns it off for the character stations).
+              dashchat.captivePortal.enable = lib.mkForce true;
+
               # The mayor's onboarding page (portal/index.html — a single
               # static file, no build step) replaces the mailbox image's
               # generic captive-portal SPA. The module's nginx keeps serving
