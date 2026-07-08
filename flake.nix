@@ -125,6 +125,14 @@
               fsType = "ext4";
             };
             networking.hostName = "larp-journalist";
+            # nixos-infect leaves DNS to DHCP; when that hands nothing over
+            # the bot dies with "dns error" on every mailbox sync. Pin DO's
+            # resolvers with a public fallback.
+            networking.nameservers = [
+              "67.207.67.2"
+              "67.207.67.3"
+              "1.1.1.1"
+            ];
             time.timeZone = "Europe/Madrid"; # match the stations' log clock
             system.stateVersion = "25.11";
 
