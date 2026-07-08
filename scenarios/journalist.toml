@@ -11,25 +11,25 @@ greeting = """📰 This is Marta from the national news desk. The whole country 
 
 [[missions]]
 to = "firefighters"
-text = """📰 Relaying a report from the village across the creek: "We can see a new column of smoke rising behind the old mill — the fire may have jumped the creek!" The firefighters need to hear this — get it to their station!"""
-success = """🚒 On our way to the old mill with the pumper truck. Good thing the world is watching out for us!"""
+text = """❓ 📰 Relaying a report from the village across the creek: "We can see a new column of smoke rising behind the old mill — the fire may have jumped the creek!" The firefighters need to hear this — get it to their station!"""
+success = """✅ 🚒 On our way to the old mill with the pumper truck. Good thing the world is watching out for us!"""
 
 [[missions]]
 to = "hospital"
-text = """📰 Relaying a question from the regional capital: "Our field medic team is on its way to your town — where are they needed most?" The hospital must answer — carry this message to them!"""
-success = """🏥 Perfect timing: send them straight to our emergency ward, we'll have assignments ready. Thank you, messenger!"""
+text = """❓ 📰 Relaying a question from the regional capital: "Our field medic team is on its way to your town — where are they needed most?" The hospital must answer — carry this message to them!"""
+success = """✅ 🏥 Perfect timing: send them straight to our emergency ward, we'll have assignments ready. Thank you, messenger!"""
 
 [[missions]]
 to = "relative"
-text = """📰 Relaying a plea from the families who fled the town: "We're gathering the names of everyone confirmed safe. Anna in Riverside keeps the list for the valley — which names is she still missing?" Take her this note!"""
-success = """💌 Bless you! I'm still waiting for news about my cousins from the mill neighborhood — please add them to your list!"""
+text = """❓ 📰 Relaying a plea from the families who fled the town: "We're gathering the names of everyone confirmed safe. Anna in Riverside keeps the list for the valley — which names is she still missing?" Take her this note!"""
+success = """✅ 💌 Bless you! I'm still waiting for news about my cousins from the mill neighborhood — please add them to your list!"""
 
 [[missions]]
 to = "hospital"
-text = """📰 Relaying a question from the international aid coordinators: "How many injured has the hospital treated so far? We need the count to size the airlift." Get this question to the hospital!"""
-success = """🏥 Current count: forty-seven treated, twelve admitted, all stable. Tell them we mostly need burn kits and surgical supplies!"""
+text = """❓ 📰 Relaying a question from the international aid coordinators: "How many injured has the hospital treated so far? We need the count to size the airlift." Get this question to the hospital!"""
+success = """✅ 🏥 Current count: forty-seven treated, twelve admitted, all stable. Tell them we mostly need burn kits and surgical supplies!"""
 
 [[missions]]
 to = "firefighters"
-text = """📰 Relaying a warning from the regional fire watch: "Satellite images show the wind pushing the fire toward the pine grove on the hill. If it takes hold there, the flames will run straight down into the lower streets." The firefighters must see this — run it to their station!"""
-success = """🚒 We're sending a crew to cut a firebreak below the pine grove right now. That warning may have saved the whole lower town!"""
+text = """❓ 📰 Relaying a warning from the regional fire watch: "Satellite images show the wind pushing the fire toward the pine grove on the hill. If it takes hold there, the flames will run straight down into the lower streets." The firefighters must see this — run it to their station!"""
+success = """✅ 🚒 We're sending a crew to cut a firebreak below the pine grove right now. That warning may have saved the whole lower town!"""

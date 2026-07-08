@@ -14,12 +14,12 @@ reveal = [
 
 [variants]
 
-# Flashed on one station: where the hidden code box is.
+# Flashed on one station: where the secret trigger is.
 portal = [
-  """🗝️ There is a way to expose him. On the town hall page — the one that pops up when you join the town hall wifi — there's his official portrait. Tap the mayor's HEAD and a hidden code box appears. I don't have the code; another friend of mine carries it. Find whoever else has talked to me.""",
+  """🗝️ There is a way to expose him. On the town hall page — the one that pops up when you join the town hall wifi — there's his official portrait. The mayor's HEAD is the door: tap it. But once is not enough, and I never learned the count; another friend of mine carries it. Find whoever else has talked to me.""",
 ]
 
-# Flashed on the other station: the code itself.
+# Flashed on the other station: how many taps.
 code = [
-  """🗝️ There is a way to expose him, but I only hold half of it. The code is: ahawegotyou — type it exactly like that. Where it goes, I never learned; a friend of mine on the other side found the door. Find whoever else has talked to me.""",
+  """🗝️ There is a way to expose him, but I only hold half of it. The trick is: tap FIVE times, one right after another. WHERE to tap, I never learned; a friend of mine on the other side found the door. Find whoever else has talked to me.""",
 ]

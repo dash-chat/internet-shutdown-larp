@@ -6,25 +6,25 @@ greeting = """🏥 This is James, nurse at the county hospital. We're overwhelme
 
 [[missions]]
 to = "firefighters"
-text = """🏥 A patient just told us his sister is trapped by the smoke in the house at 12 Upper Street. Get this warning to the firefighters right away!"""
-success = """🚒 We're heading to 12 Upper Street with the rescue team right now. Great work getting us the warning!"""
+text = """❓ 🏥 A patient just told us his sister is trapped by the smoke in the house at 12 Upper Street. Get this warning to the firefighters right away!"""
+success = """✅ 🚒 We're heading to 12 Upper Street with the rescue team right now. Great work getting us the warning!"""
 
 [[missions]]
 to = "journalist"
-text = """🏥 We urgently need blood donors, especially type O negative. Please have the journalist publish a call to the town!"""
-success = """📰 Call published: O NEGATIVE DONORS NEEDED AT THE HOSPITAL. It's spreading everywhere already!"""
+text = """❓ 🏥 We urgently need blood donors, especially type O negative. Please have the journalist publish a call to the town!"""
+success = """✅ 📰 Call published: O NEGATIVE DONORS NEEDED AT THE HOSPITAL. It's spreading everywhere already!"""
 
 [[missions]]
 to = "relative"
-text = """🏥 We've admitted John with a burned arm, but he's out of danger and in good spirits. His cousin Anna in Riverside doesn't know. Get her the news!"""
-success = """💌 Thank you from the bottom of my heart! We were so worried. Tell John we'll bring him the chocolates he likes!"""
+text = """❓ 🏥 We've admitted John with a burned arm, but he's out of danger and in good spirits. His cousin Anna in Riverside doesn't know. Get her the news!"""
+success = """✅ 💌 Thank you from the bottom of my heart! We were so worried. Tell John we'll bring him the chocolates he likes!"""
 
 [[missions]]
 to = "firefighters"
-text = """🏥 The fire took down our power line and the emergency generator is failing — we have patients on life support. The firefighters have a portable generator — take them this urgent request!"""
-success = """🚒 Loading the portable generator onto the truck and bringing it over right now. Hold on!"""
+text = """❓ 🏥 The fire took down our power line and the emergency generator is failing — we have patients on life support. The firefighters have a portable generator — take them this urgent request!"""
+success = """✅ 🚒 Loading the portable generator onto the truck and bringing it over right now. Hold on!"""
 
 [[missions]]
 to = "journalist"
-text = """🏥 We're using the north entrance because smoke is blowing straight into the main one. Everyone should know before coming — take this notice to the journalist!"""
-success = """📰 Published: HOSPITAL ADMITTING THROUGH THE NORTH ENTRANCE. Pinning it to the top so nobody gets lost."""
+text = """❓ 🏥 We're using the north entrance because smoke is blowing straight into the main one. Everyone should know before coming — take this notice to the journalist!"""
+success = """✅ 📰 Published: HOSPITAL ADMITTING THROUGH THE NORTH ENTRANCE. Pinning it to the top so nobody gets lost."""

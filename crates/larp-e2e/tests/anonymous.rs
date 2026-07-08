@@ -21,7 +21,7 @@ fn test_spec() -> AnonymousSpec {
         reveal = ["ANON-REVEAL: the mayor lit the fires himself."]
         [variants]
         portal = ["ANON-PORTAL: tap the mayor's head on the town hall page."]
-        code = ["ANON-CODE: the code is ahawegotyou."]
+        code = ["ANON-CODE: tap it FIVE times in a row."]
         "#,
     )
     .unwrap();
