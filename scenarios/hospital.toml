@@ -2,11 +2,11 @@
 
 name = "James the nurse"
 
-greeting = """🏥 This is James, nurse at the county hospital. We're overwhelmed after the earthquake and the phone lines are dead. Will you help us get our messages through? Every minute counts!"""
+greeting = """🏥 This is James, nurse at the county hospital. We're overwhelmed since the fires broke out and the phone lines are dead. Will you help us get our messages through? Every minute counts!"""
 
 [[missions]]
 to = "firefighters"
-text = """🏥 A patient just told us his sister is trapped in the basement of 12 Upper Street. Get this warning to the firefighters right away!"""
+text = """🏥 A patient just told us his sister is trapped by the smoke in the house at 12 Upper Street. Get this warning to the firefighters right away!"""
 success = """🚒 We're heading to 12 Upper Street with the rescue team right now. Great work getting us the warning!"""
 
 [[missions]]
@@ -16,15 +16,15 @@ success = """📰 Call published: O NEGATIVE DONORS NEEDED AT THE HOSPITAL. It's
 
 [[missions]]
 to = "relative"
-text = """🏥 We've admitted John with a broken leg, but he's out of danger and in good spirits. His cousin Anna in Riverside doesn't know. Get her the news!"""
+text = """🏥 We've admitted John with a burned arm, but he's out of danger and in good spirits. His cousin Anna in Riverside doesn't know. Get her the news!"""
 success = """💌 Thank you from the bottom of my heart! We were so worried. Tell John we'll bring him the chocolates he likes!"""
 
 [[missions]]
 to = "firefighters"
-text = """🏥 The hospital's emergency generator is failing and we have patients on life support. The firefighters have a portable generator — take them this urgent request!"""
+text = """🏥 The fire took down our power line and the emergency generator is failing — we have patients on life support. The firefighters have a portable generator — take them this urgent request!"""
 success = """🚒 Loading the portable generator onto the truck and bringing it over right now. Hold on!"""
 
 [[missions]]
 to = "journalist"
-text = """🏥 We're using the north entrance because the main one has a cracked canopy. Everyone should know before coming — take this notice to the journalist!"""
+text = """🏥 We're using the north entrance because smoke is blowing straight into the main one. Everyone should know before coming — take this notice to the journalist!"""
 success = """📰 Published: HOSPITAL ADMITTING THROUGH THE NORTH ENTRANCE. Pinning it to the top so nobody gets lost."""

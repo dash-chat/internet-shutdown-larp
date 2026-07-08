@@ -1,7 +1,7 @@
-# Earthquake LARP — design document
+# Town-fire LARP — design document
 
 A live-action game about carrying information when the network is gone.
-Players are couriers in an earthquake-struck town; Raspberry Pi "stations"
+Players are couriers in a town cut in two by fires; Raspberry Pi "stations"
 running Dash Chat mailboxes are the only communication infrastructure left,
 and bots impersonating town characters produce messages that players must
 physically carry to their destinations.
@@ -16,11 +16,11 @@ dash-chat repo (the headless chat node the bots are built on).
 
 ## 1. Narrative & game mechanics
 
-An earthquake has hit the town. All networks are down; only a handful of
-solar-powered relief stations survived, each hosting a short-range Wi-Fi
-mailbox. Worse, the quake opened a cliff straight through town: each member of
+Fires have broken out across the town. All networks are down; only a handful
+of solar-powered relief stations survived, each hosting a short-range Wi-Fi
+mailbox. Worse, a wall of flames cuts straight through town: each member of
 a player pair can only move on their own side. The only shared point is the
-**base station** on the cliff's edge at the center of the map.
+**base station** in the firebreak at the center of the map.
 
 Four characters live at the stations and keep producing urgent messages, each
 with a clear recipient ("We detected a fire near Orange Street! Please get
@@ -28,11 +28,11 @@ this message to the firefighters!"). Players deliver a message by physically
 walking into the destination station's Wi-Fi bubble so their phone syncs it
 into that station's mailbox — where the character's bot sees it and replies
 with a clear success message ("Okey! Thanks for bringing this to us, we'll get
-right on it!"). Messages that originate on the far side of the cliff must be
+right on it!"). Messages that originate on the far side of the fire must be
 relayed: carrier walks it to the base station, partner picks it up there and
 carries it to the destination.
 
-### Physical layout (2×2 grid, cliff down the middle)
+### Physical layout (2×2 grid, fire line down the middle)
 
 ```
    FIREFIGHTERS                          HOSPITAL
@@ -57,7 +57,7 @@ carries it to the destination.
 ```
 
 Corner assignment is arbitrary — the only requirement is two characters per
-side so both players have destinations. The cliff (║) is a rule, not a fence:
+side so both players have destinations. The fire line (║) is a rule, not a fence:
 players agree not to cross it.
 
 ### The cast
@@ -80,13 +80,13 @@ gains the journalist bot).
 
 The game begins at the base station — the mayor's office. Players join the
 mAP lite's Wi-Fi and the captive portal opens: **the town mayor** explains
-the earthquake, pleads for help, and gives the first instructions —
+the fires, pleads for help, and gives the first instructions —
 
 1. Add **each other** as Dash Chat contacts (mutual QR scan, in person).
 2. Add the four characters as contacts by scanning their **QR posters on the
    wall** around the base station.
 3. Create a **group** containing: both players + the four characters.
-4. Split up — one player per side of the cliff — and start carrying messages.
+4. Split up — one player per side of the fire line — and start carrying messages.
 
 The base Pi's mailbox is on that same Wi-Fi, so the group is seeded into the
 base mailbox immediately.

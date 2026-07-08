@@ -105,6 +105,42 @@
       #   };
       nixosModules.larp-bot = ./nix/larp-bot.nix;
 
+      # The journalist's cloud host (docs/design.md §Journalist): a droplet
+      # running only the bot against the cloud mailbox. Deployed with
+      # `just journalist::deploy` — doctl creates an Ubuntu droplet,
+      # nixos-infect converts it in place, and nixos-rebuild pushes this
+      # config over SSH.
+      nixosConfigurations.journalist-droplet = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          # Boot, SSH keys + hostname from droplet metadata, do-agent.
+          "${nixpkgs}/nixos/modules/virtualisation/digital-ocean-config.nix"
+          ./nix/larp-bot.nix
+          {
+            # nixos-infect keeps the Ubuntu root filesystem, so the DO image
+            # module's by-label device doesn't exist — use the partition.
+            fileSystems."/" = {
+              device = "/dev/vda1";
+              fsType = "ext4";
+            };
+            networking.hostName = "larp-journalist";
+            time.timeZone = "Europe/Madrid"; # match the stations' log clock
+            system.stateVersion = "25.11";
+
+            services.larp-bot = {
+              enable = true;
+              package = self.packages.x86_64-linux.larp-bot;
+              scenariosDir = ./scenarios;
+              # Must match the mailbox the players' app build uses — release
+              # builds sync through the production mailbox (docs/design.md).
+              mailboxUrl = "https://mailbox.production.darksoil.studio";
+              identityFile = "/var/lib/larp-secrets/journalist-identity.toml";
+              castFile = "/var/lib/larp-secrets/larp-cast.toml";
+            };
+          }
+        ];
+      };
+
       # The station image: the plain mailbox appliance extended with the
       # character bot. One image serves every station — the bot only starts on
       # cards whose FAT boot partition carries larp-identity.toml +
@@ -112,6 +148,7 @@
       nixosConfigurations.larp-station = mailbox-image.nixosConfigurations.mailbox-pi.extendModules {
         modules = [
           ./nix/larp-bot.nix
+          ./nix/timezone.nix
           {
             services.larp-bot = {
               enable = true;

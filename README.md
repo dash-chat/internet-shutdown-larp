@@ -1,7 +1,7 @@
 # Internet-shutdown LARP
 
 A live-action game about carrying information when the network is gone:
-players are couriers in an earthquake-struck town, Raspberry Pi stations
+players are couriers in a town cut in two by fires, Raspberry Pi stations
 running [Dash Chat](https://github.com/dash-chat/dash-chat) mailboxes are the
 only communication infrastructure left, and bots impersonating town
 characters produce messages that must be physically carried to their

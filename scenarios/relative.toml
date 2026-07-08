@@ -4,7 +4,7 @@
 
 name = "Aunt Anna"
 
-greeting = """💌 Hello?? This is Anna, writing from Riverside, the next town over. My whole family lives where the earthquake hit and I can't reach anyone — this radio link is all I have. Please, please carry my messages, you're my only connection!"""
+greeting = """💌 Hello?? This is Anna, writing from Riverside, the next town over. My whole family lives where the fires are burning and I can't reach anyone — this radio link is all I have. Please, please carry my messages, you're my only connection!"""
 
 [[missions]]
 to = "hospital"
@@ -13,8 +13,8 @@ success = """🏥 Peter is here, stable, and we've restocked his medication. He 
 
 [[missions]]
 to = "firefighters"
-text = """💌 Our family house at 5 Willow Lane looked cracked in the photos. Can the firefighters check whether it's safe before anyone goes back in? Please bring them Anna's request!"""
-success = """🚒 We inspected 5 Willow Lane for Anna: the facade is cracked but the structure holds. Nobody should use the balcony until we brace it."""
+text = """💌 The photos show flames very close to our family house at 5 Willow Lane. Can the firefighters check whether it's still standing? Please bring them Anna's request!"""
+success = """🚒 We checked 5 Willow Lane for Anna: the fence is scorched but the house stands. We hosed down the roof — nobody goes in until the embers are cold."""
 
 [[missions]]
 to = "journalist"
@@ -28,5 +28,5 @@ success = """🏥 Noted on our watch list: Clara, diabetic — thank you Anna. I
 
 [[missions]]
 to = "firefighters"
-text = """💌 Our old dog Max ran off during the quake — last seen by the fountain. I know it's silly with everything going on... but could the firefighters keep an eye out? Take them Anna's plea!"""
+text = """💌 Our old dog Max ran off scared of the smoke — last seen by the fountain. I know it's silly with everything going on... but could the firefighters keep an eye out? Take them Anna's plea!"""
 success = """🚒 Not silly at all, Anna. Crews have Max's description and the fountain is on our patrol route. If he turns up, we'll bring him to the shelter."""

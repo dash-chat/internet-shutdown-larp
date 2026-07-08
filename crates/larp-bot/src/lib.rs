@@ -1,5 +1,5 @@
 //! LARP character bot: a headless Dash Chat node that plays one of the
-//! earthquake-scenario characters (see docs/design.md).
+//! fire-scenario characters (see docs/design.md).
 //!
 //! Identity is not generated on the device: it comes from a flashable
 //! *identity bundle* (`larp-identity.toml`) so that re-flashing an SD card or

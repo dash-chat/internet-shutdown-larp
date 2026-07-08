@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand};
 use larp_bot::{cast, config::BotConfig, identity::IdentityBundle, qr};
 
 #[derive(Parser)]
-#[command(name = "larp-bot", about = "Dash Chat character bot for the earthquake LARP")]
+#[command(name = "larp-bot", about = "Dash Chat character bot for the town-fire LARP")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
