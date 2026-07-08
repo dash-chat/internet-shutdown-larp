@@ -220,11 +220,23 @@
               # The mayor's onboarding page (portal/index.html — a single
               # static file, no build step) replaces the mailbox image's
               # generic captive-portal SPA. The module's nginx keeps serving
-              # it and proxying /api/ to the mailbox.
-              dashchat.captivePortal.package = pkgs.runCommand "mayor-portal" { } ''
-                mkdir -p $out
-                cp ${./portal/index.html} $out/index.html
-              '';
+              # it and proxying /api/ to the mailbox. The Android app ships
+              # next to it as /dashchat.apk, so phones without Dash Chat can
+              # install it from this offline network. Pinned to the same
+              # release as the bots' dashchat_node — version skew silently
+              # breaks mission recognition (docs/design.md).
+              dashchat.captivePortal.package =
+                let
+                  dashchat-apk = pkgs.fetchurl {
+                    url = "https://github.com/dash-chat/dash-chat/releases/download/v0.18.9/app-universal-release.apk";
+                    hash = "sha256-gKg52NEqyqyy6GnHJeuU5fgjrhFTSSLSi9TFxFHC/4k=";
+                  };
+                in
+                pkgs.runCommand "mayor-portal" { } ''
+                  mkdir -p $out
+                  cp ${./portal/index.html} $out/index.html
+                  cp ${dashchat-apk} $out/dashchat.apk
+                '';
             }
           )
         ];

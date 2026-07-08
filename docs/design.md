@@ -118,8 +118,8 @@ from anywhere and short-circuit the entire sneakernet.
 4. The ack travels back through the same courier network, so the pair sees
    their success confirmed in the group chat.
 
-To avoid flooding, a bot caps its **outstanding unacked missions per group**
-(default 3) — it pauses its timer until an ack comes back or a timeout passes.
+To avoid flooding, a bot keeps **at most one outstanding unacked mission per
+group** — it pauses its timer until the ack comes back.
 
 Ending: the facilitator calls time; the group chat itself is the score sheet
 (count success replies). No formal end state in software.
@@ -248,8 +248,8 @@ The bundle sits plaintext on the FAT partition; for a game prop that's fine.
   intro line ("This is Mercy Hospital, we're overwhelmed, please help…").
 - **Scenario engine.** Per group: a timer loop firing at
   `rand_range(min_interval, max_interval)`, drawing a not-yet-used template
-  from the character's pool (reshuffle when exhausted), respecting the
-  outstanding-unacked cap.
+  from the character's pool (reshuffle when exhausted), holding fire while
+  the group's one pending mission awaits its ack.
 - **Mission recognition & acks — no visible metadata.** Messages are pure
   in-character prose; the machine layer rides on facts both ends already
   know, since we author every bot:
@@ -289,7 +289,6 @@ data_dir    = "/var/lib/larp-bot"                  # cache only — safe to wipe
 [timing]
 min_interval_secs = 180
 max_interval_secs = 480
-max_outstanding   = 3
 
 [templates]                            # per-character scenario file
 path = "/etc/larp-bot/firefighters.toml"

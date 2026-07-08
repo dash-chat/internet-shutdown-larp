@@ -413,8 +413,9 @@ impl Bot {
         if Instant::now() < *due {
             return Ok(());
         }
-        if self.state.outstanding(key) >= self.timing.max_outstanding {
-            // Paused: check again next tick without redrawing the interval.
+        if self.state.outstanding(key) > 0 {
+            // One pending mission per group: paused until the success reply
+            // arrives; check again next tick without redrawing the interval.
             return Ok(());
         }
         let Some(mission) = self.pick_mission(key) else {
@@ -440,21 +441,15 @@ impl Bot {
     }
 
     /// Prefer templates never fired in this group; once exhausted, allow
-    /// re-firing delivered ones (never ones still outstanding — their success
-    /// lines must stay unambiguous).
+    /// re-firing delivered ones. Only called with nothing outstanding (the
+    /// one-pending-mission rule), so success lines stay unambiguous.
     fn pick_mission(&self, group: &str) -> Option<crate::scenario::Mission> {
         let pack = self.scenarios.pack(&self.bundle.character)?;
-        let fired = self.state.fired.get(group);
-        let fired_texts: Vec<&str> = fired
+        let fired_texts: Vec<&str> = self
+            .state
+            .fired
+            .get(group)
             .map(|v| v.iter().map(|m| m.text.as_str()).collect())
-            .unwrap_or_default();
-        let outstanding_texts: Vec<&str> = fired
-            .map(|v| {
-                v.iter()
-                    .filter(|m| !m.delivered)
-                    .map(|m| m.text.as_str())
-                    .collect()
-            })
             .unwrap_or_default();
 
         let unused: Vec<&crate::scenario::Mission> = pack
@@ -463,10 +458,7 @@ impl Bot {
             .filter(|m| !fired_texts.contains(&m.text.as_str()))
             .collect();
         let candidates = if unused.is_empty() {
-            pack.missions
-                .iter()
-                .filter(|m| !outstanding_texts.contains(&m.text.as_str()))
-                .collect::<Vec<_>>()
+            pack.missions.iter().collect::<Vec<_>>()
         } else {
             unused
         };

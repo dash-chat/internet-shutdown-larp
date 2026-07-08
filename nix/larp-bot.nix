@@ -29,7 +29,6 @@ let
     min_interval_secs = ${toString cfg.timing.minIntervalSecs}
     max_interval_secs = ${toString cfg.timing.maxIntervalSecs}
     first_mission_delay_secs = ${toString cfg.timing.firstMissionDelaySecs}
-    max_outstanding = ${toString cfg.timing.maxOutstanding}
     poll_interval_secs = ${toString cfg.timing.pollIntervalSecs}
   '';
 
@@ -115,11 +114,6 @@ in
         type = lib.types.ints.unsigned;
         default = 5;
         description = "Seconds between a group's welcome message and its first mission.";
-      };
-      maxOutstanding = lib.mkOption {
-        type = lib.types.ints.positive;
-        default = 3;
-        description = "Unacked missions per group before the bot pauses.";
       };
       pollIntervalSecs = lib.mkOption {
         type = lib.types.ints.positive;

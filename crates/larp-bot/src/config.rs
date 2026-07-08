@@ -30,9 +30,6 @@ pub struct Timing {
     pub max_interval_secs: u64,
     /// Delay between a group's welcome message and its first mission.
     pub first_mission_delay_secs: u64,
-    /// Max missions per group awaiting a success reply before the bot
-    /// pauses its timer for that group.
-    pub max_outstanding: usize,
     /// How often the bot polls its groups for new messages.
     pub poll_interval_secs: u64,
 }
@@ -43,7 +40,6 @@ impl Default for Timing {
             min_interval_secs: 180,
             max_interval_secs: 480,
             first_mission_delay_secs: 5,
-            max_outstanding: 3,
             poll_interval_secs: 3,
         }
     }
@@ -58,7 +54,6 @@ impl BotConfig {
             config.timing.min_interval_secs <= config.timing.max_interval_secs,
             "timing: min_interval_secs > max_interval_secs"
         );
-        anyhow::ensure!(config.timing.max_outstanding > 0, "timing: max_outstanding is 0");
         Ok(config)
     }
 }
