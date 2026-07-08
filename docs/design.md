@@ -67,12 +67,13 @@ players agree not to cross it.
 | **firefighters** | **Cindy the firefighter**, at the brigade HQ | Pi 5: Wi-Fi AP + mailbox + bot |
 | **hospital** | **James the nurse**, at the town hospital | Pi 5: Wi-Fi AP + mailbox + bot |
 | **journalist** | **Marta the journalist** — news desk **outside the town**, telling the world what's happening inside; the hotspot corner is the town's only surviving uplink to her | Phone hotspot (internet); bot on a Digital Ocean droplet syncing through the **existing cloud mailbox** |
-| **relative** | **Aunt Anna**, a relative in Riverside, the nearby town, desperate for news of her family | Two Pi 5s: the on-map one is AP + mailbox + LoRa bridge; the far-away one runs mailbox + bot + LoRa bridge. Messages to/from Anna take a LoRa round-trip |
+| **relative** | **Aunt Anna**, a relative in Riverside, the nearby town, desperate for news of her family | Two Pi 5s: the on-map one is AP + mailbox + RNS gateway; the far-away one runs mailbox + bot + RNS gateway. Messages to/from Anna take a LoRa round-trip (§4) |
 | *(base station)* | **The town mayor** — captive portal only, not a chat character | MikroTik mAP lite as a **plain AP** (its radio handles the 30-40 concurrent base-station clients; provisioned with `just base-station::map-lite::provision`), **wired** to a Pi 5 running the `base-station` image (`nix/base-station.nix`): the Pi owns DHCP + wildcard DNS on the cable and serves the mayor's captive portal + the mailbox. No RouterOS hotspot — that feature is locked behind device-mode (physical button press) on current firmware, and nothing needs gating anyway |
 
 Total hardware: **5 × Pi 5** (base, firefighters, hospital, relative-near,
 relative-far) + **1 × MikroTik mAP lite** (base AP + mayor portal) + **2 ×
-Heltec V4 LoRa dev kits** (USB-C serial on the two relative-link Pis) + **1 phone**
+Heltec LoRa dev kits flashed with RNode firmware** (USB-C serial on the two
+relative-link Pis) + **1 phone**
 (journalist hotspot) + **1 DO droplet** (already running the cloud mailbox;
 gains the journalist bot).
 
@@ -137,9 +138,10 @@ Ending: the facilitator calls time; the group chat itself is the score sheet
 - **mDNS announce/discovery**: stations announce `_dashchat._tcp.local.`, so
   players' apps auto-discover the mailbox when they join a station's Wi-Fi.
 - **Mailbox replication** (`replicating-local-mailbox-server`): bidirectional
-  `/blips/get` sync of known topics between mailboxes. On this map stations
-  are out of each other's range, so LAN replication is idle — but the same
-  sync protocol is what we reuse over LoRa (§4).
+  `/blips/get` sync of known topics between mDNS-discovered mailboxes. On
+  this map stations are out of each other's range, so LAN replication is
+  idle — but it's exactly the machinery the LoRa gateway rides: a LoRa peer
+  is surfaced to the manager as one more mDNS service (§4).
 - **`dashchat-node`** (dash-chat repo): headless node with everything a bot
   needs — `new_qr_code()` / `add_contact()`, auto-join of group invitations
   (already handled in stream processing), `send_message()`, `get_messages()`,
@@ -267,35 +269,39 @@ content, no code. All four character packs live in this repo under
 see above). A unit test lints the packs: `text` and `success` unique across
 each pack, `to` values valid.
 
-## 4. New component: `lora-bridge` crate
+## 4. New component: the RNS mailbox gateway (`gateway/`)
 
-Carries mailbox sync between the relative's two Pis over **Heltec V4 dev kits
-attached via USB-C serial** — beyond Wi-Fi range, no infrastructure.
+*Implemented — full design in [rns-gateway.md](rns-gateway.md).*
 
-- **Radio firmware: Meshtastic.** Flash stock Meshtastic on both Heltecs and
-  drive them from the Pi over serial using the `meshtastic` Rust crate
-  (protobuf API). This buys us LoRa params, framing, ACK/retry and
-  region-legal duty-cycle handling (EU868, 1% duty cycle) without writing
-  ESP32 firmware. The bridge just exchanges opaque payloads between the two
-  fixed node ids. (Fallback if the serial API disappoints: a ~100-line
-  transparent serial↔LoRa Arduino sketch with our own framing.)
-- **Protocol: the existing replication model, re-transported.** Same
-  watermark/digest logic as `replicate.rs` in
-  `replicating-local-mailbox-server`, but instead of HTTP `/blips/get` to a
-  LAN peer, requests/responses are CBOR + zstd, chunked into ~200-byte LoRa
-  frames with sequence numbers and reassembly. Each side talks to *its own
-  local* mailbox over HTTP and mirrors the delta to the other side.
-- **Scope: text blips only, no blobs.** At LoRa's effective ~1–5 kbps a text
-  mission (~300 B compressed) takes seconds — fine. Attachments are out of
-  scope for the relative (players learn: "photos don't reach Anna").
-- **Topic seeding.** Replication only syncs topics a mailbox already knows.
-  The relative-far mailbox knows the group topic because the bot (a member)
-  seeds it locally; the relative-near mailbox learns it when the first player
-  syncs there. The bridge exchanges topic-id lists in its digest so both sides
-  converge on the union.
+Carries mailbox sync between the relative's two Pis over **Heltec dev kits
+flashed with RNode firmware** (`just lora::rnode-install`) — beyond Wi-Fi
+range, no infrastructure. The Reticulum Network Stack (RNS) runs on each Pi
+with the RNode as a serial-attached modem; a Python sidecar (the gateway)
+relays mailbox HTTP over RNS request/response exchanges. In short:
 
-Deployment: `lora-bridge` runs on both relative-link Pis (`--serial /dev/ttyACM0
---peer <meshtastic-node-id> --mailbox http://127.0.0.1:8080`).
+- **The mailbox is untouched.** Each discovered LoRa peer is advertised on
+  the station's LAN as its own `_dashchat._tcp.local.` mDNS service (the
+  instance name is the far mailbox's MailboxId, carried in the RNS
+  announce), so the mailbox manager discovers and syncs it through the exact
+  LAN path it already uses — a LoRa peer is just a peer with a funny URL.
+- **HTTP relayed at the application layer, never TCP-over-radio.** Requests
+  are packed semantically (msgpack, allowlisted headers), shipped over an
+  encrypted RNS link, and re-issued as fresh loopback HTTP calls on the far
+  side; RNS `Resource` handles fragmentation of multi-KB responses.
+- **The manager's 10 s HTTP timeout never meets the radio**: `/blips/get` is
+  answered from a request-keyed cache filled by background radio exchanges
+  (the manager's ~30 s re-poll picks up the result); `/blips/store` returns
+  201 and relays in the background (blip inserts are idempotent and the far
+  side keeps re-listing what it lacks, so drops self-heal).
+- **Text blips only, no blobs**: blob announcements are answered locally
+  with "already stored" (players learn: "photos don't reach Anna").
+- **Topic seeding for free**: far-side blips are POSTed into the local
+  mailbox, which creates watermarks for unknown topics — the mailbox's own
+  topic enumeration takes it from there.
+
+Deployment: `rns-gateway` runs on both relative-link Pis, gated on
+`/boot/firmware/lora.env` (radio parameters; see `just lora::flash-near /
+flash-far`).
 
 ## 5. NixOS & deployment changes
 
@@ -310,16 +316,17 @@ carry, next to `wifi-ap.env`:
 - `larp-cast.toml` — the public cast file (flashed too, **not** baked into the
   image: it changes per game, the image doesn't)
 
-No file → no bot: the card is a plain mailbox appliance. A `STATION=` env
-switch is deferred to milestone 3, when the LoRa bridge needs a bot-less
-station variant (relative-near):
+No file → no bot: the card is a plain mailbox appliance. The LoRa gateway
+follows the same convention with its own file — `lora.env` (radio
+parameters) — so no `STATION=` switch is needed; the station variants are
+just combinations of flashed files:
 
-| Station | mailbox | AP (hostapd) | larp-bot | lora-bridge |
+| Station | mailbox | AP (hostapd) | larp-bot | rns-gateway |
 |---|---|---|---|---|
 | base | ✓ | – (the mAP lite is the AP; the Pi is wired behind it — `base-station` image) | – | – |
 | firefighters / hospital | ✓ | ✓ | ✓ (identity flashed) | – |
-| relative-near | ✓ | ✓ | – | ✓ (milestone 3) |
-| relative-far | ✓ | – | ✓ (identity flashed) | ✓ (milestone 3) |
+| relative-near | ✓ | ✓ | – | ✓ (lora.env flashed) |
+| relative-far | ✓ | ✓ (out-of-play SSID: the gateway↔mailbox mDNS hop needs a live multicast interface; doubles as debug access) | ✓ (identity flashed) | ✓ (lora.env flashed) |
 
 The base station Pi runs the `base-station` image (`just image::build-base-station`):
 no Pi wifi at all — the mAP lite broadcasts the mesh and the Pi, wired to its
@@ -355,10 +362,12 @@ Also per-station: the AP SSID defaults to the station name
 (`SSID=larp-firefighters` etc. via `wifi-ap.env`), so the facilitator can see
 at a glance which bubble they're in.
 
-`larp-bot` (and later `lora-bridge`) build with `rustPlatform.buildRustPackage`
-from this repo's workspace (git deps via `cargoLock.allowBuiltinFetchGit`, so
-no outputHashes to maintain), exposed as flake packages for x86_64 (dev/DO)
-and aarch64 (Pi). Scenario packs (`scenarios/`) are pure repo content baked
+`larp-bot` builds with `rustPlatform.buildRustPackage` from this repo's
+workspace (git deps via `cargoLock.allowBuiltinFetchGit`, so no outputHashes
+to maintain), exposed as flake packages for x86_64 (dev/DO) and aarch64 (Pi);
+`rns-gateway` is a Python environment around `gateway/rns_gateway.py`
+(`nix/rns-gateway-package.nix` — nixpkgs' `rns` needs an unfree allowance,
+see the flake). Scenario packs (`scenarios/`) are pure repo content baked
 into the image at `services.larp-bot.scenariosDir`.
 
 Provisioning flow (all offline, on the laptop — implemented as `just` recipes):
@@ -466,9 +475,11 @@ usually within seconds.
 - **Ack routing asymmetry** — an ack is just another group message; nothing
   guarantees players carry it back. Acceptable (it's gameplay), but templates
   should nudge: "let the hospital know we got this!"
-- **Meshtastic serial throughput** — verify real-world frames/minute under
-  EU868 duty cycle with a two-device bench test before committing to the
-  digest protocol's chattiness; tune digest frequency accordingly.
+- **LoRa link throughput** — verify real-world sync latency under the EU868
+  duty cycle with a two-RNode bench test (`just lora::run` on the laptop):
+  a group's initial history is tens of KB and will take minutes to cross;
+  steady-state missions (~300 B) should take seconds. Tune the announce
+  interval and cache TTL accordingly (docs/rns-gateway.md).
 - **Clocks** — Pi 5 has an RTC header but no battery by default; offline Pis
   wake with wrong time. Blip ordering must not depend on wall clock across
   devices (p2panda ordering is causal, so likely fine — verify), and the
@@ -498,8 +509,11 @@ usually within seconds.
    phone joins a bot station's AP, scans the printed QR poster, creates
    group, gets greeted, receives mission — and at the base, portal opens,
    phone syncs with the base mailbox through the mAP's bridge.
-3. **`lora-bridge`** — Meshtastic bench test, then the bridge protocol with a
-   mocked serial transport, then the two relative-link Pis end-to-end.
+3. **LoRa link** — *(implemented as the RNS gateway, `gateway/` +
+   `nix/rns-gateway.nix` — see docs/rns-gateway.md)*: RNode-flashed Heltecs,
+   HTTP relayed over Reticulum, LoRa peers surfaced to the mailbox via mDNS.
+   Remaining: two-RNode bench test, then the two relative-link Pis
+   end-to-end.
 4. **Journalist droplet** — NixOS config on DO against the cloud mailbox;
    test through a real phone hotspot.
 5. **Scenario content + dress rehearsal** — write the four template packs,

@@ -17,10 +17,15 @@ mod base-station
 # (doctl + nixos-infect), plus ssh/logs/destroy.
 mod journalist
 
+# The relative's LoRa link: RNode flashing + relative-link station cards
+# (RNS mailbox gateway, docs/rns-gateway.md).
+mod lora
+
 # Show available recipes.
 _default:
     @just --list --list-submodules
 
-# Run all tests (unit + e2e).
+# Run all tests (unit + e2e + gateway).
 test:
     cargo test --workspace
+    python3 -m unittest discover gateway

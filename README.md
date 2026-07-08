@@ -17,7 +17,10 @@ layout, message mechanics, identity bundles, and the milestone plan.
   acknowledges deliveries. Also the provisioning tool (`keygen` / `qr` /
   `cast`).
 - `scenarios/` — the four characters' mission packs (pure content).
-- `nix/` — the bot's NixOS module and package.
+- `gateway/` — the RNS mailbox gateway: syncs the relative's two station
+  mailboxes over LoRa (RNode-flashed Heltecs + Reticulum), relaying mailbox
+  HTTP over the radio — see [docs/rns-gateway.md](docs/rns-gateway.md).
+- `nix/` — the NixOS modules and packages (bot, gateway, base station).
 - `flake.nix` — extends the plain
   [raspberry-pi-mailbox-server](https://github.com/dash-chat/raspberry-pi-mailbox-server)
   image (a flake input) with the bot: **one station image for every card**;
@@ -34,4 +37,8 @@ just characters::posters               # printable QR posters
 just image::build                      # station SD image
 just characters::flash firefighters    # flash + station files (auto-detects the SD card)
 just journalist::deploy                # journalist bot → Digital Ocean droplet (doctl)
+
+just lora::rnode-install               # RNode firmware onto a Heltec (once per radio)
+just lora::flash-near                  # relative-near card: AP + mailbox + LoRa gateway
+just lora::flash-far                   # relative-far card: Anna's bot + mailbox + gateway
 ```

@@ -43,6 +43,9 @@
         import nixpkgs {
           inherit system;
           overlays = [ rust-overlay.overlays.default ];
+          # Reticulum 1.x ships under the (non-OSI) Reticulum License; allow
+          # exactly that one package for the RNS gateway.
+          config.allowUnfreePredicate = pkg: nixpkgs.lib.getName pkg == "rns";
         };
     in
     {
@@ -67,6 +70,15 @@
             pkg-config # native deps of the dash-chat crate tree
             openssl
             doctl # journalist droplet recipes (just journalist::*)
+            # The RNS gateway (gateway/): its runtime deps for the unit
+            # tests, plus rnodeconf for flashing the Heltecs.
+            (python3.withPackages (
+              ps: with ps; [
+                rns
+                msgpack
+                zeroconf
+              ]
+            ))
           ];
         };
 
@@ -75,6 +87,9 @@
         # (`nix run .#larp-bot -- keygen/qr/cast`).
         default = self.packages.x86_64-linux.larp-bot;
         larp-bot = (pkgsWithRust "x86_64-linux").callPackage ./nix/larp-bot-package.nix { };
+        # The LoRa mailbox gateway (docs/rns-gateway.md) and the RNode
+        # firmware flasher it ships with (`just lora::rnode-install`).
+        rns-gateway = (pkgsWithRust "x86_64-linux").callPackage ./nix/rns-gateway-package.nix { };
         # The flashable station image (aarch64 build; needs binfmt emulation
         # on an x86_64 builder, same as the mailbox image).
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
@@ -87,6 +102,7 @@
       packages.aarch64-linux = {
         default = self.packages.aarch64-linux.larp-bot;
         larp-bot = (pkgsWithRust "aarch64-linux").callPackage ./nix/larp-bot-package.nix { };
+        rns-gateway = (pkgsWithRust "aarch64-linux").callPackage ./nix/rns-gateway-package.nix { };
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
         sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
         inherit (mailbox-image.packages.aarch64-linux) detect-sd-card flash-sd-image;
@@ -105,6 +121,7 @@
       #     castFile = "/var/lib/larp-secrets/larp-cast.toml";
       #   };
       nixosModules.larp-bot = ./nix/larp-bot.nix;
+      nixosModules.rns-gateway = ./nix/rns-gateway.nix;
 
       # The journalist's cloud host (docs/design.md §Journalist): a droplet
       # running only the bot against the cloud mailbox. Deployed with
@@ -150,11 +167,18 @@
         modules = [
           ./nix/larp-bot.nix
           ./nix/timezone.nix
+          ./nix/rns-gateway.nix
           {
             services.larp-bot = {
               enable = true;
               package = self.packages.aarch64-linux.larp-bot;
               scenariosDir = ./scenarios;
+            };
+            # The LoRa gateway (relative link, docs/rns-gateway.md), gated
+            # like the bot: no lora.env on the card → no gateway.
+            services.rns-gateway = {
+              enable = true;
+              package = self.packages.aarch64-linux.rns-gateway;
             };
           }
         ];
