@@ -160,13 +160,10 @@
         modules = [
           ./nix/larp-bot.nix
           ./nix/timezone.nix
+          # Re-adds the captive portal the mailbox image dropped (2026-07-09b).
+          ./nix/captive-portal.nix
           (
-            {
-              config,
-              lib,
-              pkgs,
-              ...
-            }:
+            { ... }:
             {
               services.larp-bot = {
                 enable = true;
@@ -185,71 +182,29 @@
               # station onboards through a portal; it re-enables this below.
               dashchat.captivePortal.enable = false;
 
-              # Full-range APs. The mailbox image deliberately shrinks each
-              # station's wifi bubble (1 dBm tx power, link-quality eviction,
-              # hostapd distance gates); this game wants the opposite — undo
-              # all of it.
-              dashchat.wifi.apTxPowerDbm = 20; # ES regulatory max on 2.4 GHz
-              systemd.services.dashchat-ap-guard.enable = false;
-              systemd.services.dashchat-hostapd.serviceConfig = {
-                # wifi-provision writes hostapd.conf to /run before starting
-                # this unit; strip its remaining distance limiters (client
-                # power constraint, rate floor, RSSI join gate, low-ack kick).
-                # mkForce because the image defines ExecStartPre as a single
-                # value (its wlan0 address setup — re-created here) and
-                # single values don't merge.
-                ExecStartPre = lib.mkForce [
-                  (pkgs.writeShellScript "dashchat-ap-addr" ''
-                    ${pkgs.iproute2}/bin/ip addr replace ${config.dashchat.wifi.apAddress}/24 dev wlan0
-                  '')
-                  (pkgs.writeShellScript "larp-full-range" ''
-                    ${pkgs.gnused}/bin/sed -i -E \
-                      '/^(local_pwr_constraint|supported_rates|basic_rates|rssi_ignore_probe_request|rssi_reject_assoc_rssi|disassoc_low_ack)=/d' \
-                      /run/dashchat-ap/hostapd.conf
-                  '')
-                ];
-                # The image's own ExecStartPost only turns power save off
-                # after its txpower clamp succeeds; keep the AP-stability fix
-                # (power save on a brcmfmac AP kills beaconing minutes in)
-                # independent of that. A list, so it merges with the image's.
-                ExecStartPost = [
-                  (pkgs.writeShellScript "larp-power-save-off" ''
-                    for _ in $(seq 10); do
-                      ${pkgs.iw}/bin/iw dev wlan0 set power_save off && exit 0
-                      sleep 1
-                    done
-                    echo "could not disable wlan0 power save" >&2
-                  '')
-                ];
-              };
+              # Full-range APs and power_save off need no overrides any more:
+              # the mailbox image dropped its range limiting (tx clamp, rate
+              # floor, RSSI gate, ap-guard) in 2026-07-09b and turns power
+              # save off itself on AP start.
             }
           )
         ];
       };
 
-      # The base-station image: the station image with the mayor portal in
-      # place of the generic captive-portal SPA. The Pi hosts its own wifi
-      # like every other station (wifi-ap.env on the boot partition — see
+      # The base-station image: the station image with the mayor portal
+      # (nix/captive-portal.nix serves portal/index.html by default and
+      # proxies /api/ to the mailbox). The Pi hosts its own wifi like every
+      # other station (wifi-ap.env on the boot partition — see
       # base-station.just). The mAP-lite-as-AP variant (nix/base-station.nix,
       # Pi wired behind a MikroTik mAP lite) is kept but currently unused.
       nixosConfigurations.base-station = self.nixosConfigurations.larp-station.extendModules {
         modules = [
           (
-            { pkgs, lib, ... }:
+            { lib, ... }:
             {
               # The one station that keeps the captive portal (the station
               # image above turns it off for the character stations).
               dashchat.captivePortal.enable = lib.mkForce true;
-
-              # The mayor's onboarding page (portal/index.html — a single
-              # static file, no build step) replaces the mailbox image's
-              # generic captive-portal SPA. The module's nginx keeps serving
-              # it and proxying /api/ to the mailbox.
-              dashchat.captivePortal.package =
-                pkgs.runCommand "mayor-portal" { } ''
-                  mkdir -p $out
-                  cp ${./portal/index.html} $out/index.html
-                '';
             }
           )
         ];

@@ -97,10 +97,9 @@ in
       };
     };
 
-    # The mailbox image's captive-portal module already provides the nginx
-    # pair (portal SPA + catch-all 302) — re-point it at the LAN address.
-    # The SPA to serve stays `dashchat.captivePortal.package`; override that
-    # with the mayor portal once it's ported from ../map-lite-portal.
+    # Our captive-portal module (./captive-portal.nix, re-added here after
+    # the mailbox image dropped its own) already provides the nginx pair
+    # (mayor portal + catch-all 302) — re-point it at the LAN address.
     services.nginx.virtualHosts.captive-portal.serverAliases = [ cfg.address ];
     services.nginx.virtualHosts.captive-catchall.locations."/".return =
       lib.mkForce "302 http://${cfg.address}/";
@@ -120,8 +119,8 @@ in
       };
 
       # Clients with hardcoded DNS (8.8.8.8 …) send it to their gateway — us.
-      # Reuse the captive-portal REDIRECT chain the mailbox image defines for
-      # wlan0 (mkAfter: the chain must exist before we jump to it).
+      # Reuse the captive-portal REDIRECT chain ./captive-portal.nix defines
+      # for wlan0 (mkAfter: the chain must exist before we jump to it).
       extraCommands = lib.mkAfter ''
         iptables -t nat -C PREROUTING -i ${cfg.interface} -j captive-portal 2>/dev/null || \
           iptables -t nat -A PREROUTING -i ${cfg.interface} -j captive-portal

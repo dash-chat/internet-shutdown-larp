@@ -1,230 +1,385 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Town Hall — Emergency Broadcast</title>
-<style>
-  :root { color-scheme: light; }
-  body {
-    margin: 0; padding: 24px 16px 48px;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 1.35rem; line-height: 1.45;
-    background: #f4efe6; color: #2b2620;
-    display: flex; justify-content: center;
-  }
-  main { max-width: 34rem; }
-  h1 { font-size: 1.7rem; margin: 0 0 4px; }
-  h2 { font-size: 1.4rem; margin: 28px 0 8px; }
-  .from { font-style: italic; color: #6b6257; margin: 0 0 16px; }
-  blockquote { margin: 0; padding: 0 0 0 14px; border-left: 3px solid #b3a48c; }
-  blockquote p { margin: 10px 0; }
-  ol { padding-left: 26px; }
-  li { margin: 18px 0; }
-  .status { margin-top: 26px; font-size: 0.95rem; color: #6b6257; }
-  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
-         margin-right: 6px; background: #c0b8a8; }
-  .dot.ok { background: #3d8b40; }
-  .dot.bad { background: #b3402e; }
-  .note { margin-top: 18px; font-size: 0.85rem; color: #6b6257; }
-  code { background: #ece5d8; padding: 1px 4px; border-radius: 4px;
-         font-size: 0.85em; overflow-wrap: anywhere; }
-  .portrait { display: block; margin: 14px auto 4px; width: 200px; max-width: 60%; }
-  .caption { text-align: center; font-size: 0.85rem; color: #6b6257; margin: 0 0 18px; }
-  #vault { margin: 0 auto 18px; max-width: 280px; text-align: center;
-           padding: 12px; border: 1px dashed #b3a48c; border-radius: 8px; }
-  #vault p { margin: 0 0 10px; font-size: 0.9rem; }
-  #vault input { width: 100%; box-sizing: border-box; padding: 8px 10px;
-                 font: inherit; border: 1px solid #b3a48c; border-radius: 6px;
-                 background: #fffdf8; text-align: center; }
-  #vault button { margin-top: 8px; padding: 7px 18px; font: inherit;
-                  border: 1px solid #8a763f; border-radius: 6px;
-                  background: #ece5d8; cursor: pointer; }
-  #vault-wrong { color: #b3402e; margin-top: 8px !important; }
-  #fled h1 { color: #b3402e; }
-  .fled-scene { font-size: 3rem; text-align: center; margin: 18px 0; }
-  .congrats { margin-top: 26px; padding: 14px 16px; border: 1px dashed #b3a48c;
-              border-radius: 8px; background: #ece5d8; }
-  .congrats p { margin: 8px 0; }
-</style>
-</head>
-<body>
-<main>
-
-<section id="broadcast">
-  <h1>🏛️ Town Hall</h1>
-  <p class="from">A message from the mayor:</p>
-
-  <!-- The official portrait. The head hides the informant's secret trigger:
-       docs/design.md, "The anonymous informant". -->
-  <svg id="portrait" class="portrait" viewBox="0 0 200 240" role="img"
-       aria-label="Official portrait of the mayor">
-    <!-- gold frame + backdrop -->
-    <rect x="4" y="4" width="192" height="232" rx="10" fill="#8a763f"/>
-    <rect x="12" y="12" width="176" height="216" rx="6" fill="#4a5568"/>
-    <!-- shoulders and suit -->
-    <path d="M40 228 C 44 172 76 158 100 158 C 124 158 156 172 160 228 Z" fill="#23242a"/>
-    <path d="M92 162 L100 176 L108 162 L104 158 L96 158 Z" fill="#fff"/>
-    <path d="M100 176 L94 196 L100 220 L106 196 Z" fill="#7a1f1f"/>
-    <!-- mayoral sash -->
-    <path d="M64 172 C 84 190 116 210 148 224 L160 228 C 156 196 132 176 112 166 Z"
-          fill="#a83232" opacity="0.9"/>
-    <!-- head -->
-    <g id="mayor-head">
-      <ellipse cx="100" cy="106" rx="38" ry="44" fill="#e8b98d"/>
-      <!-- ears -->
-      <ellipse cx="61" cy="108" rx="7" ry="11" fill="#e8b98d"/>
-      <ellipse cx="139" cy="108" rx="7" ry="11" fill="#e8b98d"/>
-      <!-- gray hair, receding -->
-      <path d="M62 92 C 62 64 84 56 100 56 C 116 56 138 64 138 92
-               C 130 76 116 72 100 72 C 84 72 70 76 62 92 Z" fill="#b8b8b8"/>
-      <!-- eyebrows + eyes -->
-      <path d="M76 94 Q 86 89 94 94" stroke="#7a6a55" stroke-width="3" fill="none"/>
-      <path d="M106 94 Q 114 89 124 94" stroke="#7a6a55" stroke-width="3" fill="none"/>
-      <circle cx="85" cy="102" r="3.5" fill="#2b2620"/>
-      <circle cx="115" cy="102" r="3.5" fill="#2b2620"/>
-      <!-- nose + mustache + smug smile -->
-      <path d="M100 104 L97 120 L103 120 Z" fill="#d6a071"/>
-      <path d="M82 129 Q 100 122 118 129 Q 100 134 82 129 Z" fill="#9a9a9a"/>
-      <path d="M86 138 Q 100 146 114 136" stroke="#8a5a3a" stroke-width="3"
-            fill="none" stroke-linecap="round"/>
-      <!-- generous invisible hit area for the secret -->
-      <circle cx="100" cy="100" r="52" fill="transparent"/>
-    </g>
-  </svg>
-  <p class="caption">Mayor Aldric Vane — “keeping you safe”</p>
-
-  <!-- Revealed by five quick taps on the head; wants the informant's
-       password (docs/design.md, "The anonymous informant"). -->
-  <div id="vault" hidden>
-    <p>🔒 Something clicks behind the portrait. A hidden lock asks for a password:</p>
-    <form id="vault-form">
-      <input id="vault-code" type="text" autocomplete="off" autocapitalize="none"
-             spellcheck="false" placeholder="password" aria-label="password">
-      <button type="submit">Open</button>
-    </form>
-    <p id="vault-wrong" hidden>❌ The lock doesn’t budge.</p>
-  </div>
-
-  <blockquote>
-    <p>
-      “Fires are burning all over town. The internet and the phones are
-      gone. Our relief stations can’t talk to each other — their messages
-      must now travel in your pocket. Will you help?”
-    </p>
-  </blockquote>
-
-  <h2>📋 What to do</h2>
-  <ol>
-    <li>Scan the <strong>4 QR posters</strong> on the wall — add each one
-      in <strong>Dash Chat</strong>.</li>
-    <li>Create a <strong>group</strong> with all 4 of them.</li>
-    <li>Walk to a station and join its Wi-Fi
-      (<code>firefighters-larp</code>, <code>hospital-larp</code>, …).
-      Your phone picks up and delivers messages by itself.</li>
-    <li>Bring each message to the station it asks for.</li>
-    <li><strong>Mobile data OFF.</strong> Forget your other Wi-Fi
-      networks.</li>
-  </ol>
-
-  <p class="status" id="status"><span class="dot"></span>Checking the notice board…</p>
-  <p class="note">
-    This network has no internet. You can safely dismiss any sign-in screen
-    and keep using the town network.
-  </p>
-</section>
-
-<section id="fled" hidden>
-  <h1>🚨 Town Hall — Urgent Notice</h1>
-  <p class="fled-scene">🏛️➡️🏃💨🧳</p>
-  <h2>The mayor has fled town!</h2>
-  <p>
-    Five taps on his portrait uncovered a hidden lock, the password cracked
-    open his private files, and every screen on this network is now showing
-    what was inside: <strong>orders to light the fires</strong>,
-    <strong>orders to shut down the internet and the phones</strong>, and a
-    plan to “manage” a town too cut off and too afraid to ask questions.
-  </p>
-  <p>
-    By the time the first copies reached the square, Mayor Aldric Vane’s
-    car was already speeding past the old mill, suitcase on the back seat.
-    Nobody is blocking the roads any more.
-  </p>
-  <p>
-    The town is yours again.
-  </p>
-  <p class="note">— The person who told you where to knock was right. 🕵️</p>
-  <div class="congrats">
-    <p><strong>Congrats! You completed the LARP.</strong> 🎉</p>
-    <p>Please don't tell other players about how to complete it!</p>
-    <p>
-      Please send feedback about your experience with Dash Chat using the
-      “Feedback” button on the top right in the app.
-    </p>
-    <p>
-      You can replay the game by uninstalling and reinstalling the app, and
-      starting over.
-    </p>
-  </div>
-</section>
-
-</main>
-<script>
-  // Same-origin: the captive-portal nginx proxies /api/ to the mailbox.
-  fetch('/api/health')
-    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(function () {
-      document.getElementById('status').innerHTML =
-        '<span class="dot ok"></span>The town hall notice board (mailbox) is online.';
-    })
-    .catch(function () {
-      document.getElementById('status').innerHTML =
-        '<span class="dot bad"></span>The notice board is not answering — tell the facilitator.';
-    });
-
-  // The informant's secret (docs/design.md): five taps in a row on the
-  // mayor's head reveal a hidden password prompt; the password (also told
-  // by the informant) replaces the broadcast with the flight notice.
-  // Pausing more than 2s between taps starts the count over, so idle
-  // poking doesn't accumulate into an accidental reveal.
-  function mayorFlees() {
-    document.getElementById('broadcast').hidden = true;
-    document.getElementById('fled').hidden = false;
-    window.scrollTo(0, 0);
-    try { localStorage.setItem('mayor-fled', '1'); } catch (e) { /* ephemeral */ }
-  }
-
-  var taps = 0;
-  var lastTap = 0;
-  document.getElementById('mayor-head').addEventListener('click', function () {
-    var now = Date.now();
-    if (now - lastTap > 2000) taps = 0;
-    lastTap = now;
-    taps += 1;
-    if (taps >= 5) {
-      var vault = document.getElementById('vault');
-      if (vault.hidden) {
-        vault.hidden = false;
-        vault.scrollIntoView({ block: 'center' });
-        document.getElementById('vault-code').focus();
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Town Hall — Emergency Broadcast</title>
+    <style>
+      :root {
+        color-scheme: light;
       }
-    }
-  });
+      body {
+        margin: 0;
+        padding: 24px 16px 48px;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        font-size: 1.35rem;
+        line-height: 1.45;
+        background: #f4efe6;
+        color: #2b2620;
+        display: flex;
+        justify-content: center;
+      }
+      main {
+        max-width: 34rem;
+      }
+      h1 {
+        font-size: 1.7rem;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 1.4rem;
+        margin: 28px 0 8px;
+      }
+      .from {
+        font-style: italic;
+        color: #6b6257;
+        margin: 0 0 16px;
+      }
+      blockquote {
+        margin: 0;
+        padding: 0 0 0 14px;
+        border-left: 3px solid #b3a48c;
+      }
+      blockquote p {
+        margin: 10px 0;
+      }
+      ol {
+        padding-left: 26px;
+      }
+      li {
+        margin: 18px 0;
+      }
+      .status {
+        margin-top: 26px;
+        font-size: 0.95rem;
+        color: #6b6257;
+      }
+      .dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 6px;
+        background: #c0b8a8;
+      }
+      .dot.ok {
+        background: #3d8b40;
+      }
+      .dot.bad {
+        background: #b3402e;
+      }
+      .note {
+        margin-top: 18px;
+        font-size: 0.85rem;
+        color: #6b6257;
+      }
+      code {
+        background: #ece5d8;
+        padding: 1px 4px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        overflow-wrap: anywhere;
+      }
+      .portrait {
+        display: block;
+        margin: 14px auto 4px;
+        width: 200px;
+        max-width: 60%;
+      }
+      .caption {
+        text-align: center;
+        font-size: 0.85rem;
+        color: #6b6257;
+        margin: 0 0 18px;
+      }
+      #vault {
+        margin: 0 auto 18px;
+        max-width: 280px;
+        text-align: center;
+        padding: 12px;
+        border: 1px dashed #b3a48c;
+        border-radius: 8px;
+      }
+      #vault p {
+        margin: 0 0 10px;
+        font-size: 0.9rem;
+      }
+      #vault input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        font: inherit;
+        border: 1px solid #b3a48c;
+        border-radius: 6px;
+        background: #fffdf8;
+        text-align: center;
+      }
+      #vault button {
+        margin-top: 8px;
+        padding: 7px 18px;
+        font: inherit;
+        border: 1px solid #8a763f;
+        border-radius: 6px;
+        background: #ece5d8;
+        cursor: pointer;
+      }
+      #vault-wrong {
+        color: #b3402e;
+        margin-top: 8px !important;
+      }
+      #fled h1 {
+        color: #b3402e;
+      }
+      .fled-scene {
+        font-size: 3rem;
+        text-align: center;
+        margin: 18px 0;
+      }
+      .congrats {
+        margin-top: 26px;
+        padding: 14px 16px;
+        border: 1px dashed #b3a48c;
+        border-radius: 8px;
+        background: #ece5d8;
+      }
+      .congrats p {
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section id="broadcast">
+        <h1>🏛️ Town Hall</h1>
+        <p class="from">A message from the mayor:</p>
 
-  document.getElementById('vault-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    var code = document.getElementById('vault-code').value.trim().toLowerCase();
-    if (code === 'ahawegotyou') {
-      mayorFlees();
-    } else {
-      document.getElementById('vault-wrong').hidden = false;
-    }
-  });
+        <!-- The official portrait. The head hides the informant's secret trigger:
+       docs/design.md, "The anonymous informant". -->
+        <svg
+          id="portrait"
+          class="portrait"
+          viewBox="0 0 200 240"
+          role="img"
+          aria-label="Official portrait of the mayor"
+        >
+          <!-- gold frame + backdrop -->
+          <rect x="4" y="4" width="192" height="232" rx="10" fill="#8a763f" />
+          <rect x="12" y="12" width="176" height="216" rx="6" fill="#4a5568" />
+          <!-- shoulders and suit -->
+          <path
+            d="M40 228 C 44 172 76 158 100 158 C 124 158 156 172 160 228 Z"
+            fill="#23242a"
+          />
+          <path d="M92 162 L100 176 L108 162 L104 158 L96 158 Z" fill="#fff" />
+          <path d="M100 176 L94 196 L100 220 L106 196 Z" fill="#7a1f1f" />
+          <!-- mayoral sash -->
+          <path
+            d="M64 172 C 84 190 116 210 148 224 L160 228 C 156 196 132 176 112 166 Z"
+            fill="#a83232"
+            opacity="0.9"
+          />
+          <!-- head -->
+          <g id="mayor-head">
+            <ellipse cx="100" cy="106" rx="38" ry="44" fill="#e8b98d" />
+            <!-- ears -->
+            <ellipse cx="61" cy="108" rx="7" ry="11" fill="#e8b98d" />
+            <ellipse cx="139" cy="108" rx="7" ry="11" fill="#e8b98d" />
+            <!-- gray hair, receding -->
+            <path
+              d="M62 92 C 62 64 84 56 100 56 C 116 56 138 64 138 92
+               C 130 76 116 72 100 72 C 84 72 70 76 62 92 Z"
+              fill="#b8b8b8"
+            />
+            <!-- eyebrows + eyes -->
+            <path
+              d="M76 94 Q 86 89 94 94"
+              stroke="#7a6a55"
+              stroke-width="3"
+              fill="none"
+            />
+            <path
+              d="M106 94 Q 114 89 124 94"
+              stroke="#7a6a55"
+              stroke-width="3"
+              fill="none"
+            />
+            <circle cx="85" cy="102" r="3.5" fill="#2b2620" />
+            <circle cx="115" cy="102" r="3.5" fill="#2b2620" />
+            <!-- nose + mustache + smug smile -->
+            <path d="M100 104 L97 120 L103 120 Z" fill="#d6a071" />
+            <path
+              d="M82 129 Q 100 122 118 129 Q 100 134 82 129 Z"
+              fill="#9a9a9a"
+            />
+            <path
+              d="M86 138 Q 100 146 114 136"
+              stroke="#8a5a3a"
+              stroke-width="3"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <!-- generous invisible hit area for the secret -->
+            <circle cx="100" cy="100" r="52" fill="transparent" />
+          </g>
+        </svg>
+        <p class="caption">Mayor Aldric Vane — “keeping you safe”</p>
 
-  // Once exposed on this device, he stays exposed.
-  try {
-    if (localStorage.getItem('mayor-fled') === '1') mayorFlees();
-  } catch (e) { /* ephemeral */ }
-</script>
-</body>
+        <!-- Revealed by five quick taps on the head; wants the informant's
+       password (docs/design.md, "The anonymous informant"). -->
+        <div id="vault" hidden>
+          <p>
+            🔒 Something clicks behind the portrait. A hidden lock asks for a
+            password:
+          </p>
+          <form id="vault-form">
+            <input
+              id="vault-code"
+              type="text"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="password"
+              aria-label="password"
+            />
+            <button type="submit">Open</button>
+          </form>
+          <p id="vault-wrong" hidden>❌ The lock doesn’t budge.</p>
+        </div>
+
+        <blockquote>
+          <p>
+            “Fires are burning all over town. The internet and the phones are
+            gone. Our relief stations can’t talk to each other — their messages
+            must now travel in your pocket. Will you help?”
+          </p>
+        </blockquote>
+
+        <h2>📋 What to do</h2>
+        <ol>
+          <li>
+            Scan the <strong>4 QR posters</strong> on the wall — add each one in
+            <strong>Dash Chat</strong>.
+          </li>
+          <li>Create a <strong>group</strong> with all 4 of them.</li>
+          <li>
+            Walk to a station and join its Wi-Fi
+            (<code>firefighters-larp</code>, <code>hospital-larp</code>, …).
+            Your phone picks up and delivers messages by itself.
+          </li>
+          <li>Bring each message to the station it asks for.</li>
+          <li>
+            <strong>Mobile data OFF.</strong> Forget your other Wi-Fi networks.
+          </li>
+        </ol>
+
+        <p class="status" id="status">
+          <span class="dot"></span>Checking the notice board…
+        </p>
+        <p class="note">
+          This network has no internet. You can safely dismiss any sign-in
+          screen and keep using the town network.
+        </p>
+      </section>
+
+      <section id="fled" hidden>
+        <h1>🚨 Town Hall — Urgent Notice</h1>
+        <p class="fled-scene">🏛️➡️🏃💨🧳</p>
+        <h2>The mayor has fled town!</h2>
+        <p>
+          The password cracked open his private files, which showed
+          <strong>orders to light the fires</strong>,
+          <strong>orders to shut down the internet and the phones</strong>, and
+          a plan to “manage” a town too cut off and too afraid to ask questions.
+        </p>
+        <p>
+          After being discovered, Mayor Aldric Vane’s car is already speeding
+          past the old mill, suitcase on the back seat.
+        </p>
+        <p>The town is yours again.</p>
+        <div class="congrats">
+          <p><strong>Congrats! You completed the LARP.</strong> 🎉</p>
+          <p>
+            Send feedback about your experience with Dash Chat using the
+            “Feedback” button on the top right in the app.
+          </p>
+        </div>
+      </section>
+    </main>
+    <script>
+      // Same-origin: the captive-portal nginx proxies /api/ to the mailbox.
+      fetch("/api/health")
+        .then(function (r) {
+          if (!r.ok) throw new Error(r.status);
+          return r.json();
+        })
+        .then(function () {
+          document.getElementById("status").innerHTML =
+            '<span class="dot ok"></span>The town hall notice board (mailbox) is online.';
+        })
+        .catch(function () {
+          document.getElementById("status").innerHTML =
+            '<span class="dot bad"></span>The notice board is not answering — tell the facilitator.';
+        });
+
+      // The informant's secret (docs/design.md): five taps in a row on the
+      // mayor's head reveal a hidden password prompt; the password (also told
+      // by the informant) replaces the broadcast with the flight notice.
+      // Pausing more than 2s between taps starts the count over, so idle
+      // poking doesn't accumulate into an accidental reveal.
+      function mayorFlees() {
+        document.getElementById("broadcast").hidden = true;
+        document.getElementById("fled").hidden = false;
+        window.scrollTo(0, 0);
+        try {
+          localStorage.setItem("mayor-fled", "1");
+        } catch (e) {
+          /* ephemeral */
+        }
+      }
+
+      var taps = 0;
+      var lastTap = 0;
+      document
+        .getElementById("mayor-head")
+        .addEventListener("click", function () {
+          var now = Date.now();
+          if (now - lastTap > 2000) taps = 0;
+          lastTap = now;
+          taps += 1;
+          if (taps >= 5) {
+            var vault = document.getElementById("vault");
+            if (vault.hidden) {
+              vault.hidden = false;
+              vault.scrollIntoView({ block: "center" });
+              document.getElementById("vault-code").focus();
+            }
+          }
+        });
+
+      document
+        .getElementById("vault-form")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          var code = document
+            .getElementById("vault-code")
+            .value.trim()
+            .toLowerCase();
+          if (code === "ahawegotyou") {
+            mayorFlees();
+          } else {
+            document.getElementById("vault-wrong").hidden = false;
+          }
+        });
+
+      // Once exposed on this device, he stays exposed.
+      try {
+        if (localStorage.getItem("mayor-fled") === "1") mayorFlees();
+      } catch (e) {
+        /* ephemeral */
+      }
+    </script>
+  </body>
 </html>

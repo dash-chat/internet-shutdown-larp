@@ -25,6 +25,14 @@ _default:
 test:
     cargo test --workspace
 
+# Serve the mayor portal (portal/index.html) locally to preview edits. On
+# the base station nginx proxies /api/ to the mailbox; here there is none,
+# so the status line shows "not answering" — everything else (informant
+# taps, password, flight notice) works as on the Pi.
+[doc("Serve portal/index.html locally for preview")]
+serve-portal port="8000":
+    nix run nixpkgs#python3 -- -m http.server {{ port }} --bind 127.0.0.1 --directory portal
+
 # Set a station Pi's clock from this laptop over a direct ethernet cable:
 # discovers the Pi on the link (IPv4 neighbors first — e.g. a 10.55.0.x
 # lease when the laptop-side DHCP-server trick is running — then IPv6
