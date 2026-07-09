@@ -68,6 +68,7 @@ async fn informant_whispers_after_contact_request() {
     let bot = AnonymousBot::new(
         node.clone(),
         spec.name.clone(),
+        None,
         script.clone(),
         Duration::from_secs(1),
         dir.path().join("state.json"),

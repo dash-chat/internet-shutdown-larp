@@ -31,6 +31,11 @@ pub struct Pack {
     pub comeback: Option<Comeback>,
     #[serde(default)]
     pub missions: Vec<Mission>,
+    /// The character's chat avatar as a `data:image/png;base64,…` URI (the
+    /// only image form the app renders). Not toml: `load_dir` fills it from
+    /// the sibling `scenarios/<character>.png`, if present.
+    #[serde(skip)]
+    pub avatar: Option<String>,
 }
 
 /// After `after_secs` without any player message in a group, the character
@@ -67,8 +72,12 @@ impl Scenarios {
                 .context("scenario file has a non-utf8 name")?
                 .to_string();
             let raw = std::fs::read_to_string(&path)?;
-            let pack: Pack = toml::from_str(&raw)
+            let mut pack: Pack = toml::from_str(&raw)
                 .with_context(|| format!("parsing scenario pack {}", path.display()))?;
+            let png = path.with_extension("png");
+            if png.exists() {
+                pack.avatar = Some(png_data_uri(&png)?);
+            }
             packs.insert(character, pack);
         }
         let scenarios = Self { packs };
@@ -145,6 +154,19 @@ impl Scenarios {
     }
 }
 
+/// Encode a PNG file as the `data:image/png;base64,…` URI the app's avatar
+/// component renders. The whole image travels inside the SetProfile op, so
+/// keep the files small (the app itself exports ≤300px).
+pub fn png_data_uri(path: &Path) -> Result<String> {
+    use base64::Engine as _;
+    let bytes =
+        std::fs::read(path).with_context(|| format!("reading avatar {}", path.display()))?;
+    Ok(format!(
+        "data:image/png;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -164,6 +186,7 @@ mod tests {
             greeting: "hello".into(),
             comeback: None,
             missions,
+            avatar: None,
         }
     }
 
@@ -201,10 +224,36 @@ mod tests {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../scenarios");
         let s = Scenarios::load_dir(dir).unwrap();
         for character in ["firefighters", "hospital", "journalist", "relative"] {
-            assert!(s.pack(character).is_some(), "missing pack {character}");
+            let pack = s.pack(character).expect("missing pack");
+            assert!(
+                pack.avatar.as_deref().is_some_and(|a| a.starts_with("data:image/png;base64,")),
+                "pack {character} has no avatar (scenarios/{character}.png missing?)"
+            );
         }
         // Aunt Anna answers the first player message after a quiet spell.
         assert!(s.pack("relative").unwrap().comeback.is_some());
+    }
+
+    #[test]
+    fn load_dir_picks_up_sibling_avatar_png() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("a.toml"),
+            "name = \"A\"\ngreeting = \"hi\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("b.toml"),
+            "name = \"B\"\ngreeting = \"hi\"\n",
+        )
+        .unwrap();
+        std::fs::write(dir.path().join("a.png"), [1u8, 2, 3]).unwrap();
+        let s = Scenarios::load_dir(dir.path()).unwrap();
+        assert_eq!(
+            s.pack("a").unwrap().avatar.as_deref(),
+            Some("data:image/png;base64,AQID")
+        );
+        assert_eq!(s.pack("b").unwrap().avatar, None);
     }
 
     #[test]

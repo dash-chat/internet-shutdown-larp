@@ -28,6 +28,7 @@ const FF_MISSION: &str = "FF-MISSION-1: smoke on Main Street, carry this to the 
 const FF_SUCCESS: &str = "HOSP-ACK-1: received, ambulances rolling.";
 const HOSP_MISSION: &str = "HOSP-MISSION-1: trapped person reported, carry this to the firefighters!";
 const HOSP_SUCCESS: &str = "FF-ACK-1: rescue crew dispatched.";
+const FF_AVATAR: &str = "data:image/png;base64,AQID";
 
 fn test_scenarios() -> Scenarios {
     let mut packs = BTreeMap::new();
@@ -42,6 +43,7 @@ fn test_scenarios() -> Scenarios {
                 text: FF_MISSION.into(),
                 success: FF_SUCCESS.into(),
             }],
+            avatar: Some(FF_AVATAR.into()),
         },
     );
     packs.insert(
@@ -55,6 +57,7 @@ fn test_scenarios() -> Scenarios {
                 text: HOSP_MISSION.into(),
                 success: HOSP_SUCCESS.into(),
             }],
+            avatar: None,
         },
     );
     let scenarios = Scenarios { packs };
@@ -189,7 +192,8 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
     wait_until("bot profiles reach p1", Duration::from_secs(60), || async {
         let ff = p1.local_store.get_profile(ff_agent).await.ok().flatten();
         let hosp = p1.local_store.get_profile(hosp_agent).await.ok().flatten();
-        ff.is_some() && hosp.is_some()
+        // The avatar rides inside the same SetProfile op.
+        ff.is_some_and(|p| p.avatar.as_deref() == Some(FF_AVATAR)) && hosp.is_some()
     })
     .await;
 

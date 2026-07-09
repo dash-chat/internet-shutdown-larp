@@ -186,6 +186,7 @@
               # Arms the informant service on every station card; it only
               # starts where characters::flash wrote an anonymous identity.
               anonymousSpec = ./anonymous.toml;
+              anonymousAvatar = ./anonymous.png;
             };
             # The LoRa gateway (relative link, docs/rns-gateway.md), gated
             # like the bot: no lora.env on the card → no gateway.

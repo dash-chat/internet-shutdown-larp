@@ -91,6 +91,10 @@ pub struct AnonymousConfig {
     pub identity: PathBuf,
     /// The script file (`anonymous.toml`, baked into the image).
     pub spec: PathBuf,
+    /// Optional chat avatar PNG. Explicit (unlike the scenario packs' sibling
+    /// convention) because the spec is deployed as a lone store file.
+    #[serde(default)]
+    pub avatar: Option<PathBuf>,
     /// Node data dir. A cache: safe to wipe, identity comes from the bundle.
     pub data_dir: PathBuf,
     #[serde(default = "default_poll_interval_secs")]
@@ -152,6 +156,7 @@ impl AnonymousState {
 pub struct AnonymousBot {
     node: Node,
     profile_name: String,
+    profile_avatar: Option<String>,
     script: Vec<String>,
     poll: Duration,
     state: AnonymousState,
@@ -177,10 +182,16 @@ pub async fn run(config: AnonymousConfig) -> Result<()> {
 
     crate::bot::register_mailbox(&node, &config.mailbox_url).await;
 
+    let avatar = config
+        .avatar
+        .as_deref()
+        .map(crate::scenario::png_data_uri)
+        .transpose()?;
     let state_path = config.data_dir.join("state.json");
     AnonymousBot::new(
         node,
         spec.name,
+        avatar,
         script,
         Duration::from_secs(config.poll_interval_secs.max(1)),
         state_path,
@@ -193,6 +204,7 @@ impl AnonymousBot {
     pub fn new(
         node: Node,
         profile_name: String,
+        profile_avatar: Option<String>,
         script: Vec<String>,
         poll: Duration,
         state_path: PathBuf,
@@ -200,6 +212,7 @@ impl AnonymousBot {
         Self {
             node,
             profile_name,
+            profile_avatar,
             script,
             poll,
             state: AnonymousState::load(&state_path),
@@ -207,17 +220,18 @@ impl AnonymousBot {
         }
     }
 
+    /// Re-authored every boot, same as `Bot::ensure_profile`: the mailbox's
+    /// blob cleanup outlives its watermarks, so a once-published profile
+    /// becomes unfetchable for new accounts after 7 days.
     async fn ensure_profile(&self) -> Result<()> {
-        if self.node.my_profile().await?.is_none() {
-            self.node
-                .set_profile(Profile {
-                    name: self.profile_name.clone(),
-                    surname: None,
-                    avatar: None,
-                    about: None,
-                })
-                .await?;
-        }
+        self.node
+            .set_profile(Profile {
+                name: self.profile_name.clone(),
+                surname: None,
+                avatar: self.profile_avatar.clone(),
+                about: None,
+            })
+            .await?;
         Ok(())
     }
 

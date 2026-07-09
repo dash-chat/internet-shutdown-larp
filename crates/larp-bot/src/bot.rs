@@ -232,25 +232,28 @@ impl Bot {
         })
     }
 
-    /// Announce the character's profile once. Must happen before accepting
-    /// contacts: `add_contact`'s reply requires a profile.
+    /// Announce the character's profile on every boot. Must happen before
+    /// accepting contacts: `add_contact`'s reply requires a profile.
+    ///
+    /// Re-authored unconditionally, not just when unset: the mailbox server's
+    /// cleanup deletes blobs older than 7 days but keeps its watermarks, so a
+    /// SetProfile op published once is eventually deleted yet never reported
+    /// missing again — new accounts would sync an empty announcements topic
+    /// and see no profile. A fresh op every boot lands above the watermark
+    /// and gets pushed anew.
     async fn ensure_profile(&self) -> Result<()> {
-        if self.node.my_profile().await?.is_none() {
-            let name = self
-                .scenarios
-                .pack(&self.bundle.character)
-                .expect("checked in new()")
-                .name
-                .clone();
-            self.node
-                .set_profile(Profile {
-                    name,
-                    surname: None,
-                    avatar: None,
-                    about: None,
-                })
-                .await?;
-        }
+        let pack = self
+            .scenarios
+            .pack(&self.bundle.character)
+            .expect("checked in new()");
+        self.node
+            .set_profile(Profile {
+                name: pack.name.clone(),
+                surname: None,
+                avatar: pack.avatar.clone(),
+                about: None,
+            })
+            .await?;
         Ok(())
     }
 

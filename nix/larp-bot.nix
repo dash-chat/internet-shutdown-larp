@@ -36,6 +36,7 @@ let
     mailbox_url = "${cfg.mailboxUrl}"
     identity = "${cfg.anonymousIdentityFile}"
     spec = "${cfg.anonymousSpec}"
+    ${lib.optionalString (cfg.anonymousAvatar != null) ''avatar = "${cfg.anonymousAvatar}"''}
     data_dir = "/var/lib/larp-bot-anonymous"
   '';
 in
@@ -87,6 +88,16 @@ in
         character bot — gated, like the bot, on its own flashed identity, so
         only cards characters::flash arms (firefighters=portal, hospital=code)
         actually start it.
+      '';
+    };
+
+    anonymousAvatar = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        The informant's chat avatar PNG (baked into the image). Explicit,
+        unlike the scenario packs' sibling <character>.png convention: the
+        spec is copied into the store as a lone file.
       '';
     };
 
