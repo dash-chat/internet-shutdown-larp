@@ -14,12 +14,13 @@ reveal = [
 
 [variants]
 
-# Flashed on one station: where the secret trigger is.
+# Flashed on one station: where the door is and how to open it (five taps
+# reveal the hidden password prompt).
 portal = [
-  """🗝️ There is a way to expose him. On the town hall page — the one that pops up when you join the town hall wifi — there's his official portrait. The mayor's HEAD is the door: tap it. But once is not enough, and I never learned the count; another friend of mine carries it. Find whoever else has talked to me.""",
+  """🗝️ There is a way to expose him. On the town hall page — the one that pops up when you join the town hall wifi — there's his official portrait. The mayor's HEAD is the door: tap it FIVE times, one right after another, and a hidden lock will appear, asking for a password. The password itself I never learned; another friend of mine carries it. Find whoever else has talked to me.""",
 ]
 
-# Flashed on the other station: how many taps.
+# Flashed on the other station: the password.
 code = [
-  """🗝️ There is a way to expose him, but I only hold half of it. The trick is: tap FIVE times, one right after another. WHERE to tap, I never learned; a friend of mine on the other side found the door. Find whoever else has talked to me.""",
+  """🗝️ There is a way to expose him, but I only hold half of it. The password to his private files is: ahawegotyou — all one word, exactly like that. WHERE to type it, I never learned; a friend of mine on the other side found the door. Find whoever else has talked to me.""",
 ]

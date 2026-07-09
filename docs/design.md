@@ -144,12 +144,13 @@ shut down the internet, and he is using the emergency to control the town.
 Then each station adds *its half* of the secret (`anonymous.toml`):
 
 - the **portal** station (firefighters): the mayor's head on his portrait in
-  the base-station captive portal is the secret trigger — tap it;
-- the **code** station (hospital): the count — five taps in a row.
+  the base-station captive portal is the secret trigger — five taps in a row
+  reveal a hidden password prompt;
+- the **code** station (hospital): the password — `ahawegotyou`.
 
-The pair must combine their halves. Tapping the portrait's head five times in
-a row replaces the mayor's broadcast with the endgame page: his files are out
-and **the mayor flees town**.
+The pair must combine their halves. Five taps on the portrait's head reveal
+the prompt; entering `ahawegotyou` replaces the mayor's broadcast with the
+endgame page: his files are out and **the mayor flees town**.
 
 Both stations run the **same** identity (one printed poster). p2panda logs
 are per `(device, topic)`, and a failed op ingest is dropped per-op, so the
@@ -384,7 +385,8 @@ portal at all. It hosts its own wifi like every other station —
   mailbox health check via the module's `/api/` proxy), no build step. The
   `base-station` config overrides `dashchat.captivePortal.package` with it.
   The portrait hides the informant side plot's endgame: tapping the mayor's
-  head five times in a row swaps the broadcast for the mayor-flees-town page
+  head five times in a row reveals a hidden password prompt, and entering
+  `ahawegotyou` swaps the broadcast for the mayor-flees-town page
   (per device, remembered in `localStorage`).
 - **Nothing is gated**: the portal is onboarding UX, and every client
   (phones, headless Pis) reaches the mailbox without logging in to anything.

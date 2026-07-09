@@ -30,6 +30,16 @@
          font-size: 0.85em; overflow-wrap: anywhere; }
   .portrait { display: block; margin: 14px auto 4px; width: 200px; max-width: 60%; }
   .caption { text-align: center; font-size: 0.85rem; color: #6b6257; margin: 0 0 18px; }
+  #vault { margin: 0 auto 18px; max-width: 280px; text-align: center;
+           padding: 12px; border: 1px dashed #b3a48c; border-radius: 8px; }
+  #vault p { margin: 0 0 10px; font-size: 0.9rem; }
+  #vault input { width: 100%; box-sizing: border-box; padding: 8px 10px;
+                 font: inherit; border: 1px solid #b3a48c; border-radius: 6px;
+                 background: #fffdf8; text-align: center; }
+  #vault button { margin-top: 8px; padding: 7px 18px; font: inherit;
+                  border: 1px solid #8a763f; border-radius: 6px;
+                  background: #ece5d8; cursor: pointer; }
+  #vault-wrong { color: #b3402e; margin-top: 8px !important; }
   #fled h1 { color: #b3402e; }
   .fled-scene { font-size: 3rem; text-align: center; margin: 18px 0; }
 </style>
@@ -79,6 +89,18 @@
     </g>
   </svg>
   <p class="caption">Mayor Aldric Vane — “keeping you safe”</p>
+
+  <!-- Revealed by five quick taps on the head; wants the informant's
+       password (docs/design.md, "The anonymous informant"). -->
+  <div id="vault" hidden>
+    <p>🔒 Something clicks behind the portrait. A hidden lock asks for a password:</p>
+    <form id="vault-form">
+      <input id="vault-code" type="text" autocomplete="off" autocapitalize="none"
+             spellcheck="false" placeholder="password" aria-label="password">
+      <button type="submit">Open</button>
+    </form>
+    <p id="vault-wrong" hidden>❌ The lock doesn’t budge.</p>
+  </div>
 
   <blockquote>
     <p>
@@ -139,11 +161,11 @@
   <p class="fled-scene">🏛️➡️🏃💨🧳</p>
   <h2>The mayor has fled town!</h2>
   <p>
-    Five taps on his portrait cracked open his private files, and every screen on this
-    network is now showing what was inside: <strong>orders to light the
-    fires</strong>, <strong>orders to shut down the internet and the
-    phones</strong>, and a plan to “manage” a town too cut off and too
-    afraid to ask questions.
+    Five taps on his portrait uncovered a hidden lock, the password cracked
+    open his private files, and every screen on this network is now showing
+    what was inside: <strong>orders to light the fires</strong>,
+    <strong>orders to shut down the internet and the phones</strong>, and a
+    plan to “manage” a town too cut off and too afraid to ask questions.
   </p>
   <p>
     By the time the first copies reached the square, Mayor Aldric Vane’s
@@ -151,9 +173,7 @@
     Nobody is blocking the roads any more.
   </p>
   <p>
-    The town is yours again. Tell everyone what you found — and keep
-    carrying the messages: the fires he lit are still burning, and the
-    stations still need you.
+    The town is yours again. Tell everyone what you found.
   </p>
   <p class="note">— The people who told you where to knock were right. 🕵️</p>
 </section>
@@ -173,9 +193,10 @@
     });
 
   // The informant's secret (docs/design.md): five taps in a row on the
-  // mayor's head replace the broadcast with the flight notice. Pausing more
-  // than 2s between taps starts the count over, so idle poking doesn't
-  // accumulate into an accidental reveal.
+  // mayor's head reveal a hidden password prompt; the password (carried by
+  // the other informant station) replaces the broadcast with the flight
+  // notice. Pausing more than 2s between taps starts the count over, so
+  // idle poking doesn't accumulate into an accidental reveal.
   function mayorFlees() {
     document.getElementById('broadcast').hidden = true;
     document.getElementById('fled').hidden = false;
@@ -190,7 +211,24 @@
     if (now - lastTap > 2000) taps = 0;
     lastTap = now;
     taps += 1;
-    if (taps >= 5) mayorFlees();
+    if (taps >= 5) {
+      var vault = document.getElementById('vault');
+      if (vault.hidden) {
+        vault.hidden = false;
+        vault.scrollIntoView({ block: 'center' });
+        document.getElementById('vault-code').focus();
+      }
+    }
+  });
+
+  document.getElementById('vault-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var code = document.getElementById('vault-code').value.trim().toLowerCase();
+    if (code === 'ahawegotyou') {
+      mayorFlees();
+    } else {
+      document.getElementById('vault-wrong').hidden = false;
+    }
   });
 
   // Once exposed on this device, he stays exposed.

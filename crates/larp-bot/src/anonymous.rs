@@ -346,8 +346,10 @@ mod tests {
             let script = s.script(variant).unwrap();
             assert!(script.len() > s.reveal.len(), "variant {variant} adds messages");
         }
-        // The code variant must spell out the portal's five-tap trick.
-        assert!(s.script("code").unwrap().concat().contains("FIVE"));
+        // The portal variant spells out the five-tap trick; the code variant
+        // carries the password the portal's hidden prompt expects.
+        assert!(s.script("portal").unwrap().concat().contains("FIVE"));
+        assert!(s.script("code").unwrap().concat().contains("ahawegotyou"));
     }
 
     #[test]
