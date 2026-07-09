@@ -38,7 +38,8 @@ just image::build                      # station SD image
 just characters::flash firefighters    # flash + station files (auto-detects the SD card)
 just journalist::deploy                # journalist bot → Digital Ocean droplet (doctl)
 
-just lora::rnode-install               # RNode firmware onto a Heltec (once per radio)
+just lora::flash-rnode                 # RNode firmware onto a Heltec (once per radio)
+just lora::flash-meshcore              # MeshCore companion firmware onto a Heltec
 just lora::flash-near                  # relative-near card: AP + mailbox + LoRa gateway
 just lora::flash-far                   # relative-far card: Anna's bot + mailbox + gateway
 ```

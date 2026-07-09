@@ -40,7 +40,7 @@ in
 '').overrideAttrs
   (old: {
     # rnodeconf (ships with rns) flashes RNode firmware onto the Heltecs:
-    # exposed here so `just lora::rnode-install` can `nix run` it.
+    # exposed here so `just lora::flash-rnode` can `nix run` it.
     passthru = (old.passthru or { }) // {
       inherit py;
     };

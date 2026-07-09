@@ -21,7 +21,7 @@ build:
 # first with `just base-station::build`. With no device, the SD card is
 # auto-detected (see image::flash).
 [doc("Flash the base-station Pi card; AP is <ssid> (open unless password given); auto-detects the SD card")]
-flash device="" ssid="town-hall-larp" password="":
+flash device="" ssid="internet-shutdown-larp" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}

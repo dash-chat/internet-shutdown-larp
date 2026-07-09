@@ -88,7 +88,7 @@
         default = self.packages.x86_64-linux.larp-bot;
         larp-bot = (pkgsWithRust "x86_64-linux").callPackage ./nix/larp-bot-package.nix { };
         # The LoRa mailbox gateway (docs/rns-gateway.md) and the RNode
-        # firmware flasher it ships with (`just lora::rnode-install`).
+        # firmware flasher it ships with (`just lora::flash-rnode`).
         rns-gateway = (pkgsWithRust "x86_64-linux").callPackage ./nix/rns-gateway-package.nix { };
         # The flashable station image (aarch64 build; needs binfmt emulation
         # on an x86_64 builder, same as the mailbox image).

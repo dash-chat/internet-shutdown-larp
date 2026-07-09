@@ -317,7 +317,7 @@ the first scan, so bot restarts never trigger it.
 *Implemented — full design in [rns-gateway.md](rns-gateway.md).*
 
 Carries mailbox sync between the relative's two Pis over **Heltec dev kits
-flashed with RNode firmware** (`just lora::rnode-install`) — beyond Wi-Fi
+flashed with RNode firmware** (`just lora::flash-rnode`) — beyond Wi-Fi
 range, no infrastructure. The Reticulum Network Stack (RNS) runs on each Pi
 with the RNode as a serial-attached modem; a Python sidecar (the gateway)
 relays mailbox HTTP over RNS request/response exchanges. In short:
@@ -369,14 +369,14 @@ just combinations of flashed files:
 | base | ✓ | ✓ (`base-station` image) | – | – |
 | firefighters / hospital | ✓ | ✓ | ✓ (identity flashed) | – |
 | relative-near | ✓ | ✓ | – | ✓ (lora.env flashed) |
-| relative-far | ✓ | ✓ (out-of-play SSID: the gateway↔mailbox mDNS hop needs a live multicast interface; doubles as debug access) | ✓ (identity flashed) | ✓ (lora.env flashed) |
+| relative-far | ✓ | ✓ (out-of-play: random SSID, password-protected; the gateway↔mailbox mDNS hop needs a live multicast interface, and it doubles as debug access) | ✓ (identity flashed) | ✓ (lora.env flashed) |
 
 The base station Pi runs the `base-station` image (`just base-station::build`):
 the station image with the captive portal re-enabled and the mayor page in
 place of the generic captive-portal SPA — it is the only station with a
 portal at all. It hosts its own wifi like every other station —
 `just base-station::flash` writes the `wifi-ap.env` (SSID
-`town-hall-larp` by default).
+`internet-shutdown-larp` by default).
 
 ### Base station: mayor portal
 

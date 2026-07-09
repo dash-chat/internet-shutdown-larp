@@ -5,7 +5,7 @@ Syncing Dash Chat mailboxes over LoRa using the Reticulum Network Stack
 internet-shutdown conditions. In this repo it carries the relative's link
 (the on-map Pi ↔ the Riverside Pi, design.md §4); the gateway itself is
 game-agnostic. Implemented in `gateway/rns_gateway.py`, deployed by
-`nix/rns-gateway.nix`, radios flashed with `just lora::rnode-install`.
+`nix/rns-gateway.nix`, radios flashed with `just lora::flash-rnode`.
 
 ## Goal
 
@@ -203,4 +203,5 @@ partition carries `lora.env` (radio parameters; see `just lora::flash-near /
 flash-far`) runs the gateway, any other card doesn't. The relative-far card
 also broadcasts an out-of-play AP: the gateway↔mailbox mDNS hop needs a live
 multicast interface, and the bubble doubles as facilitator debug access in
-the far location.
+the far location. Its SSID is a random id and it is password-protected
+(both printed by `flash-far`) so it doesn't read as part of the game.
