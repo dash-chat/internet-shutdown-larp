@@ -2,18 +2,17 @@
 //! cast entry (no other character knows he exists). Players find his QR poster
 //! somewhere in town; when their contact request reaches a station that runs
 //! him, he accepts and whispers the truth about the mayor into the direct
-//! chat — the common `reveal` plus this station's `variant` follow-up, so a
-//! pair of players must combine what their two informants told them.
+//! chat — the whole secret, five-tap trick and password both.
 //!
-//! The same identity bundle runs on two stations at once. That is safe enough
-//! because p2panda logs are per (device, topic): the two instances only ever
-//! collide on the announcements topic (both branches carry the same
+//! The same identity bundle runs on every station at once. That is safe
+//! enough because p2panda logs are per (device, topic): the instances only
+//! ever collide on the announcements topic (all branches carry the same
 //! "Anonymous" profile — whichever arrives first wins, the other is dropped
-//! per-op) and on a direct chat when both stations accept the *same* player
-//! (the player keeps the first station's chat; the pair still assembles both
-//! hints through their own accepts).
+//! per-op) and on a direct chat when several stations accept the *same*
+//! player (the player keeps the first station's chat; every station tells
+//! the full story, so it doesn't matter which one they keep).
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -35,10 +34,8 @@ fn default_poll_interval_secs() -> u64 {
 pub struct AnonymousSpec {
     /// Display name for the chat profile.
     pub name: String,
-    /// Messages every station sends first, in order.
+    /// The messages every station sends, in order — the whole secret.
     pub reveal: Vec<String>,
-    /// Station-specific follow-ups; the flashed `variant` key picks one.
-    pub variants: BTreeMap<String, Vec<String>>,
 }
 
 impl AnonymousSpec {
@@ -57,26 +54,7 @@ impl AnonymousSpec {
         if self.reveal.is_empty() || self.reveal.iter().any(|m| m.trim().is_empty()) {
             bail!("anonymous spec: reveal must be a non-empty list of non-empty messages");
         }
-        if self.variants.is_empty() {
-            bail!("anonymous spec: no variants");
-        }
-        for (key, messages) in &self.variants {
-            if messages.is_empty() || messages.iter().any(|m| m.trim().is_empty()) {
-                bail!("anonymous spec variant {key:?}: empty message list or message");
-            }
-        }
         Ok(())
-    }
-
-    /// The full message sequence for one station: reveal, then its variant.
-    pub fn script(&self, variant: &str) -> Result<Vec<String>> {
-        let extra = self.variants.get(variant).with_context(|| {
-            format!(
-                "unknown variant {variant:?} (have: {})",
-                self.variants.keys().cloned().collect::<Vec<_>>().join(", ")
-            )
-        })?;
-        Ok(self.reveal.iter().chain(extra).cloned().collect())
     }
 }
 
@@ -86,8 +64,7 @@ impl AnonymousSpec {
 pub struct AnonymousConfig {
     /// Mailbox the bot syncs through (the station's own, like the character bot).
     pub mailbox_url: String,
-    /// The flashed anonymous identity bundle, with one extra `variant = "…"`
-    /// line appended at flash time (see characters.just).
+    /// The flashed anonymous identity bundle (see characters.just).
     pub identity: PathBuf,
     /// The script file (`anonymous.toml`, baked into the image).
     pub spec: PathBuf,
@@ -107,21 +84,6 @@ impl AnonymousConfig {
             .with_context(|| format!("reading config {}", path.as_ref().display()))?;
         toml::from_str(&raw).context("parsing anonymous config")
     }
-}
-
-/// The one flash-time field that is not part of the identity bundle proper:
-/// which half of the secret this station tells.
-pub fn load_variant(identity_path: impl AsRef<Path>) -> Result<String> {
-    #[derive(Deserialize)]
-    struct StationVariant {
-        variant: String,
-    }
-    let raw = std::fs::read_to_string(identity_path.as_ref()).with_context(|| {
-        format!("reading identity bundle {}", identity_path.as_ref().display())
-    })?;
-    let v: StationVariant = toml::from_str(&raw)
-        .context("identity bundle has no `variant` key — was it flashed with characters::flash's anonymous argument?")?;
-    Ok(v.variant)
 }
 
 /// Persistent informant state (`state.json` in the data dir). A cache like
@@ -167,15 +129,13 @@ pub struct AnonymousBot {
 /// mailbox, then loop forever (accept contact requests, whisper the script).
 pub async fn run(config: AnonymousConfig) -> Result<()> {
     let bundle = IdentityBundle::load(&config.identity)?;
-    let variant = load_variant(&config.identity)?;
     let spec = AnonymousSpec::load(&config.spec)?;
-    let script = spec.script(&variant)?; // fail fast on an unknown variant
+    let script = spec.reveal.clone();
 
     let (node, notification_rx) =
         crate::bot::build_node(&config.data_dir, &bundle, crate::bot::bot_node_config()).await?;
     info!(
         character = %bundle.character,
-        %variant,
         device_id = %hex::encode(bundle.device_id()?.as_bytes()),
         "anonymous node up"
     );
@@ -324,22 +284,15 @@ mod tests {
         toml::from_str(
             r#"
             name = "Anonymous"
-            reveal = ["the mayor lies"]
-            [variants]
-            portal = ["tap the head"]
-            code = ["the code is x"]
+            reveal = ["the mayor lies", "tap the head", "the code is x"]
             "#,
         )
         .unwrap()
     }
 
     #[test]
-    fn script_appends_the_variant() {
-        let s = spec();
-        s.lint().unwrap();
-        assert_eq!(s.script("portal").unwrap(), vec!["the mayor lies", "tap the head"]);
-        assert_eq!(s.script("code").unwrap(), vec!["the mayor lies", "the code is x"]);
-        assert!(s.script("nope").is_err());
+    fn lint_accepts_the_fixture() {
+        spec().lint().unwrap();
     }
 
     #[test]
@@ -348,34 +301,17 @@ mod tests {
         s.reveal.clear();
         assert!(s.lint().is_err());
         let mut s = spec();
-        s.variants.insert("empty".into(), vec![]);
+        s.reveal.push("  ".into());
         assert!(s.lint().is_err());
     }
 
     #[test]
-    fn shipped_spec_lints_with_both_variants() {
+    fn shipped_spec_tells_the_whole_secret() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../anonymous.toml");
         let s = AnonymousSpec::load(path).unwrap();
-        for variant in ["portal", "code"] {
-            let script = s.script(variant).unwrap();
-            assert!(script.len() > s.reveal.len(), "variant {variant} adds messages");
-        }
-        // The portal variant spells out the five-tap trick; the code variant
-        // carries the password the portal's hidden prompt expects.
-        assert!(s.script("portal").unwrap().concat().contains("FIVE"));
-        assert!(s.script("code").unwrap().concat().contains("ahawegotyou"));
-    }
-
-    #[test]
-    fn variant_rides_the_identity_file() {
-        let bundle = IdentityBundle::generate("anonymous");
-        let toml_str = format!("{}variant = \"portal\"\n", toml::to_string_pretty(&bundle).unwrap());
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("larp-anonymous.toml");
-        std::fs::write(&path, toml_str).unwrap();
-        // The same file serves both readers: the bundle loader ignores the
-        // extra key, the variant loader picks it out.
-        IdentityBundle::load(&path).unwrap();
-        assert_eq!(load_variant(&path).unwrap(), "portal");
+        // Every station tells everything: the five-tap trick AND the
+        // password the hidden prompt expects.
+        assert!(s.reveal.concat().contains("FIVE"));
+        assert!(s.reveal.concat().contains("ahawegotyou"));
     }
 }

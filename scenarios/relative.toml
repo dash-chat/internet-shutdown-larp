@@ -1,10 +1,11 @@
 # Relative mission pack. Texts are sent VERBATIM (see firefighters.toml).
-# Aunt Anna lives in Riverside, the nearby town: her messages reach the map
-# only over the LoRa link, so keep them shortish.
+# Aunt Anna lives in Riverside, the nearby town; her station on the map is
+# the town's radio link to Riverside (narratively — the bot runs right on
+# that station's Pi, like every other character).
 
 name = "Aunt Anna"
 
-greeting = """💌 Hello?? This is Anna, writing from Riverside, the next town over. My whole family lives where the fires are burning and I can't reach anyone — this radio link is all I have. Please, please carry my messages, you're my only connection!"""
+greeting = """💌 Hello?? This is Anna from Riverside, the next town over. My whole family is where the fires are and I can't reach anyone. Please carry my messages — you're my only connection!"""
 
 # Anna answers the first message from the players after this long without
 # hearing from them — she's been glued to the radio the whole time.
@@ -14,25 +15,25 @@ text = """💌 Hey! How is everything over there?"""
 
 [[missions]]
 to = "hospital"
-text = """❓ 💌 My father Peter takes heart medication and only had two days' worth left. Is he registered at the hospital? Please take my question to them — Anna from Riverside is asking!"""
-success = """✅ 🏥 Peter is here, stable, and we've restocked his medication. He sends his love — tell Anna not to worry."""
+text = """❓ 💌 My father Peter takes heart medication and is nearly out. Is he registered at the hospital? Take them Anna's question!"""
+success = """✅ 🏥 Peter is here, stable, and his medication is restocked. He sends his love — don't worry, Anna."""
 
 [[missions]]
 to = "firefighters"
-text = """❓ 💌 The photos show flames very close to our family house at 5 Willow Lane. Can the firefighters check whether it's still standing? Please bring them Anna's request!"""
-success = """✅ 🚒 We checked 5 Willow Lane for Anna: the fence is scorched but the house stands. We hosed down the roof — nobody goes in until the embers are cold."""
+text = """❓ 💌 Flames look very close to our family house at 5 Willow Lane. Can the firefighters check on it? Bring them Anna's request!"""
+success = """✅ 🚒 5 Willow Lane checked for Anna: the fence is scorched but the house stands. We hosed down the roof."""
 
 [[missions]]
 to = "journalist"
-text = """❓ 💌 People here in Riverside want to help! We've gathered blankets, water and food. Where should the trucks go? Ask the journalist to find out and broadcast it — from Anna!"""
-success = """✅ 📰 Broadcast out: RIVERSIDE AID TRUCKS TO THE SPORTS HALL PARKING LOT. Anna, tell your neighbors the whole town says thank you!"""
+text = """❓ 💌 Riverside has gathered blankets, water and food. Where should the trucks go? Ask the journalist to find out — from Anna!"""
+success = """✅ 📰 Broadcast out: RIVERSIDE AID TRUCKS TO THE SPORTS HALL PARKING LOT. Thank you Anna!"""
 
 [[missions]]
 to = "hospital"
-text = """❓ 💌 My niece Clara is diabetic and was staying near the market square. If she shows up at the hospital, she needs insulin. Please get Anna's warning to the hospital staff!"""
-success = """✅ 🏥 Noted on our watch list: Clara, diabetic — thank you Anna. If she comes in, insulin is ready. We'll take good care of her."""
+text = """❓ 💌 My niece Clara is diabetic and was staying near the market square. If she reaches the hospital she needs insulin — warn the staff, from Anna!"""
+success = """✅ 🏥 Noted on our watch list: Clara, diabetic — insulin ready if she comes in. We'll take good care of her."""
 
 [[missions]]
 to = "firefighters"
-text = """❓ 💌 Our old dog Max ran off scared of the smoke — last seen by the fountain. I know it's silly with everything going on... but could the firefighters keep an eye out? Take them Anna's plea!"""
-success = """✅ 🚒 Not silly at all, Anna. Crews have Max's description and the fountain is on our patrol route. If he turns up, we'll bring him to the shelter."""
+text = """❓ 💌 Our dog Max ran off scared of the smoke, last seen by the fountain. Could the firefighters keep an eye out? Anna's plea!"""
+success = """✅ 🚒 Crews have Max's description — if he turns up, we'll bring him to the shelter."""

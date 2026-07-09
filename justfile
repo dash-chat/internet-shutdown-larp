@@ -17,18 +17,13 @@ mod base-station
 # (doctl + nixos-infect), plus ssh/logs/destroy.
 mod journalist
 
-# The relative's LoRa link: RNode flashing + relative-link station cards
-# (RNS mailbox gateway, docs/rns-gateway.md).
-mod lora
-
 # Show available recipes.
 _default:
     @just --list --list-submodules
 
-# Run all tests (unit + e2e + gateway).
+# Run all tests (unit + e2e).
 test:
     cargo test --workspace
-    python3 -m unittest discover gateway
 
 # Set a station Pi's clock from this laptop over a direct ethernet cable:
 # discovers the Pi on the link (IPv4 neighbors first — e.g. a 10.55.0.x

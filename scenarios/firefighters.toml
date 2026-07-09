@@ -3,29 +3,29 @@
 
 name = "Cindy the firefighter"
 
-greeting = """🚒 This is Cindy, from the fire station! The fires are spreading through town, every unit is deployed and our radio is down. If you carry messages to our station, we'll act on them right away."""
+greeting = """🚒 Cindy from the fire station here! Our radio is down — bring us messages and we'll act on them right away."""
 
 [[missions]]
 to = "hospital"
-text = """❓ 🚒 We've pulled three people out of a burning building on Main Street. Two are badly hurt and we're bringing them to the hospital. Please get this message to the hospital so they prepare the operating room!"""
-success = """✅ 🏥 Received — operating room ready and stretchers at the door. Thank you for getting us the warning so fast!"""
+text = """❓ 🚒 Two badly hurt people rescued on Main Street, on their way to the hospital. Tell the hospital to prepare the operating room!"""
+success = """✅ 🏥 Operating room ready, stretchers at the door. Thanks for the fast warning!"""
 
 [[missions]]
 to = "journalist"
-text = """❓ 🚒 The flames have reached the old creek bridge and its beams are burning. Everyone needs to know: nobody must cross it! Take this warning to the journalist so she publishes it."""
-success = """✅ 📰 Publishing it right now on every channel: CREEK BRIDGE CLOSED. Thanks for bringing this to me!"""
+text = """❓ 🚒 The creek bridge is burning — nobody must cross it! Take this warning to the journalist so she publishes it!"""
+success = """✅ 📰 Publishing on every channel: CREEK BRIDGE CLOSED. Thank you!"""
 
 [[missions]]
 to = "relative"
-text = """❓ 🚒 We evacuated Grandma Rosa safe and sound to the school shelter. Her niece Anna in Riverside is worried sick. Get the news to Anna!"""
-success = """✅ 💌 What a relief, thank you!!! I was fearing the worst. Tell Grandma Rosa we love her and we'll come the moment the road opens!"""
+text = """❓ 🚒 Grandma Rosa is evacuated safe to the school shelter. Get the news to Anna in Riverside!"""
+success = """✅ 💌 What a relief!!! Tell Grandma Rosa we love her and we'll come the moment the road opens!"""
 
 [[missions]]
 to = "hospital"
-text = """❓ 🚒 We're running out of burn dressings at the rescue point. We need the hospital to send bandages and IV fluids. Please carry this request to them!"""
-success = """✅ 🏥 We're packing you a full kit with burn dressings, bandages and IV fluids. Send someone to pick it up at the emergency entrance!"""
+text = """❓ 🚒 We're out of burn dressings at the rescue point. Ask the hospital for bandages and IV fluids!"""
+success = """✅ 🏥 Kit packed — send someone to the emergency entrance to pick it up!"""
 
 [[missions]]
 to = "journalist"
-text = """❓ 🚒 We need volunteers with shovels and buckets at the market square to dig a firebreak. Ask the journalist to put out a call — bring her this message!"""
-success = """✅ 📰 Call published: VOLUNTEERS WITH SHOVELS AND BUCKETS TO THE MARKET SQUARE. I'm already getting replies, people are on their way!"""
+text = """❓ 🚒 We need volunteers with shovels at the market square to dig a firebreak. Have the journalist put out a call!"""
+success = """✅ 📰 Call published: VOLUNTEERS TO THE MARKET SQUARE. People are on their way!"""

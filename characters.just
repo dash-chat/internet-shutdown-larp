@@ -81,24 +81,21 @@ run character mailbox_url="https://mailbox.production.darksoil.studio":
     } > ".run/{{ character }}/config.toml"
     exec nix run .#larp-bot --accept-flake-config -- run --config ".run/{{ character }}/config.toml"
 
-# Run the anonymous informant locally against a mailbox, with one of the
-# variants from anonymous.toml ("portal" or "code"). State lives in
-# .run/anonymous-<variant>/ (wipe it to simulate a reset).
-[doc("Run the anonymous informant locally (variant: portal|code); state in .run/anonymous-<variant>/")]
-run-anonymous variant mailbox_url="https://mailbox.production.darksoil.studio":
+# Run the anonymous informant locally against a mailbox. State lives in
+# .run/anonymous/ (wipe it to simulate a reset).
+[doc("Run the anonymous informant locally; state in .run/anonymous/")]
+run-anonymous mailbox_url="https://mailbox.production.darksoil.studio":
     #!/usr/bin/env bash
     set -euo pipefail
     [ -f secrets/anonymous-identity.toml ] || { echo "no secrets/anonymous-identity.toml — run 'just characters::generate' first"; exit 1; }
-    grep -q "^{{ variant }} = \[" anonymous.toml || { echo "unknown anonymous variant '{{ variant }}' — see [variants] in anonymous.toml"; exit 1; }
-    mkdir -p ".run/anonymous-{{ variant }}"
-    { cat secrets/anonymous-identity.toml; printf 'variant = "%s"\n' "{{ variant }}"; } > ".run/anonymous-{{ variant }}/identity.toml"
+    mkdir -p ".run/anonymous"
     {
       printf 'mailbox_url = "%s"\n' "{{ mailbox_url }}"
-      printf 'identity = "%s/.run/anonymous-{{ variant }}/identity.toml"\n' "$PWD"
+      printf 'identity = "%s/secrets/anonymous-identity.toml"\n' "$PWD"
       printf 'spec = "%s/anonymous.toml"\n' "$PWD"
-      printf 'data_dir = "%s/.run/anonymous-{{ variant }}/data"\n' "$PWD"
-    } > ".run/anonymous-{{ variant }}/config.toml"
-    exec nix run .#larp-bot --accept-flake-config -- anonymous --config ".run/anonymous-{{ variant }}/config.toml"
+      printf 'data_dir = "%s/.run/anonymous/data"\n' "$PWD"
+    } > ".run/anonymous/config.toml"
+    exec nix run .#larp-bot --accept-flake-config -- anonymous --config ".run/anonymous/config.toml"
 
 # Flash a character's station card: the station image plus the character's
 # files (wifi-ap.env with SSID=<character><ssid_suffix>, identity, cast —
@@ -106,35 +103,25 @@ run-anonymous variant mailbox_url="https://mailbox.production.darksoil.studio":
 # OPEN by default; pass a password (8-63 chars, WPA2) to lock it. With no
 # device, the SD card is auto-detected (see image::flash).
 #
-# The anonymous informant rides along on a fixed pair of stations, one per
-# side of the fire line: the firefighters card always gets the "portal"
-# variant and the hospital card always gets the "code" variant (see
-# anonymous.toml). Those cards get the shared anonymous identity with the
-# variant appended, which arms the dormant larp-bot-anonymous service; other
-# characters' cards never do.
-[doc("Flash a character's station card; AP is <character><ssid_suffix> (open unless password given); auto-detects the SD card; firefighters/hospital also run the anonymous informant (portal/code)")]
+# The anonymous informant rides along on EVERY station: each card gets the
+# shared anonymous identity, which arms the dormant larp-bot-anonymous
+# service. Whichever station a player's contact request reaches first
+# answers with the whole secret (see anonymous.toml).
+[doc("Flash a character's station card; AP is <character><ssid_suffix> (open unless password given); auto-detects the SD card; every card also runs the anonymous informant")]
 flash character device="" ssid_suffix="-larp" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
     ssid={{ quote(character) }}{{ quote(ssid_suffix) }}
     password={{ quote(password) }}
-    case {{ quote(character) }} in
-      firefighters) anonymous=portal ;;
-      hospital) anonymous=code ;;
-      *) anonymous="" ;;
-    esac
     [ -f "secrets/{{ character }}-identity.toml" ] || { echo "no secrets/{{ character }}-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
+    [ -f secrets/anonymous-identity.toml ] || { echo "no secrets/anonymous-identity.toml — run 'just characters::generate' first"; exit 1; }
     if [ -n "$password" ] && { [ "${#password}" -lt 8 ] || [ "${#password}" -gt 63 ]; }; then
       echo "wifi password must be 8-63 characters (WPA2), got ${#password}"; exit 1
     fi
     if [ "${#ssid}" -gt 32 ]; then
       echo "SSID must be at most 32 bytes (802.11 limit; hostapd refuses longer), got ${#ssid}: $ssid"; exit 1
-    fi
-    if [ -n "$anonymous" ]; then
-      [ -f secrets/anonymous-identity.toml ] || { echo "no secrets/anonymous-identity.toml — run 'just characters::generate' first"; exit 1; }
-      grep -q "^$anonymous = \[" anonymous.toml || { echo "unknown anonymous variant '$anonymous' — see [variants] in anonymous.toml"; exit 1; }
     fi
     envdir="$(mktemp -d)"
     trap 'rm -rf "$envdir"' EXIT
@@ -143,10 +130,6 @@ flash character device="" ssid_suffix="-larp" password="":
     printf 'SSID=%s\nPASSWORD=%s\n' "$ssid" "$password" > "$envdir/wifi-ap.env"
     cp "secrets/{{ character }}-identity.toml" "$envdir/larp-identity.toml"
     cp secrets/larp-cast.toml "$envdir/larp-cast.toml"
-    if [ -n "$anonymous" ]; then
-      # The bundle plus the one flash-time field (the bundle toml is flat
-      # key-value, so appending a line keeps it valid).
-      { cat secrets/anonymous-identity.toml; printf 'variant = "%s"\n' "$anonymous"; } > "$envdir/larp-anonymous.toml"
-    fi
+    cp secrets/anonymous-identity.toml "$envdir/larp-anonymous.toml"
     "$just" image::flash {{ quote(device) }} "$envdir"
-    echo ">> card is ready to boot as $ssid$([ -z "$password" ] && echo ' (open network)' || true)$([ -n "$anonymous" ] && echo " + anonymous informant ($anonymous)" || true)"
+    echo ">> card is ready to boot as $ssid$([ -z "$password" ] && echo ' (open network)' || true) + anonymous informant"

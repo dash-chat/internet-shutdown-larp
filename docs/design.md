@@ -1,7 +1,7 @@
 # Town-fire LARP — design document
 
 A live-action game about carrying information when the network is gone.
-Players are couriers in a town cut in two by fires; Raspberry Pi "stations"
+Players are couriers in a town ravaged by fires; Raspberry Pi "stations"
 running Dash Chat mailboxes are the only communication infrastructure left,
 and bots impersonating town characters produce messages that players must
 physically carry to their destinations.
@@ -17,10 +17,9 @@ dash-chat repo (the headless chat node the bots are built on).
 ## 1. Narrative & game mechanics
 
 Fires have broken out across the town. All networks are down; only a handful
-of solar-powered relief stations survived, each hosting a short-range Wi-Fi
-mailbox. Worse, a wall of flames cuts straight through town: each member of
-a player pair can only move on their own side. The only shared point is the
-**base station** in the firebreak at the center of the map.
+of solar-powered relief stations survived, each hosting a Wi-Fi mailbox. The
+stations can't talk to each other any more — their messages must travel in
+the players' pockets.
 
 Four characters live at the stations and keep producing urgent messages, each
 with a clear recipient ("We detected a fire near Orange Street! Please get
@@ -28,36 +27,31 @@ this message to the firefighters!"). Players deliver a message by physically
 walking into the destination station's Wi-Fi bubble so their phone syncs it
 into that station's mailbox — where the character's bot sees it and replies
 with a clear success message ("Okey! Thanks for bringing this to us, we'll get
-right on it!"). Messages that originate on the far side of the fire must be
-relayed: carrier walks it to the base station, partner picks it up there and
-carries it to the destination.
+right on it!"). **One player is enough**: a solo courier can reach every
+station; more players just means more pockets carrying messages.
 
-### Physical layout (2×2 grid, fire line down the middle)
+### Physical layout (stations spread around the play area)
 
 ```
    FIREFIGHTERS                          HOSPITAL
    (Pi: AP + mailbox + bot)             (Pi: AP + mailbox + bot)
-        ┌────────────────────╥────────────────────┐
-        │                    ║                    │
-        │    Player A's      ║     Player B's     │
-        │      side          ║       side         │
+        ┌─────────────────────────────────────────┐
+        │                                         │
         │                BASE STATION             │
         │      (Pi 5 hosting its own Wi-Fi AP,    │
         │       the mayor captive portal and      │
-        │       the mailbox — reachable from      │
-        │       both sides; QRs on the wall)      │
-        │                    ║                    │
-        └────────────────────╨────────────────────┘
-   LINK to RIVERSIDE (nearby town)       UPLINK to the JOURNALIST
-   (near Pi: AP + mailbox + LoRa)       (phone hotspot with internet; the
-        ~ LoRa link ~                    journalist herself is OUTSIDE the
-   RIVERSIDE (far Pi: mailbox +          town — her bot runs on Digital
-   Aunt Anna bot + LoRa)                 Ocean via the existing cloud mailbox)
+        │       the mailbox; QRs on the wall)     │
+        │                                         │
+        └─────────────────────────────────────────┘
+   RADIO LINK to RIVERSIDE               UPLINK to the JOURNALIST
+   (Pi: AP + mailbox +                  (phone hotspot with internet; the
+    Aunt Anna's bot)                     journalist herself is OUTSIDE the
+                                         town — her bot runs on Digital
+                                         Ocean via the existing cloud mailbox)
 ```
 
-Corner assignment is arbitrary — the only requirement is two characters per
-side so both players have destinations. The fire line (║) is a rule, not a fence:
-players agree not to cross it.
+Corner assignment is arbitrary — the only requirement is that the stations
+are far enough apart that carrying a message means actually walking.
 
 ### The cast
 
@@ -66,15 +60,12 @@ players agree not to cross it.
 | **firefighters** | **Cindy the firefighter**, at the brigade HQ | Pi 5: Wi-Fi AP + mailbox + bot |
 | **hospital** | **James the nurse**, at the town hospital | Pi 5: Wi-Fi AP + mailbox + bot |
 | **journalist** | **Marta the journalist** — news desk **outside the town**, telling the world what's happening inside; the hotspot corner is the town's only surviving uplink to her | Phone hotspot (internet); bot on a Digital Ocean droplet syncing through the **existing cloud mailbox** |
-| **relative** | **Aunt Anna**, a relative in Riverside, the nearby town, desperate for news of her family | Two Pi 5s: the on-map one is AP + mailbox + RNS gateway; the far-away one runs mailbox + bot + RNS gateway. Messages to/from Anna take a LoRa round-trip (§4) |
+| **relative** | **Aunt Anna**, a relative in Riverside, the nearby town, desperate for news of her family. Narratively her station is the town's surviving radio link to Riverside; in hardware her bot runs right on that station's Pi, like every other character | Pi 5: Wi-Fi AP + mailbox + bot |
 | *(base station)* | **The town mayor** — captive portal only, not a chat character | Pi 5 running the `base-station` image: hosts its own Wi-Fi AP like the character stations and serves the mayor's captive portal + the mailbox. *(The mAP-lite-as-AP variant — a MikroTik mAP lite broadcasting the wifi with the Pi wired behind it, `nix/base-station.nix` — is kept but currently unused, in case the Pi's radio can't carry the 30-40 concurrent base-station clients)* |
 
-Total hardware: **5 × Pi 5** (base, firefighters, hospital, relative-near,
-relative-far) + **2 ×
-Heltec LoRa dev kits flashed with RNode firmware** (USB-C serial on the two
-relative-link Pis) + **1 phone**
-(journalist hotspot) + **1 DO droplet** (already running the cloud mailbox;
-gains the journalist bot).
+Total hardware: **4 × Pi 5** (base, firefighters, hospital, relative) + **1
+phone** (journalist hotspot) + **1 DO droplet** (already running the cloud
+mailbox; gains the journalist bot).
 
 ### Game setup (at the base station)
 
@@ -82,11 +73,10 @@ The game begins at the base station — the mayor's office. Players join the
 base station's Wi-Fi and the captive portal opens: **the town mayor** explains
 the fires, pleads for help, and gives the first instructions —
 
-1. Add **each other** as Dash Chat contacts (mutual QR scan, in person).
-2. Add the four characters as contacts by scanning their **QR posters on the
+1. Add the four characters as contacts by scanning their **QR posters on the
    wall** around the base station.
-3. Create a **group** containing: both players + the four characters.
-4. Split up — one player per side of the fire line — and start carrying messages.
+2. Create a **group** containing yourself + the four characters.
+3. Start carrying messages.
 
 The base Pi's mailbox is on that same Wi-Fi, so the group is seeded into the
 base mailbox immediately.
@@ -117,7 +107,7 @@ keeps auto-switching away from the station APs.
 3. When the destination character's bot sees a mission addressed to it
    (authored by a known cast bot, text matching a template with `to = me`),
    it replies once with that template's in-character success message.
-4. The ack travels back through the same courier network, so the pair sees
+4. The ack travels back through the same courier network, so the players see
    their success confirmed in the group chat.
 
 To avoid flooding, a bot keeps **at most one outstanding unacked mission per
@@ -134,49 +124,47 @@ pack and no cast entry** — no other character knows he exists
 somewhere on the map instead of hanging on the base-station wall.
 
 A player who scans it sends a contact request that travels, like everything
-else, through the mailboxes in players' pockets. **Two** stations run the
-informant daemon (`larp-bot anonymous`): `just characters::flash` always arms
-the firefighters card with the `portal` variant and the hospital card with the
-`code` variant — one per side of the fire line. When a request reaches one of
-them, the bot accepts
-and whispers into the direct chat: the mayor is lying — he lit the fires, he
-shut down the internet, and he is using the emergency to control the town.
-Then each station adds *its half* of the secret (`anonymous.toml`):
+else, through the mailboxes in players' pockets. **Every** station runs the
+informant daemon (`larp-bot anonymous`) — every flash recipe copies the same
+anonymous identity onto the card. When the request reaches any station, the
+bot accepts and whispers into the direct chat: the mayor is lying — he lit
+the fires, he shut down the internet, and he is using the emergency to
+control the town. Then it tells the **whole secret** (`anonymous.toml`):
 
-- the **portal** station (firefighters): the mayor's head on his portrait in
-  the base-station captive portal is the secret trigger — five taps in a row
-  reveal a hidden password prompt;
-- the **code** station (hospital): the password — `ahawegotyou`.
+- the mayor's head on his portrait in the base-station captive portal is the
+  secret trigger — five taps in a row reveal a hidden password prompt;
+- the password — `ahawegotyou`.
 
-The pair must combine their halves. Five taps on the portrait's head reveal
-the prompt; entering `ahawegotyou` replaces the mayor's broadcast with the
-endgame page: his files are out and **the mayor flees town**.
+Five taps on the portrait's head reveal the prompt; entering `ahawegotyou`
+replaces the mayor's broadcast with the endgame page: his files are out and
+**the mayor flees town**. A single player can finish the whole plot.
 
-Both stations run the **same** identity (one printed poster). p2panda logs
+All stations run the **same** identity (one printed poster). p2panda logs
 are per `(device, topic)`, and a failed op ingest is dropped per-op, so the
-two instances only ever collide on the announcements topic (both branches
-carry the same "Anonymous" profile — first one in wins) and on a direct chat
-when both stations accept the *same* player (that player keeps the first
-station's chat; the pair still assembles both hints through their own
-accepts). Degradation, not breakage.
+instances only ever collide on the announcements topic (all branches carry
+the same "Anonymous" profile — first one in wins) and on a direct chat when
+several stations accept the *same* player (that player keeps the first
+station's chat — and every station tells the full story, so it doesn't
+matter which one they keep). Degradation, not breakage.
 
 ---
 
 ## 2. What already exists (reused unmodified)
 
 - **The `mailbox-image` flake input** (raspberry-pi-mailbox-server): NixOS SD
-  image for Pi 5 with `hostapd` AP (range-limited, RSSI-gated), dnsmasq,
-  captive portal, and the `replicating-local-mailbox-server` from the
-  dash-chat flake input. Per-card configuration via env files on the FAT boot
-  partition (`wifi-ap.env`). This repo's station image is that image
-  `extendModules`-ed with the bot.
+  image for Pi 5 with `hostapd` AP, dnsmasq, captive portal, and the
+  `replicating-local-mailbox-server` from the dash-chat flake input. Per-card
+  configuration via env files on the FAT boot partition (`wifi-ap.env`). This
+  repo's station image is that image `extendModules`-ed with the bot. The
+  image ships deliberately range-limited (minimum tx power, link-quality
+  eviction, hostapd distance gates); **this repo overrides all of that back
+  to full range** — see §4.
 - **mDNS announce/discovery**: stations announce `_dashchat._tcp.local.`, so
   players' apps auto-discover the mailbox when they join a station's Wi-Fi.
 - **Mailbox replication** (`replicating-local-mailbox-server`): bidirectional
   `/blips/get` sync of known topics between mDNS-discovered mailboxes. On
   this map stations are out of each other's range, so LAN replication is
-  idle — but it's exactly the machinery the LoRa gateway rides: a LoRa peer
-  is surfaced to the manager as one more mDNS service (§4).
+  idle.
 - **`dashchat-node`** (dash-chat repo): headless node with everything a bot
   needs — `new_qr_code()` / `add_contact()`, auto-join of group invitations
   (already handled in stream processing), `send_message()`, `get_messages()`,
@@ -186,7 +174,7 @@ accepts). Degradation, not breakage.
   hotspot-connected player sync through it.
 - **mAP lite tooling (this repo, currently unused)**: `just
   base-station::map-lite::provision` turns a stock device into the
-  base-station AP (ether1 bridged to the Pi, DHCP off, range clamped; the Pi
+  base-station AP (ether1 bridged to the Pi, DHCP off; the Pi
   serves the portal, see `nix/base-station.nix`). Kept in case the Pi's own
   AP can't carry the base-station load; for now the base station hosts its
   own Pi wifi like every other station. The generic `../map-lite-portal`
@@ -308,68 +296,32 @@ each pack, `to` values valid.
 A pack may also carry an optional `[comeback]` (`after_secs` + `text`): after
 that long without any *player* message in a group, the character answers the
 next player message with `text`, once per quiet spell. Only Aunt Anna uses it
-("Hey! How is everything over there?") — a sign of life from the far end of
-the LoRa link when players resurface. Tracking is in-memory and baselined on
-the first scan, so bot restarts never trigger it.
+("Hey! How is everything over there?") — a sign of life from Riverside when
+players resurface. Tracking is in-memory and baselined on the first scan, so
+bot restarts never trigger it.
 
-## 4. New component: the RNS mailbox gateway (`gateway/`)
-
-*Implemented — full design in [rns-gateway.md](rns-gateway.md).*
-
-Carries mailbox sync between the relative's two Pis over **Heltec dev kits
-flashed with RNode firmware** (`just lora::flash-rnode`) — beyond Wi-Fi
-range, no infrastructure. The Reticulum Network Stack (RNS) runs on each Pi
-with the RNode as a serial-attached modem; a Python sidecar (the gateway)
-relays mailbox HTTP over RNS request/response exchanges. In short:
-
-- **The mailbox is untouched.** Each discovered LoRa peer is advertised on
-  the station's LAN as its own `_dashchat._tcp.local.` mDNS service (the
-  instance name is the far mailbox's MailboxId, carried in the RNS
-  announce), so the mailbox manager discovers and syncs it through the exact
-  LAN path it already uses — a LoRa peer is just a peer with a funny URL.
-- **HTTP relayed at the application layer, never TCP-over-radio.** Requests
-  are packed semantically (msgpack, allowlisted headers), shipped over an
-  encrypted RNS link, and re-issued as fresh loopback HTTP calls on the far
-  side; RNS `Resource` handles fragmentation of multi-KB responses.
-- **The manager's 10 s HTTP timeout never meets the radio**: `/blips/get` is
-  answered from a request-keyed cache filled by background radio exchanges
-  (the manager's ~30 s re-poll picks up the result); `/blips/store` returns
-  201 and relays in the background (blip inserts are idempotent and the far
-  side keeps re-listing what it lacks, so drops self-heal).
-- **Text blips only, no blobs**: blob announcements are answered locally
-  with "already stored" (players learn: "photos don't reach Anna").
-- **Topic seeding for free**: far-side blips are POSTed into the local
-  mailbox, which creates watermarks for unknown topics — the mailbox's own
-  topic enumeration takes it from there.
-
-Deployment: `rns-gateway` runs on both relative-link Pis, gated on
-`/boot/firmware/lora.env` (radio parameters; see `just lora::flash-near /
-flash-far`).
-
-## 5. NixOS & deployment changes
+## 4. NixOS & deployment changes
 
 ### One image, per-card station selection
 
 Keep the single-SD-image philosophy. **Implemented:** the bot service
 (`nix/larp-bot.nix`, baked into every image with `services.larp-bot`) is gated
-at runtime with `ConditionPathExists` on two files the FAT boot partition may
+at runtime with `ConditionPathExists` on files the FAT boot partition may
 carry, next to `wifi-ap.env`:
 
 - `larp-identity.toml` — the character's flashed identity bundle
 - `larp-cast.toml` — the public cast file (flashed too, **not** baked into the
   image: it changes per game, the image doesn't)
+- `larp-anonymous.toml` — the anonymous informant's identity (gates the
+  informant service the same way; every flash recipe copies it)
 
-No file → no bot: the card is a plain mailbox appliance. The LoRa gateway
-follows the same convention with its own file — `lora.env` (radio
-parameters) — so no `STATION=` switch is needed; the station variants are
-just combinations of flashed files:
+No file → no bot: the card is a plain mailbox appliance. The station variants
+are just combinations of flashed files:
 
-| Station | mailbox | AP (hostapd) | larp-bot | rns-gateway |
+| Station | mailbox | AP (hostapd) | larp-bot | informant |
 |---|---|---|---|---|
-| base | ✓ | ✓ (`base-station` image) | – | – |
-| firefighters / hospital | ✓ | ✓ | ✓ (identity flashed) | – |
-| relative-near | ✓ | ✓ | – | ✓ (lora.env flashed) |
-| relative-far | ✓ | ✓ (out-of-play: random SSID, password-protected; the gateway↔mailbox mDNS hop needs a live multicast interface, and it doubles as debug access) | ✓ (identity flashed) | ✓ (lora.env flashed) |
+| base | ✓ | ✓ (`base-station` image) | – | ✓ |
+| firefighters / hospital / relative | ✓ | ✓ | ✓ (identity flashed) | ✓ |
 
 The base station Pi runs the `base-station` image (`just base-station::build`):
 the station image with the captive portal re-enabled and the mayor page in
@@ -378,16 +330,32 @@ portal at all. It hosts its own wifi like every other station —
 `just base-station::flash` writes the `wifi-ap.env` (SSID
 `internet-shutdown-larp` by default).
 
+### Full-range Wi-Fi (no distance reduction)
+
+The plain mailbox image deliberately shrinks each station's radio footprint
+(1 dBm tx power, a link-quality eviction daemon, hostapd's RSSI join gate /
+client power constraint / rate floor / low-ack kick). The game doesn't want
+tiny bubbles any more, so the station image overrides all of it in
+`flake.nix`:
+
+- `dashchat.wifi.apTxPowerDbm = 20` (the ES regulatory max on 2.4 GHz);
+- the `dashchat-ap-guard` eviction service is disabled;
+- an `ExecStartPre` strips the remaining distance limiters from the generated
+  `hostapd.conf` before hostapd starts;
+- an extra `ExecStartPost` keeps `power_save off` applied regardless of the
+  txpower clamp outcome (power save on a brcmfmac AP kills beaconing minutes
+  in — the validated stability fix).
+
 ### Base station: mayor portal
 
 - **Mayor page** *(implemented)*: `portal/index.html` in this repo — a single
-  static page (mayor's speech + portrait + step-by-step instructions + a
-  mailbox health check via the module's `/api/` proxy), no build step. The
-  `base-station` config overrides `dashchat.captivePortal.package` with it.
-  The portrait hides the informant side plot's endgame: tapping the mayor's
-  head five times in a row reveals a hidden password prompt, and entering
-  `ahawegotyou` swaps the broadcast for the mayor-flees-town page
-  (per device, remembered in `localStorage`).
+  static page (a couple of lines from the mayor + portrait + the minimal
+  step-by-step instructions in big type + a mailbox health check via the
+  module's `/api/` proxy), no build step. The `base-station` config overrides
+  `dashchat.captivePortal.package` with it. The portrait hides the informant
+  side plot's endgame: tapping the mayor's head five times in a row reveals a
+  hidden password prompt, and entering `ahawegotyou` swaps the broadcast for
+  the mayor-flees-town page (per device, remembered in `localStorage`).
 - **Nothing is gated**: the portal is onboarding UX, and every client
   (phones, headless Pis) reaches the mailbox without logging in to anything.
 
@@ -397,9 +365,7 @@ portal at all. It hosts its own wifi like every other station —
 `flake.nix`) makes the Pi host no wifi and instead own DHCP + wildcard DNS
 on the cable to a MikroTik mAP lite, provisioned as a plain AP with
 `just base-station::map-lite::provision` (ether1 bridged to the Pi, DHCP
-off, range clamped natively — RouterOS tracks per-client signal, unlike the
-Pi's fail-open RSSI gate). mDNS passes the mAP's L2 bridge, and no RouterOS
-hotspot is involved.
+off). mDNS passes the mAP's L2 bridge, and no RouterOS hotspot is involved.
 
 Also per-station: the AP SSID defaults to the station name plus a game
 suffix (`SSID=firefighters-larp` etc. via `wifi-ap.env`),
@@ -411,26 +377,24 @@ a portal (the mayor).
 
 `larp-bot` builds with `rustPlatform.buildRustPackage` from this repo's
 workspace (git deps via `cargoLock.allowBuiltinFetchGit`, so no outputHashes
-to maintain), exposed as flake packages for x86_64 (dev/DO) and aarch64 (Pi);
-`rns-gateway` is a Python environment around `gateway/rns_gateway.py`
-(`nix/rns-gateway-package.nix` — nixpkgs' `rns` needs an unfree allowance,
-see the flake). Scenario packs (`scenarios/`) are pure repo content baked
-into the image at `services.larp-bot.scenariosDir`.
+to maintain), exposed as flake packages for x86_64 (dev/DO) and aarch64 (Pi).
+Scenario packs (`scenarios/`) are pure repo content baked into the image at
+`services.larp-bot.scenariosDir`.
 
 Provisioning flow (all offline, on the laptop — implemented as `just` recipes):
 
 1. `just characters::generate` — one identity bundle per scenario pack into
    `secrets/` (gitignored; existing bundles are kept, since re-generating
-   would invalidate the printed posters), plus the public
-   `secrets/larp-cast.toml` assembled from all of them. Idempotent, and the
-   cast is complete by construction: the character list *is*
-   `scenarios/*.toml`.
+   would invalidate the printed posters), plus the anonymous identity and the
+   public `secrets/larp-cast.toml` assembled from all of them (minus
+   anonymous). Idempotent, and the cast is complete by construction: the
+   character list *is* `scenarios/*.toml`.
 2. `just characters::posters` — renders the QR wall-poster PNGs for printing.
 4. `just characters::flash <character> /dev/sdX` — flashes the station image and
    puts the character's files (`wifi-ap.env` with `SSID=<character><ssid_suffix>`,
    **open network** unless a password argument is given,
-   `larp-identity.toml`, `larp-cast.toml`, assembled on the fly from
-   `secrets/`) on the card's boot partition.
+   `larp-identity.toml`, `larp-cast.toml`, `larp-anonymous.toml` — assembled
+   on the fly from `secrets/`) on the card's boot partition.
 
 The base station's portal can additionally serve the mayor's QR as a
 fallback onboarding path (the character stations run no portal).
@@ -478,35 +442,32 @@ laptop has internet, which is all the journalist needs. State lives in
 the production mailbox, dev builds may point at staging. A journalist synced
 to a different cloud mailbox than the players' apps never sees their group.
 
-## 6. End-to-end message walk-through (sanity check)
+## 5. End-to-end message walk-through (sanity check)
 
 Hospital bot fires: *"Injured people trapped on Elm St — get this to the
 firefighters!"* into the group topic, via the hospital Pi's localhost
 mailbox — plain prose, no visible metadata.
 
-1. Player B (east side) visits the hospital bubble → phone syncs the blip.
-2. B walks to the base station → phone deposits it into the base mailbox.
-3. Player A (west side) visits base → picks it up.
-4. A walks to the firefighters bubble → deposits into the firefighters mailbox.
-5. The firefighters bot's node polls its localhost mailbox and sees a message
+1. A player visits the hospital bubble → phone syncs the blip.
+2. The player walks to the firefighters bubble → deposits into the
+   firefighters mailbox.
+3. The firefighters bot's node polls its localhost mailbox and sees a message
    authored by the hospital's known agent id whose text matches a template
    with `to = "firefighters"` — it replies *"Okey! Crews dispatched to Elm
    St, thanks!"* (that template's success line).
-6. The ack rides the same courier chain back; both players see it, and the
-   hospital bot decrements its outstanding count when a message authored by
-   the firefighters' agent id matching that success line reaches *its*
-   mailbox.
+4. The ack rides back in whoever's pocket passes by, and the hospital bot
+   decrements its outstanding count when a message authored by the
+   firefighters' agent id matching that success line reaches *its* mailbox.
 
-For Aunt Anna, steps 4–5 gain a LoRa hop (near-Pi → far-Pi) before the bot
-sees it, and the ack hops back. For the journalist, step 4 is "join the
-hotspot", the deposit goes to the cloud mailbox, and the DO bot answers
-usually within seconds.
+For Aunt Anna, the destination is her radio-link station — same mechanics.
+For the journalist, the deposit step is "join the hotspot": it goes to the
+cloud mailbox, and the DO bot answers usually within seconds.
 
-## 7. Risks & open questions
+## 6. Risks & open questions
 
 - **Nameless contacts at the base station** — profiles ride each bot's
   announcements topic, which the base mailbox doesn't know until seeded (see
-  the seeding step in §5). Re-seed if a profile ever changes.
+  the seeding step in §4). Re-seed if a profile ever changes.
 - **QR encoding fidelity** — the printed QR must decode in the real app.
   Verify with a phone in week 1; this gates the whole onboarding flow.
 - **QR/inbox expiry semantics** — besides the bundle's inbox expiry, check
@@ -522,11 +483,10 @@ usually within seconds.
 - **Ack routing asymmetry** — an ack is just another group message; nothing
   guarantees players carry it back. Acceptable (it's gameplay), but templates
   should nudge: "let the hospital know we got this!"
-- **LoRa link throughput** — verify real-world sync latency under the EU868
-  duty cycle with a two-RNode bench test (`just lora::run` on the laptop):
-  a group's initial history is tens of KB and will take minutes to cross;
-  steady-state missions (~300 B) should take seconds. Tune the announce
-  interval and cache TTL accordingly (docs/rns-gateway.md).
+- **Station Wi-Fi ranges overlapping** — with the range limiting removed the
+  bubbles are full-size; on a small play area two stations may cover the same
+  spot and phones will pick one arbitrarily. Space the stations, or shrink
+  the map's density.
 - **Clocks** — Pi 5 has an RTC header but no battery by default; offline Pis
   wake with wrong time. Blip ordering must not depend on wall clock across
   devices (p2panda ordering is causal, so likely fine — verify), and the
@@ -539,9 +499,10 @@ usually within seconds.
 - **Base station hotspot plumbing** — the mailbox Pi must be reachable by
   phones through the RouterOS hotspot (MAC bypass via ip-binding) and mDNS
   multicast must cross the hotspot bridge; verify both with real hardware
-  before game day (milestone 2).
+  before game day (milestone 2). *(Only relevant if the unused mAP-lite
+  variant is ever revived.)*
 
-## 8. Implementation milestones
+## 7. Implementation milestones
 
 1. **`larp-bot` core** — workspace scaffolding, config, `keygen`/`qr`
    (offline identity bundles), bundle loading + inbox re-registration,
@@ -550,20 +511,13 @@ usually within seconds.
    two `dashchat-node` test instances + one local mailbox + one bot; assert a
    mission → courier(simulated) → ack round-trip, then wipe the bot's data
    dir, restart it, and assert the same identity/QR still onboards.
-2. **Nix integration + base station** — `nix/larp.nix`, `larp.env` station
-   switch, per-station env dirs with flashed identity bundles, packages,
-   image build for a bot station; the base-station image (mAP lite as AP,
-   Pi wired behind it serving DHCP/DNS + portal); live tests:
-   phone joins a bot station's AP, scans the printed QR poster, creates
-   group, gets greeted, receives mission — and at the base, portal opens,
-   phone syncs with the base mailbox through the mAP's bridge.
-3. **LoRa link** — *(implemented as the RNS gateway, `gateway/` +
-   `nix/rns-gateway.nix` — see docs/rns-gateway.md)*: RNode-flashed Heltecs,
-   HTTP relayed over Reticulum, LoRa peers surfaced to the mailbox via mDNS.
-   Remaining: two-RNode bench test, then the two relative-link Pis
-   end-to-end.
-4. **Journalist droplet** — NixOS config on DO against the cloud mailbox;
+2. **Nix integration + base station** — `nix/larp.nix`, per-station env dirs
+   with flashed identity bundles, packages, image build for a bot station;
+   the base-station image; live tests: phone joins a bot station's AP, scans
+   the printed QR poster, creates group, gets greeted, receives mission — and
+   at the base, portal opens, phone syncs with the base mailbox.
+3. **Journalist droplet** — NixOS config on DO against the cloud mailbox;
    test through a real phone hotspot.
-5. **Scenario content + dress rehearsal** — write the four template packs,
-   full field test (5 Pis + mAP lite), print the QR wall posters and finalize
+4. **Scenario content + dress rehearsal** — write the four template packs,
+   full field test (4 Pis), print the QR wall posters and finalize
    the mayor's portal content, tune intervals/caps.

@@ -1,6 +1,6 @@
 //! Anonymous-informant end-to-end test: a player scans the hidden QR poster,
 //! the informant accepts the contact request and whispers its script (the
-//! common reveal + this station's variant) into the direct chat.
+//! whole secret) into the direct chat.
 
 use std::time::Duration;
 
@@ -18,10 +18,11 @@ fn test_spec() -> AnonymousSpec {
     let spec: AnonymousSpec = toml::from_str(
         r#"
         name = "Anonymous"
-        reveal = ["ANON-REVEAL: the mayor lit the fires himself."]
-        [variants]
-        portal = ["ANON-PORTAL: tap the mayor's head on the town hall page."]
-        code = ["ANON-CODE: tap it FIVE times in a row."]
+        reveal = [
+            "ANON-REVEAL: the mayor lit the fires himself.",
+            "ANON-PORTAL: tap the mayor's head on the town hall page FIVE times.",
+            "ANON-CODE: the password is x.",
+        ]
         "#,
     )
     .unwrap();
@@ -57,7 +58,7 @@ async fn informant_whispers_after_contact_request() {
     let bundle = IdentityBundle::generate("anonymous");
     let poster = qr::encode_contact_code(&bundle.qr_code().unwrap()).unwrap();
     let spec = test_spec();
-    let script = spec.script("portal").unwrap();
+    let script = spec.reveal.clone();
 
     // The informant's station comes up.
     let dir = tempfile::tempdir().unwrap();

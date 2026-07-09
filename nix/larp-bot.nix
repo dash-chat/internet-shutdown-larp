@@ -3,8 +3,8 @@
 # One image serves every station: the service only starts when the card's FAT
 # boot partition carries an identity bundle (larp-identity.toml) and the cast
 # file (larp-cast.toml) — both produced offline by `larp-bot keygen` / `cast`
-# and copied by `just flash`. Stations without them (the base station, the
-# relative-near LoRa end) run the plain mailbox appliance unchanged.
+# and copied by `just flash`. Stations without them (the base station) run
+# the plain mailbox appliance unchanged.
 #
 # The same module serves the journalist's Digital Ocean droplet: point
 # `identityFile`/`castFile` at the deployed secret paths and `mailboxUrl` at
@@ -85,9 +85,9 @@ in
       description = ''
         The anonymous informant's script (anonymous.toml, baked into the
         image). When set, a second service runs the informant next to the
-        character bot — gated, like the bot, on its own flashed identity, so
-        only cards characters::flash arms (firefighters=portal, hospital=code)
-        actually start it.
+        character bot — gated, like the bot, on its own flashed identity.
+        Every flash recipe copies that identity, so every station card runs
+        the informant.
       '';
     };
 
@@ -105,8 +105,8 @@ in
       type = lib.types.str;
       default = "/boot/firmware/larp-anonymous.toml";
       description = ''
-        The flashed anonymous identity bundle (with its flash-time `variant`
-        line). The informant service is gated on this path existing.
+        The flashed anonymous identity bundle. The informant service is
+        gated on this path existing.
       '';
     };
 
@@ -167,8 +167,8 @@ in
     };
 
     # The anonymous informant (docs/design.md): same binary, second identity,
-    # own data dir. Dormant unless the card was flashed with an anonymous
-    # identity + variant (characters::flash arms firefighters and hospital).
+    # own data dir. Dormant unless the card was flashed with the anonymous
+    # identity (every flash recipe copies it, so every station runs him).
     systemd.services.larp-bot-anonymous = lib.mkIf (cfg.anonymousSpec != null) {
       description = "LARP anonymous informant bot (Dash Chat node)";
       wantedBy = [ "multi-user.target" ];

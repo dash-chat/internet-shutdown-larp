@@ -1,26 +1,15 @@
 # The anonymous informant (docs/design.md). NOT a scenario pack: this file
 # must stay out of scenarios/ (every character bot parses that whole
 # directory as mission packs, and this schema is different). Texts are sent
-# VERBATIM into the direct chat, in order: first `reveal`, then the flashed
-# station's variant. Each station runs ONE variant (characters::flash picks
-# it), so a pair of players must combine what their two informants told them.
+# VERBATIM into the direct chat, in order. Every station runs the informant,
+# and every one tells the whole secret: where the hidden lock is (five taps
+# on the mayor's head) and the password that opens it.
 
 name = "Anonymous"
 
 reveal = [
-  """🕵️ You don't know me. I work inside the town hall — that's all I can say. Listen carefully: the mayor is lying to all of you.""",
-  """🔥 The fires were no accident. He ordered them lit himself — I've seen the papers. And it was HIM who shut down the internet and the phones, so nobody could check his story or call for help. A town that is cut off and afraid is a town he controls.""",
-]
-
-[variants]
-
-# Flashed on one station: where the door is and how to open it (five taps
-# reveal the hidden password prompt).
-portal = [
-  """🗝️ There is a way to expose him. On the town hall page — the one that pops up when you join the town hall wifi — there's his official portrait. The mayor's HEAD is the door: tap it FIVE times, one right after another, and a hidden lock will appear, asking for a password. The password itself I never learned; another friend of mine carries it. Find whoever else has talked to me.""",
-]
-
-# Flashed on the other station: the password.
-code = [
-  """🗝️ There is a way to expose him, but I only hold half of it. The password to his private files is: ahawegotyou — all one word, exactly like that. WHERE to type it, I never learned; a friend of mine on the other side found the door. Find whoever else has talked to me.""",
+  """🕵️ You don't know me. I work inside the town hall. Listen carefully: the mayor is lying to all of you.""",
+  """🔥 The fires were no accident — he ordered them lit, and HE shut down the internet and the phones. A town cut off and afraid is a town he controls.""",
+  """🗝️ You can expose him. On the page that pops up on the town hall wifi there's his portrait: tap the mayor's HEAD FIVE times in a row and a hidden lock will appear.""",
+  """🔑 The password is: ahawegotyou — all one word, exactly like that. Go expose him.""",
 ]
