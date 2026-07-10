@@ -292,11 +292,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783614856,
-        "narHash": "sha256-ZVF6liLOKXfA/mFD0FQXVyBBW53vEAepvGw8B1+zd6Q=",
+        "lastModified": 1783679282,
+        "narHash": "sha256-5o/jRioGKO1eChN7ax/B3Vxm6msVbX7FNuqAa+YvLX8=",
         "owner": "dash-chat",
         "repo": "raspberry-pi-mailbox-server",
-        "rev": "7731c72e28adefef61974405e9527fac0f7ee00c",
+        "rev": "0bad9433bd39789baa2acd32b617339f412237fe",
         "type": "github"
       },
       "original": {
@@ -539,11 +539,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783614422,
-        "narHash": "sha256-zSX553aXiIKJHWzUF6nrDKgeNRlfNK/SdyNYSbs2nkM=",
+        "lastModified": 1783663825,
+        "narHash": "sha256-TTrNVoFdEw8j0Hn+shP1KAsimTmszTWBIIUliTaAuY0=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "e8e9d70b96113fd49ccde6c3e08fb260b6ef5dd6",
+        "rev": "072adf9b18936c1062c48123a9b77891d5968f2c",
         "type": "github"
       },
       "original": {

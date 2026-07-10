@@ -80,8 +80,15 @@
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
         # The base-station variant: the station image plus the mayor portal.
         sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
-        # The mailbox image's flashing helpers, reused by the just recipes.
-        inherit (mailbox-image.packages.x86_64-linux) detect-sd-card flash-sd-image;
+        # The mailbox image's flashing + cable-debugging helpers, reused by
+        # the just recipes.
+        inherit (mailbox-image.packages.x86_64-linux)
+          detect-sd-card
+          flash-sd-image
+          find-pi
+          ethernet-ssh
+          ethernet-set-time
+          ;
       };
 
       packages.aarch64-linux = {
@@ -89,7 +96,13 @@
         larp-bot = (pkgsWithRust "aarch64-linux").callPackage ./nix/larp-bot-package.nix { };
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
         sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
-        inherit (mailbox-image.packages.aarch64-linux) detect-sd-card flash-sd-image;
+        inherit (mailbox-image.packages.aarch64-linux)
+          detect-sd-card
+          flash-sd-image
+          find-pi
+          ethernet-ssh
+          ethernet-set-time
+          ;
       };
 
       # The bot as a reusable NixOS module — e.g. for the journalist's cloud
@@ -185,7 +198,9 @@
               # Full-range APs and power_save off need no overrides any more:
               # the mailbox image dropped its range limiting (tx clamp, rate
               # floor, RSSI gate, ap-guard) in 2026-07-09b and turns power
-              # save off itself on AP start.
+              # save off itself on AP start. Likewise the wait for wlan0's
+              # IPv4 before the mailbox's one-shot mDNS announcement lives
+              # in the mailbox image (appliance.nix, added 2026-07-10).
             }
           )
         ];
