@@ -103,16 +103,24 @@ run-anonymous mailbox_url="https://mailbox.production.darksoil.studio":
 # OPEN by default; pass a password (8-63 chars, WPA2) to lock it. With no
 # device, the SD card is auto-detected (see image::flash).
 #
+# Exception: the relative's station is narratively the town's radio link to
+# Riverside (docs/design.md), so its AP advertises riverside-radio<ssid_suffix>
+# rather than the character name.
+#
 # The anonymous informant rides along on EVERY station: each card gets the
 # shared anonymous identity, which arms the dormant larp-bot-anonymous
 # service. Whichever station a player's contact request reaches first
 # answers with the whole secret (see anonymous.toml).
-[doc("Flash a character's station card; AP is <character><ssid_suffix> (open unless password given); auto-detects the SD card; every card also runs the anonymous informant")]
+[doc("Flash a character's station card; AP is <character><ssid_suffix> (relative: riverside-radio<ssid_suffix>; open unless password given); auto-detects the SD card; every card also runs the anonymous informant")]
 flash character device="" ssid_suffix="-larp" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
-    ssid={{ quote(character) }}{{ quote(ssid_suffix) }}
+    case {{ quote(character) }} in
+      relative) ssid_base="riverside-radio" ;;
+      *) ssid_base={{ quote(character) }} ;;
+    esac
+    ssid="$ssid_base"{{ quote(ssid_suffix) }}
     password={{ quote(password) }}
     [ -f "secrets/{{ character }}-identity.toml" ] || { echo "no secrets/{{ character }}-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }

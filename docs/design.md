@@ -369,7 +369,10 @@ off). mDNS passes the mAP's L2 bridge, and no RouterOS hotspot is involved.
 
 Also per-station: the AP SSID defaults to the station name plus a game
 suffix (`SSID=firefighters-larp` etc. via `wifi-ap.env`),
-so the facilitator can see at a glance which bubble they're in. Character
+so the facilitator can see at a glance which bubble they're in. The one
+exception is the relative's station, which advertises `riverside-radio-larp`
+— in the fiction it's the town's radio link to Riverside, not Aunt Anna's
+house. Character
 stations run **no captive portal** (`dashchat.captivePortal.enable = false`
 in the station image): joining one looks like a dead network, and the app
 still finds the mailbox via mDNS + its own port. Only the base station pops
