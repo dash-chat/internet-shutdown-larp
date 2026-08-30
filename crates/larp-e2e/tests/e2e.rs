@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use dashchat_node::mailbox::MailboxOperation;
 use dashchat_node::testing::TestNode;
-use dashchat_node::{NodeConfig, ShareIntent};
+use dashchat_node::NodeConfig;
 use mailbox_client::mem::MemMailbox;
 use p2panda_auth::Access;
 
@@ -154,8 +154,8 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
         .insert("hospital".into(), hosp_bundle.cast_entry().unwrap());
 
     // The printed wall posters (QR strings), rendered before any node exists.
-    let ff_poster = qr::encode_contact_code(&ff_bundle.qr_code().unwrap()).unwrap();
-    let hosp_poster = qr::encode_contact_code(&hosp_bundle.qr_code().unwrap()).unwrap();
+    let ff_poster = ff_bundle.contact_code().unwrap();
+    let hosp_poster = hosp_bundle.contact_code().unwrap();
 
     // --- Stations come up.
     let ff_dir = tempfile::tempdir().unwrap();
@@ -169,7 +169,7 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
     let p2 = TestNode::new(test_node_config(), "p2").await;
     p2.add_mailbox_client(mailbox.client()).await;
     p1.behavior()
-        .initiate_and_establish_contact(&p2, ShareIntent::AddContact)
+        .initiate_and_establish_contact(&p2)
         .await
         .expect("players establish contact");
 
@@ -190,8 +190,8 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
     let ff_agent = ff_bundle.agent_id().unwrap();
     let hosp_agent = hosp_bundle.agent_id().unwrap();
     wait_until("bot profiles reach p1", Duration::from_secs(60), || async {
-        let ff = p1.local_store.get_profile(ff_agent).await.ok().flatten();
-        let hosp = p1.local_store.get_profile(hosp_agent).await.ok().flatten();
+        let ff = p1.projection.get_profile(ff_agent).await.ok().flatten();
+        let hosp = p1.projection.get_profile(hosp_agent).await.ok().flatten();
         // The avatar rides inside the same SetProfile op.
         ff.is_some_and(|p| p.avatar.as_deref() == Some(FF_AVATAR)) && hosp.is_some()
     })
@@ -251,7 +251,7 @@ async fn mission_ack_roundtrip_and_wipe_survival() {
         .await
         .expect("p2 adds firefighters after the wipe");
     wait_until("rebuilt bot's profile reaches p2", Duration::from_secs(60), || async {
-        p2.local_store
+        p2.projection
             .get_profile(ff_agent)
             .await
             .ok()

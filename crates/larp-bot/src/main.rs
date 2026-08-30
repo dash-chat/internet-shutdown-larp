@@ -22,6 +22,10 @@ enum Command {
         /// Where to write the bundle (default: ./larp-identity.toml).
         #[arg(long, default_value = "larp-identity.toml")]
         out: PathBuf,
+        /// Name shown on the scanner's pending chat until the bot's real
+        /// profile syncs. Max 16 bytes; defaults to the character key.
+        #[arg(long)]
+        profile_name: Option<String>,
     },
     /// Render a character's contact QR (for the wall posters) from its bundle.
     Qr {
@@ -67,9 +71,10 @@ async fn main() -> Result<()> {
         .init();
 
     match Cli::parse().command {
-        Command::Keygen { character, out } => {
+        Command::Keygen { character, out, profile_name } => {
             anyhow::ensure!(!out.exists(), "{} already exists — refusing to overwrite an identity", out.display());
-            let bundle = IdentityBundle::generate(&character);
+            let mut bundle = IdentityBundle::generate(&character);
+            bundle.profile_name = profile_name;
             bundle.save(&out)?;
             println!("wrote {}", out.display());
             println!("\n# cast.toml entry (public — safe to commit):");
@@ -79,10 +84,15 @@ async fn main() -> Result<()> {
         }
         Command::Qr { identity, out, module_px, print_string } => {
             let bundle = IdentityBundle::load(&identity)?;
-            let code = qr::encode_contact_code(&bundle.qr_code()?)?;
-            // Always verify the string round-trips before it lands on paper.
+            let code = bundle.contact_code()?;
+            // Always verify against dashchat-node's own parser before the code
+            // lands on paper: decode it, then re-encode through the upstream
+            // `Display` and compare. Catches any wire-format drift.
             let decoded = qr::decode_contact_code(&code).context("QR round-trip check failed")?;
-            anyhow::ensure!(decoded == bundle.qr_code()?, "QR round-trip mismatch");
+            anyhow::ensure!(
+                decoded.device_pubkey == bundle.device_id()? && decoded.to_string() == code,
+                "QR round-trip mismatch — the contact-code format has drifted"
+            );
             qr::render_png(&code, &out, module_px)?;
             println!("wrote {} ({})", out.display(), bundle.character);
             if print_string {

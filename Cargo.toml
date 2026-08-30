@@ -1,12 +1,25 @@
 # Workspace for the LARP crates (see docs/design.md). The dash-chat crates are
-# consumed via git, pinned to the v0.18.9 tag — the stable app version the
-# players run — so the bot speaks exactly their wire dialect. The mailbox
-# image (a different, newer dash-chat branch) serves 0.18 clients through its
-# explicit v0.18 compat shim, so it needs no matching pin.
+# consumed via git, pinned to the exact rev the mailbox image builds against
+# (see the mailbox-image/dash-chat node in flake.lock) — the bot and the
+# station mailbox it talks to then speak identical dialects. When you bump
+# `nix flake update mailbox-image`, bump these two revs to match.
 [workspace]
 resolver = "2"
 members = ["crates/larp-bot", "crates/larp-e2e"]
 
 [workspace.dependencies]
-dashchat-node = { git = "https://github.com/dash-chat/dash-chat", rev = "f9bb92da362460185b1642a9cddcf61be44884e2" }
-mailbox-client = { git = "https://github.com/dash-chat/dash-chat", rev = "f9bb92da362460185b1642a9cddcf61be44884e2" }
+dashchat-node = { git = "https://github.com/dash-chat/dash-chat", rev = "eba61e3d1d7cde6c55dd804f525acc2496ebd52c" }
+mailbox-client = { git = "https://github.com/dash-chat/dash-chat", rev = "eba61e3d1d7cde6c55dd804f525acc2496ebd52c" }
+
+# Cargo applies [patch] only from the top-level workspace, so dash-chat's own
+# patch table doesn't travel with the git dependency — mirror the entries its
+# crate tree needs here. Revs are the ones dash-chat's Cargo.lock resolves to
+# at the rev above (its iroh-blobs patch tracks a branch; pinned here so we
+# build the same code the mailbox image does).
+[patch.crates-io]
+iroh-blobs = { git = "https://github.com/maackle/iroh-blobs", rev = "cf7973c31df84b475f689614178a6504c8a4c847" }
+# Fork of iroh 1.0.3 (dash-chat/iroh) with the iroh#4390 fix
+iroh = { git = "https://github.com/dash-chat/iroh", rev = "f8c4b70268f37dcba44a008303372517cb4511d2" }
+iroh-base = { git = "https://github.com/dash-chat/iroh", rev = "f8c4b70268f37dcba44a008303372517cb4511d2" }
+iroh-dns = { git = "https://github.com/dash-chat/iroh", rev = "f8c4b70268f37dcba44a008303372517cb4511d2" }
+iroh-relay = { git = "https://github.com/dash-chat/iroh", rev = "f8c4b70268f37dcba44a008303372517cb4511d2" }

@@ -9,6 +9,7 @@ mailbox-client = { workspace = true }
 
 anyhow = "1"
 base64 = "0.22"
+blake3 = "1"
 chrono = { version = "0.4", features = ["serde"] }
 ciborium = "0.2"
 clap = { version = "4", features = ["derive"] }

@@ -56,7 +56,7 @@ async fn informant_whispers_after_contact_request() {
 
     // The hidden character, generated offline; its poster is printed once.
     let bundle = IdentityBundle::generate("anonymous");
-    let poster = qr::encode_contact_code(&bundle.qr_code().unwrap()).unwrap();
+    let poster = bundle.contact_code().unwrap();
     let spec = test_spec();
     let script = spec.reveal.clone();
 
@@ -95,7 +95,11 @@ async fn informant_whispers_after_contact_request() {
     // The informant accepts and whispers; the whole script reaches the
     // player's side of the direct chat.
     let anon_agent = bundle.agent_id().unwrap();
-    let chat = p1.direct_chat_topic(anon_agent);
+    // The direct-chat topic is derived from device ids, not agent ids.
+    #[allow(deprecated)]
+    let chat = p1.direct_chat_topic(dashchat_node::FakeAgentId::from(
+        bundle.device_id().unwrap(),
+    ));
     wait_until("the script reaches the player", Duration::from_secs(90), || async {
         let texts: Vec<String> = p1
             .get_messages(chat)
@@ -109,7 +113,7 @@ async fn informant_whispers_after_contact_request() {
     // The informant's profile made it across too (the player sees a name,
     // not a bare key).
     wait_until("the informant's profile reaches p1", Duration::from_secs(60), || async {
-        p1.local_store
+        p1.projection
             .get_profile(anon_agent)
             .await
             .ok()

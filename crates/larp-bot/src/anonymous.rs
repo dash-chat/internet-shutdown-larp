@@ -14,10 +14,13 @@
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::str::FromStr as _;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
-use dashchat_node::{AgentId, InboxPayload, Node, Payload, Profile};
+#[allow(deprecated)]
+use dashchat_node::FakeAgentId;
+use dashchat_node::{DeviceId, InboxPayload, Node, Payload, Profile};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{info, warn};
@@ -88,11 +91,16 @@ impl AnonymousConfig {
 
 /// Persistent informant state (`state.json` in the data dir). A cache like
 /// the data dir itself: wiping it re-tells players at worst.
+///
+/// Keyed by the requester's hex *device* id, not their agent id: that is what
+/// the direct-chat topic is derived from ([`Node::direct_chat_topic`] takes a
+/// `FakeAgentId`, which is a device id). Pre-0.19 state files hold agent ids,
+/// so they are effectively ignored — worst case a player is told twice.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AnonymousState {
-    /// Contact requests already accepted (hex agent ids).
+    /// Contact requests already accepted (hex device ids).
     pub accepted: BTreeSet<String>,
-    /// Contacts the full script was sent to (hex agent ids).
+    /// Contacts the full script was sent to (hex device ids).
     pub told: BTreeSet<String>,
 }
 
@@ -223,21 +231,29 @@ impl AnonymousBot {
         }
     }
 
-    /// Accept incoming contact requests. `add_contact` on the accepting side
-    /// also creates the direct chat space, so the whisper in [`tick`] has a
-    /// chat to land in.
+    /// Accept incoming contact requests. `accept_contact` on the accepting
+    /// side also creates the direct chat space, so the whisper in [`tick`] has
+    /// a chat to land in.
+    ///
+    /// The requester's device id is the op author — the request payload itself
+    /// only carries their agent id — and the device id is what [`tick`] needs
+    /// to derive the direct chat, so that is what gets recorded.
     async fn handle_notification(&mut self, n: dashchat_node::Notification) -> Result<()> {
-        let Some(Payload::Inbox(InboxPayload::ContactRequest { code, profile })) = n.payload
+        let Some(op) = n.op() else { return Ok(()) };
+        let Some(Payload::Inbox(InboxPayload::ContactRequest {
+            agent_id, profile, ..
+        })) = &op.payload
         else {
             return Ok(());
         };
-        let requester = hex::encode(code.agent_id.as_bytes());
-        if code.agent_id == self.node.agent_id() || self.state.accepted.contains(&requester) {
+        let device = DeviceId::from(op.header.verifying_key);
+        let requester = device.to_string();
+        if *agent_id == self.node.agent_id() || self.state.accepted.contains(&requester) {
             return Ok(());
         }
         info!(name = %profile.name, "accepting contact request");
         self.node
-            .add_contact(code)
+            .accept_contact(*agent_id)
             .await
             .map_err(|e| anyhow::anyhow!("{e:?}"))?;
         self.state.accepted.insert(requester);
@@ -255,18 +271,14 @@ impl AnonymousBot {
             .cloned()
             .collect();
         for requester in pending {
-            let bytes: [u8; 32] = hex::decode(&requester)?
-                .try_into()
-                .map_err(|_| anyhow::anyhow!("state agent id is not 32 bytes"))?;
-            let agent = AgentId::from_bytes(&bytes)?;
-            let chat = self.node.direct_chat_topic(agent);
+            let device = DeviceId::from_str(&requester)
+                .with_context(|| format!("state device id {requester:?} is not a public key"))?;
+            #[allow(deprecated)] // FakeAgentId is what direct_chat_topic takes today
+            let chat = self.node.direct_chat_topic(FakeAgentId::from(device));
             info!(to = %requester, "whispering the script");
             for message in &self.script {
                 self.node
-                    .send_message(
-                        chat,
-                        dashchat_node::ChatMessageContent::text_only(message.clone()),
-                    )
+                    .send_message(chat, message.clone(), None, None)
                     .await?;
             }
             self.state.told.insert(requester);

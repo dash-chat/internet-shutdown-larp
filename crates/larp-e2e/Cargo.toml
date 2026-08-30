@@ -12,8 +12,10 @@ publish = false
 larp-bot = { path = "../larp-bot" }
 dashchat-node = { workspace = true, features = ["testing"] }
 # Same git source string as dashchat-node's own dep (cargo unifies them; the
-# lockfile pins the rev). Only needed to name `Access` in the test.
-p2panda-auth = { git = "https://github.com/maackle/p2panda.git", branch = "dashchat" }
+# lockfile pins the rev). Only needed to name `Access` in the test. Must track
+# dash-chat's workspace source — pointing at a different fork silently yields a
+# second, incompatible `Access` type.
+p2panda-auth = { git = "https://github.com/dash-chat/p2panda", branch = "dashchat" }
 mailbox-client = { workspace = true }
 anyhow = "1"
 tempfile = "3"

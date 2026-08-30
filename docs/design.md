@@ -208,10 +208,14 @@ What has to be in the bundle (all three, or a wipe kills the QR):
 - the **agent id** (random, generated once at `keygen` time — upstream derives
   it from a throwaway key on first run, so it's not recoverable from the
   device key),
-- the **inbox topic id + expiry** — the printed QR points contact requests at
-  this topic, and stream processing drops requests whose topic isn't in the
-  local store's `active_inboxes` table. A surviving key with a lost inbox
-  topic still means a dead QR.
+- the **inbox nonce + expiry** — the printed QR carries an 8-byte nonce, and
+  both sides derive the inbox topic as `blake3(device_pubkey ‖ nonce)`. Stream
+  processing drops requests whose topic isn't in the local store's
+  `active_inboxes` table, so a surviving key with a lost nonce still means a
+  dead QR. (Before dash-chat 0.19 the bundle stored a *random* topic id and
+  the QR carried it verbatim, along with the agent id and a share intent. Old
+  bundles don't load; the whole cast was regenerated for 0.19 and the posters
+  reprinted.)
 
 On every boot the bot loads the bundle from `/boot/firmware/`, passes the
 reconstructed `NodeKeys` to `Node::init` (which accepts them directly), and

@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use dashchat_node::{
-    ChatPayload, InboxPayload, Node, NodeConfig, Payload, Profile, stores::LocalStore,
+    AsBody as _, ChatPayload, InboxPayload, Node, NodeConfig, Payload, Profile, stores::LocalStore,
 };
 use rand::Rng as _;
 use serde::{Deserialize, Serialize};
@@ -78,18 +78,12 @@ pub async fn seed_identity(data_dir: &Path, bundle: &IdentityBundle) -> Result<(
     let store_path = data_dir.join("localdata.db");
 
     // Run the store's own migrations (also mints a throwaway identity on
-    // first boot, which the UPDATE below replaces).
-    let store = LocalStore::new(&store_path).await?;
-    store.close().await;
-
-    let opts = sqlx::sqlite::SqliteConnectOptions::new()
-        .filename(&store_path)
-        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal);
-    let pool = sqlx::sqlite::SqlitePoolOptions::new()
-        .max_connections(1)
-        .connect_with(opts)
+    // first boot, which the UPDATE below replaces). The store now takes the
+    // pool rather than a path, so the same pool carries the raw UPDATEs.
+    let pool = dashchat_node::stores::create_sqlite_pool(&store_path)
         .await
         .context("opening local store for identity seeding")?;
+    let store = LocalStore::new(pool.clone()).await?;
 
     let seed = hex::decode(&bundle.device_private_key)?;
     sqlx::query("UPDATE identity SET value = ? WHERE key = 'private_key'")
@@ -100,7 +94,9 @@ pub async fn seed_identity(data_dir: &Path, bundle: &IdentityBundle) -> Result<(
         .bind(bundle.agent_id_bytes()?.to_vec())
         .execute(&pool)
         .await?;
-    // Schema: active_inboxes(topic_id BLOB PK, expires_at_nanos INTEGER).
+    // Schema: active_inboxes(topic_id BLOB PK, expires_at_nanos INTEGER,
+    // role INTEGER DEFAULT 0, expected_ack_author BLOB NULL). `role` defaults
+    // to 0 = Advertised, which is exactly the inbox the printed QR points at.
     let nanos = bundle
         .inbox_expires_at
         .timestamp_nanos_opt()
@@ -110,14 +106,13 @@ pub async fn seed_identity(data_dir: &Path, bundle: &IdentityBundle) -> Result<(
         .bind(nanos)
         .execute(&pool)
         .await?;
-    pool.close().await;
 
     // Sanity: the store must now report the flashed identity.
-    let store = LocalStore::new(&store_path).await?;
     let keys = store.node_keys().await?;
     let ok = keys.private_key.as_bytes() == bundle.signing_key()?.as_bytes()
         && keys.agent_id == bundle.agent_id()?;
     store.close().await;
+    pool.close().await;
     anyhow::ensure!(ok, "identity seeding failed: store keys don't match the bundle");
     Ok(())
 }
@@ -142,8 +137,14 @@ pub async fn build_node(
     Ok((node, notification_rx))
 }
 
-/// Node config for a bot: the v0.18.9 node exposes no networking knobs —
-/// only mailbox polling and the contact-code expiry are configurable.
+/// Node config for a bot: the app's defaults, with a far-out contact-code
+/// expiry.
+///
+/// 0.19 added real networking knobs (`mdns_mode`, `use_relay`, `enable_p2p`,
+/// `enable_blob_sync`) that 0.18.9 didn't have. They are deliberately left at
+/// their defaults — the same ones the players' app runs with — rather than
+/// tuned for the offline map. `use_relay` in particular is a no-op on an
+/// isolated station: the relay is simply unreachable.
 pub fn bot_node_config() -> NodeConfig {
     let mut config = NodeConfig::default();
     // Runtime QR minting isn't used (the QR comes from the bundle), but keep
@@ -152,14 +153,44 @@ pub fn bot_node_config() -> NodeConfig {
     config
 }
 
-/// Register the configured mailbox on the node. v0.18.9's MailboxId is a
-/// plain client-side string key — the URL is stable and unique, so it doubles
-/// as the id. Registration is offline; the manager itself keeps retrying an
-/// unreachable mailbox (e.g. while the Pi's own mailbox is still booting).
+/// Register the configured mailbox on the node.
+///
+/// Unlike v0.18.9 — where the MailboxId was a client-side string and
+/// registration was offline — the id is now the server's own EndpointId, read
+/// from its `/health` endpoint, and its dialing address has to go into the
+/// p2panda address book before blobs can be fetched. That makes registration a
+/// network operation, so it retries: on a station Pi this runs while the Pi's
+/// own mailbox is still booting. The bot has nothing to do until it succeeds.
 pub(crate) async fn register_mailbox(node: &Node, url: &str) {
-    let id: mailbox_client::MailboxId = url.to_string();
-    let client = mailbox_client::toy::ToyMailboxClient::new(id, url.to_string());
+    let health = loop {
+        match dashchat_node::mailbox::fetch_mailbox_health(url).await {
+            Ok(health) => break health,
+            Err(err) => {
+                warn!(%url, ?err, "mailbox /health unreachable, retrying");
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        }
+    };
+
+    if let Err(err) = node.insert_peer_addr(health.endpoint_addr.clone()).await {
+        warn!(%url, ?err, "could not add the mailbox to the address book");
+    }
+    let client = mailbox_client::toy::ToyMailboxClient::<
+        dashchat_node::mailbox::MailboxOperation,
+    >::new(
+        health.mailbox_id,
+        url.to_string(),
+        node.endpoint_id(),
+        node.unfetched_blob_tracker(),
+    )
+    .with_blob_reader(node.blob_reader());
     node.mailboxes.register(client).await;
+
+    // Best-effort: lets the mailbox dial us back when fetching blobs we
+    // publish. Text-only bots don't strictly need it, but avatars might.
+    if let Err(err) = node.register_with_mailbox(url).await {
+        warn!(%url, ?err, "could not register our address with the mailbox");
+    }
     info!(%url, "mailbox registered");
 }
 
@@ -285,19 +316,30 @@ impl Bot {
 
     /// Auto-accept incoming contact requests (the acceptance half of the
     /// QR-poster onboarding flow).
+    ///
+    /// The request no longer carries the scanner's QR code: it carries their
+    /// agent id (already mapped to the op author by the node) plus the private
+    /// reply topic to acknowledge on. `accept_contact` does the rest — network
+    /// establishment, the profile reply, and the direct-chat space.
     async fn handle_notification(&mut self, n: dashchat_node::Notification) -> Result<()> {
-        let Some(Payload::Inbox(InboxPayload::ContactRequest { code, profile })) = n.payload
+        let Some(op) = n.op() else { return Ok(()) };
+        let Some(Payload::Inbox(InboxPayload::ContactRequest {
+            agent_id, profile, ..
+        })) = &op.payload
         else {
             return Ok(());
         };
-        let requester = hex::encode(code.agent_id.as_bytes());
-        if code.agent_id == self.bundle.agent_id()?
+        let requester = hex::encode(agent_id.as_bytes());
+        if *agent_id == self.bundle.agent_id()?
             || self.state.accepted_contacts.contains(&requester)
         {
             return Ok(());
         }
         info!(name = %profile.name, "accepting contact request");
-        self.node.add_contact(code).await.map_err(|e| anyhow::anyhow!("{e:?}"))?;
+        self.node
+            .accept_contact(*agent_id)
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:?}"))?;
         self.state.accepted_contacts.insert(requester);
         self.state.save(&self.state_path)?;
         Ok(())
@@ -317,7 +359,7 @@ impl Bot {
                     .greeting
                     .clone();
                 info!(group = %key, "greeting new group");
-                self.node.send_message(group, dashchat_node::ChatMessageContent::text_only(greeting)).await?;
+                self.node.send_message(group, greeting, None, None).await?;
                 self.state.greeted.insert(key.clone());
                 self.state.save(&self.state_path)?;
                 // The group's first mission follows the welcome closely.
@@ -343,12 +385,26 @@ impl Bot {
         key: &str,
     ) -> Result<()> {
         let my_device = self.bundle.device_id()?;
-        let authors = self.node.op_store.get_authors(group.into()).await?;
-        let ops = self
-            .node
-            .op_store
-            .get_interleaved_logs(group.into(), authors.into_iter().collect())
-            .await?;
+
+        // Every decoded op in the chat, oldest first — the interleaved logs of
+        // all its authors. dashchat-node has `OpStore::get_interleaved_logs`,
+        // but 0.19 gates it behind the `testing` feature ("only used for
+        // testing and should stay that way"), so the same walk over the public
+        // log API is done here. Ops with an undecodable body are skipped
+        // rather than failing the whole scan.
+        let log_id = group.into();
+        let mut ops = Vec::new();
+        for author in self.node.op_store.get_authors(log_id).await? {
+            for op in self.node.op_store.get_log(&author, &log_id, None).await? {
+                let Some(body) = op.body else { continue };
+                let Ok(payload) = Payload::try_from_body(&body) else {
+                    warn!(hash = ?op.header.hash(), "undecodable op payload, skipping");
+                    continue;
+                };
+                ops.push((op.header, payload));
+            }
+        }
+        ops.sort_by_key(|(header, _)| header.timestamp);
 
         let comeback = self
             .scenarios
@@ -368,10 +424,10 @@ impl Bot {
         let mut dirty = false;
         let mut replies: Vec<String> = Vec::new();
         for (header, payload) in ops {
-            let Some(Payload::Chat(ChatPayload::Message(content))) = payload else {
+            let Payload::Chat(ChatPayload::Message(content)) = payload else {
                 continue;
             };
-            let author = dashchat_node::DeviceId::from(header.public_key);
+            let author = dashchat_node::DeviceId::from(header.verifying_key);
             if author == my_device {
                 continue;
             }
@@ -430,7 +486,7 @@ impl Bot {
             replies.insert(0, cb.text);
         }
         for reply in replies {
-            self.node.send_message(group, dashchat_node::ChatMessageContent::text_only(reply)).await?;
+            self.node.send_message(group, reply, None, None).await?;
         }
         if dirty {
             self.state.save(&self.state_path)?;
@@ -470,10 +526,7 @@ impl Bot {
         };
         info!(to = %mission.to, group = %key, "firing mission");
         self.node
-            .send_message(
-                group,
-                dashchat_node::ChatMessageContent::text_only(mission.text.clone()),
-            )
+            .send_message(group, mission.text.clone(), None, None)
             .await?;
         self.state.fired.entry(key.to_string()).or_default().push(FiredMission {
             to: mission.to,
