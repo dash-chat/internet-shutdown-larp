@@ -13,9 +13,9 @@ layout, message mechanics, identity bundles, and the milestone plan.
 ## What's here
 
 - `crates/larp-bot/` — the character bot: a headless `dashchat-node` that
-  auto-accepts contacts, greets groups, fires scripted missions and
-  acknowledges deliveries. Also the provisioning tool (`keygen` / `qr` /
-  `cast`).
+  auto-accepts contacts, greets each player in their own direct chat, fires
+  scripted missions and acknowledges the deliveries players paste in. Also the
+  provisioning tool (`keygen` / `qr` / `cast`).
 - `scenarios/` — the four characters' mission packs (pure content).
 - `nix/` — the NixOS modules and packages (bot, base station).
 - `flake.nix` — extends the plain

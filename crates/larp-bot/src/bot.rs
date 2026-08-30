@@ -1,10 +1,25 @@
-use std::collections::BTreeMap;
+//! The character bot: one process per character, talking to each player in
+//! their own **direct chat**.
+//!
+//! There is no group chat any more. A player scans the character's QR poster,
+//! the bot accepts the contact request (which creates the direct chat), greets
+//! them, and starts dropping missions into that chat. Each mission names
+//! another character in its prose; the player copies the message and pastes it
+//! into *that* character's chat, whose bot recognizes the text and answers with
+//! the mission's success line. Pasting a mission at the wrong character earns a
+//! "this message is not for me!" nudge.
+
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::str::FromStr as _;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
+#[allow(deprecated)]
+use dashchat_node::FakeAgentId;
 use dashchat_node::{
-    AsBody as _, ChatPayload, InboxPayload, Node, NodeConfig, Payload, Profile, stores::LocalStore,
+    AsBody as _, ChatId, ChatPayload, DeviceId, InboxPayload, Node, NodeConfig, Payload, Profile,
+    TopicId, stores::LocalStore,
 };
 use rand::Rng as _;
 use serde::{Deserialize, Serialize};
@@ -17,28 +32,28 @@ use crate::identity::IdentityBundle;
 use crate::scenario::Scenarios;
 
 /// Persistent bot state (`state.json` in the data dir). A cache like the rest
-/// of the data dir: wiping it loses greeted/acked bookkeeping but never the
+/// of the data dir: wiping it loses greeted/answered bookkeeping but never the
 /// identity (which lives in the flashed bundle).
+///
+/// Every field is `#[serde(default)]` so a state file written by an older
+/// build still loads as far as its fields still make sense.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct BotState {
-    /// Groups already greeted (hex chat ids).
+    /// Direct chats already greeted (hex chat ids).
+    #[serde(default)]
     pub greeted: std::collections::BTreeSet<String>,
-    /// Contact requests already accepted (hex agent ids).
+    /// Contact requests already accepted (the requester's device id, as
+    /// printed by `DeviceId`). The direct-chat topic is derived from it.
+    #[serde(default)]
     pub accepted_contacts: std::collections::BTreeSet<String>,
-    /// Mission ops I already success-replied to (hex op hashes).
-    pub acked: std::collections::BTreeSet<String>,
-    /// Success-line ops I already counted as deliveries (hex op hashes).
-    pub delivered_ops: std::collections::BTreeSet<String>,
-    /// Missions I fired, per group (hex chat id → list).
-    pub fired: BTreeMap<String, Vec<FiredMission>>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct FiredMission {
-    pub to: String,
-    pub text: String,
-    pub success: String,
-    pub delivered: bool,
+    /// Player messages I already answered — success replies and "not for me"
+    /// notices alike (hex op hashes).
+    #[serde(default)]
+    pub answered: std::collections::BTreeSet<String>,
+    /// Mission texts already fired, per direct chat (hex chat id → texts).
+    /// Each template is used at most once per player.
+    #[serde(default)]
+    pub fired: BTreeMap<String, Vec<String>>,
 }
 
 impl BotState {
@@ -57,13 +72,6 @@ impl BotState {
         std::fs::write(&tmp, serde_json::to_vec_pretty(self)?)?;
         std::fs::rename(&tmp, path)?;
         Ok(())
-    }
-
-    fn outstanding(&self, group: &str) -> usize {
-        self.fired
-            .get(group)
-            .map(|v| v.iter().filter(|m| !m.delivered).count())
-            .unwrap_or(0)
     }
 }
 
@@ -202,18 +210,18 @@ pub struct Bot {
     timing: Timing,
     state: BotState,
     state_path: PathBuf,
-    /// Per-group next mission fire time (in-memory; reseeded on restart).
+    /// Per-chat next mission fire time (in-memory; reseeded on restart).
     next_fire: BTreeMap<String, Instant>,
-    /// Player-message op hashes already seen, per group (in-memory; only
-    /// tracked when the pack has a comeback line). The first scan of a group
+    /// Player-message op hashes already seen, per chat (in-memory; only
+    /// tracked when the pack has a comeback line). The first scan of a chat
     /// baselines its history, so restarts never trigger the comeback.
-    seen_player_ops: BTreeMap<String, std::collections::BTreeSet<String>>,
-    /// When each group last produced a NEW player message (or was baselined).
+    seen_player_ops: BTreeMap<String, BTreeSet<String>>,
+    /// When each chat last produced a NEW player message (or was baselined).
     last_player_msg: BTreeMap<String, Instant>,
 }
 
 /// Run the bot daemon: seed identity, start the node, register the mailbox,
-/// then loop forever (notification handling + group polling + scheduling).
+/// then loop forever (notification handling + direct-chat polling + scheduling).
 pub async fn run(config: BotConfig) -> Result<()> {
     let bundle = IdentityBundle::load(&config.identity)?;
     let cast = crate::cast::Cast::load(&config.cast)?.resolve()?;
@@ -320,7 +328,12 @@ impl Bot {
     /// The request no longer carries the scanner's QR code: it carries their
     /// agent id (already mapped to the op author by the node) plus the private
     /// reply topic to acknowledge on. `accept_contact` does the rest — network
-    /// establishment, the profile reply, and the direct-chat space.
+    /// establishment, the profile reply, and the direct-chat space the whole
+    /// game now runs in.
+    ///
+    /// What gets recorded is the requester's **device** id (the op author),
+    /// not their agent id: that is what [`Node::direct_chat_topic`] derives the
+    /// chat from.
     async fn handle_notification(&mut self, n: dashchat_node::Notification) -> Result<()> {
         let Some(op) = n.op() else { return Ok(()) };
         let Some(Payload::Inbox(InboxPayload::ContactRequest {
@@ -329,7 +342,8 @@ impl Bot {
         else {
             return Ok(());
         };
-        let requester = hex::encode(agent_id.as_bytes());
+        let device = DeviceId::from(op.header.verifying_key);
+        let requester = device.to_string();
         if *agent_id == self.bundle.agent_id()?
             || self.state.accepted_contacts.contains(&requester)
         {
@@ -345,12 +359,51 @@ impl Bot {
         Ok(())
     }
 
-    async fn tick(&mut self) -> Result<()> {
-        let groups = self.node.get_groups().await?;
-        for group in groups {
-            let key = group.to_string();
+    /// Every direct chat this character has with a player.
+    ///
+    /// Direct chats are not group chats — `Node::get_groups` never returns
+    /// them — so they are derived from contacts, exactly as the informant
+    /// does. Two sources, unioned, so neither kind of state loss is fatal:
+    /// the accepted-contacts set (what this bot answered itself) and the
+    /// node's own contact projection (which survives a `state.json` wipe).
+    /// A candidate only counts once its chat topic is actually subscribed —
+    /// that is the node's own record of `create_direct_chat_space` having
+    /// run, and it filters out contact requests that were never accepted.
+    async fn direct_chats(&self) -> Result<Vec<(DeviceId, ChatId)>> {
+        let me = self.bundle.device_id()?;
+        let mut devices: BTreeSet<DeviceId> = BTreeSet::new();
+        for recorded in &self.state.accepted_contacts {
+            match DeviceId::from_str(recorded) {
+                Ok(device) => {
+                    devices.insert(device);
+                }
+                Err(err) => warn!(%recorded, ?err, "unparseable device id in state.json"),
+            }
+        }
+        for agent in self.node.projection.all_contact_agent_ids().await? {
+            for device in self.node.projection.lookup_devices_by_agent_id(agent).await? {
+                devices.insert(device);
+            }
+        }
+        devices.remove(&me);
 
-            // Greet groups we just joined (join itself is automatic).
+        let subscribed = self.node.subscribed_topics().await?;
+        Ok(devices
+            .into_iter()
+            .map(|device| {
+                #[allow(deprecated)] // FakeAgentId is what direct_chat_topic takes today
+                let chat = self.node.direct_chat_topic(FakeAgentId::from(device));
+                (device, chat)
+            })
+            .filter(|(_, chat)| subscribed.contains(&TopicId::from(*chat)))
+            .collect())
+    }
+
+    async fn tick(&mut self) -> Result<()> {
+        for (device, chat) in self.direct_chats().await? {
+            let key = chat.to_string();
+
+            // Greet a player the first time we see their chat.
             if !self.state.greeted.contains(&key) {
                 let greeting = self
                     .scenarios
@@ -358,30 +411,34 @@ impl Bot {
                     .expect("checked at startup")
                     .greeting
                     .clone();
-                info!(group = %key, "greeting new group");
-                self.node.send_message(group, greeting, None, None).await?;
+                info!(player = %device, "greeting a new player");
+                self.node.send_message(chat, greeting, None, None).await?;
                 self.state.greeted.insert(key.clone());
                 self.state.save(&self.state_path)?;
-                // The group's first mission follows the welcome closely.
+                // The player's first mission follows the welcome closely.
                 self.next_fire.insert(
                     key.clone(),
                     Instant::now() + Duration::from_secs(self.timing.first_mission_delay_secs),
                 );
             }
 
-            self.process_group_messages(group, &key).await?;
-            self.maybe_fire_mission(group, &key).await?;
+            self.process_chat_messages(chat, &key).await?;
+            self.maybe_fire_mission(chat, &key).await?;
         }
         Ok(())
     }
 
-    /// Scan the group's messages, reacting to (a) missions addressed to this
-    /// character and (b) success replies for missions this character fired.
-    /// Recognition is (signed author device, exact template text); dedup is
-    /// by operation hash, so re-scans and restarts are harmless.
-    async fn process_group_messages(
+    /// Scan a direct chat's messages and react to what the player pasted in:
+    /// a mission addressed to this character gets its success line, a mission
+    /// addressed to somebody else gets a "not for me" nudge.
+    ///
+    /// Everything a player pastes is authored by *them*, so recognition is
+    /// text-based (forgiving — see [`Scenarios::mission_in_pasted_text`])
+    /// rather than author-based. Dedup is by operation hash, so re-scans and
+    /// restarts are harmless.
+    async fn process_chat_messages(
         &mut self,
-        group: dashchat_node::ChatId,
+        chat: ChatId,
         key: &str,
     ) -> Result<()> {
         let my_device = self.bundle.device_id()?;
@@ -392,7 +449,7 @@ impl Bot {
         // testing and should stay that way"), so the same walk over the public
         // log API is done here. Ops with an undecodable body are skipped
         // rather than failing the whole scan.
-        let log_id = group.into();
+        let log_id = chat.into();
         let mut ops = Vec::new();
         for author in self.node.op_store.get_authors(log_id).await? {
             for op in self.node.op_store.get_log(&author, &log_id, None).await? {
@@ -421,72 +478,84 @@ impl Bot {
         }
         let mut comeback_due = false;
 
-        let mut dirty = false;
-        let mut replies: Vec<String> = Vec::new();
+        // What to say, and which player op each line answers (the comeback
+        // answers no single op). The op is only marked answered once its reply
+        // is actually out, so a send that fails is retried next tick.
+        let mut replies: Vec<(Option<String>, String)> = Vec::new();
         for (header, payload) in ops {
             let Payload::Chat(ChatPayload::Message(content)) = payload else {
                 continue;
             };
-            let author = dashchat_node::DeviceId::from(header.verifying_key);
+            let author = DeviceId::from(header.verifying_key);
             if author == my_device {
                 continue;
             }
-            let Some(author_character) = self.cast.character_of_device(&author) else {
-                // A player, not a cast bot. If this character has a comeback
-                // line, their first message after a quiet spell gets it.
-                if let Some(cb) = &comeback {
-                    let op_hash = hex::encode(header.hash().as_bytes());
-                    let seen = self.seen_player_ops.entry(key.to_string()).or_default();
-                    if seen.insert(op_hash) {
-                        let quiet = self
-                            .last_player_msg
-                            .get(key)
-                            .is_some_and(|t| t.elapsed() >= Duration::from_secs(cb.after_secs));
-                        if quiet && !baseline_scan {
-                            comeback_due = true;
-                        }
-                        self.last_player_msg.insert(key.to_string(), Instant::now());
-                    }
-                }
+            // A direct chat only ever holds this bot and one player, but the
+            // cast is still consulted so that a message from another character
+            // — however it got here — is never mistaken for a delivery.
+            if self.cast.character_of_device(&author).is_some() {
                 continue;
-            };
-            let author_character = author_character.to_string();
+            }
             let op_hash = hex::encode(header.hash().as_bytes());
             let text = content.message().to_string();
 
-            // (a) A mission addressed to me → success-reply exactly once.
-            if let Some(mission) = self.scenarios.mission_by_text(&author_character, &text) {
-                if mission.to == self.bundle.character && !self.state.acked.contains(&op_hash) {
-                    info!(from = %author_character, "mission received, acking");
-                    replies.push(mission.success.clone());
-                    self.state.acked.insert(op_hash.clone());
-                    dirty = true;
+            // The player wrote something. If this character has a comeback
+            // line, their first message after a quiet spell gets it.
+            if let Some(cb) = &comeback {
+                let seen = self.seen_player_ops.entry(key.to_string()).or_default();
+                if seen.insert(op_hash.clone()) {
+                    let quiet = self
+                        .last_player_msg
+                        .get(key)
+                        .is_some_and(|t| t.elapsed() >= Duration::from_secs(cb.after_secs));
+                    if quiet && !baseline_scan {
+                        comeback_due = true;
+                    }
+                    self.last_player_msg.insert(key.to_string(), Instant::now());
                 }
-                continue;
             }
 
-            // (b) A success reply from the recipient of one of my missions.
-            if !self.state.delivered_ops.contains(&op_hash) {
-                if let Some(fired) = self.state.fired.get_mut(key) {
-                    if let Some(mission) = fired
-                        .iter_mut()
-                        .find(|m| !m.delivered && m.to == author_character && m.success == text)
-                    {
-                        info!(to = %author_character, "mission delivered");
-                        mission.delivered = true;
-                        self.state.delivered_ops.insert(op_hash.clone());
-                        dirty = true;
+            // Did they paste a mission in? Answer it exactly once.
+            let Some((owner, mission)) = self.scenarios.mission_in_pasted_text(&text) else {
+                continue;
+            };
+            if self.state.answered.contains(&op_hash) {
+                continue;
+            }
+            let reply = if mission.to == self.bundle.character {
+                info!(from = %owner, "delivery received, acking");
+                Some(mission.success.clone())
+            } else {
+                // Wrong station. Turn them away without naming the right one:
+                // the message they are carrying already says who it is for.
+                let to = mission.to.clone();
+                match self.scenarios.misdelivery_notice(&self.bundle.character) {
+                    Some(notice) => {
+                        info!(%to, "message for another character, turning it away");
+                        Some(notice.to_string())
+                    }
+                    None => {
+                        info!(%to, "message for another character, but no misdelivered line");
+                        None
                     }
                 }
+            };
+            if let Some(reply) = reply {
+                replies.push((Some(op_hash), reply));
             }
         }
         if comeback_due {
             let cb = comeback.expect("comeback_due implies a comeback line");
-            info!(group = %key, "player message after a quiet spell, greeting");
-            replies.insert(0, cb.text);
+            info!(chat = %key, "player message after a quiet spell, greeting");
+            replies.insert(0, (None, cb.text));
         }
-        for reply in replies {
-            self.node.send_message(group, reply, None, None).await?;
+        let mut dirty = false;
+        for (answers, reply) in replies {
+            self.node.send_message(chat, reply, None, None).await?;
+            if let Some(op_hash) = answers {
+                self.state.answered.insert(op_hash);
+                dirty = true;
+            }
         }
         if dirty {
             self.state.save(&self.state_path)?;
@@ -494,9 +563,16 @@ impl Bot {
         Ok(())
     }
 
+    /// Drop the next mission into a player's chat when its timer comes due.
+    ///
+    /// Nothing gates this on delivery any more: the courier walks one way, so
+    /// this character never learns whether its last message reached its
+    /// destination. What bounds the flow instead is the pack — each template
+    /// is used at most once per player, and the character falls silent (bar
+    /// acks and comebacks) once it has handed out everything it has.
     async fn maybe_fire_mission(
         &mut self,
-        group: dashchat_node::ChatId,
+        chat: ChatId,
         key: &str,
     ) -> Result<()> {
         let fired_before = self.state.fired.get(key).is_some_and(|v| !v.is_empty());
@@ -504,7 +580,7 @@ impl Bot {
             .next_fire
             .entry(key.to_string())
             .or_insert_with(|| {
-                // Restart: a group that never got a mission keeps the short
+                // Restart: a player who never got a mission keeps the short
                 // post-welcome delay; otherwise draw a fresh interval rather
                 // than firing instantly.
                 if fired_before {
@@ -516,40 +592,38 @@ impl Bot {
         if Instant::now() < *due {
             return Ok(());
         }
-        if self.state.outstanding(key) > 0 {
-            // One pending mission per group: paused until the success reply
-            // arrives; check again next tick without redrawing the interval.
-            return Ok(());
-        }
         let Some(mission) = self.pick_mission(key) else {
+            // Pack exhausted for this player: re-check on the next interval
+            // instead of every tick.
+            let next = self.draw_next_fire();
+            self.next_fire.insert(key.to_string(), next);
             return Ok(());
         };
-        info!(to = %mission.to, group = %key, "firing mission");
+        info!(to = %mission.to, chat = %key, "firing mission");
         self.node
-            .send_message(group, mission.text.clone(), None, None)
+            .send_message(chat, mission.text.clone(), None, None)
             .await?;
-        self.state.fired.entry(key.to_string()).or_default().push(FiredMission {
-            to: mission.to,
-            text: mission.text,
-            success: mission.success,
-            delivered: false,
-        });
+        self.state
+            .fired
+            .entry(key.to_string())
+            .or_default()
+            .push(mission.text);
         self.state.save(&self.state_path)?;
         let next = self.draw_next_fire();
         self.next_fire.insert(key.to_string(), next);
         Ok(())
     }
 
-    /// Prefer templates never fired in this group; once exhausted, allow
-    /// re-firing delivered ones. Only called with nothing outstanding (the
-    /// one-pending-mission rule), so success lines stay unambiguous.
-    fn pick_mission(&self, group: &str) -> Option<crate::scenario::Mission> {
+    /// A template this player has not been given yet, at random. `None` once
+    /// the pack is exhausted — templates never repeat in a chat, so a pasted
+    /// delivery always maps to exactly one mission.
+    fn pick_mission(&self, chat: &str) -> Option<crate::scenario::Mission> {
         let pack = self.scenarios.pack(&self.bundle.character)?;
         let fired_texts: Vec<&str> = self
             .state
             .fired
-            .get(group)
-            .map(|v| v.iter().map(|m| m.text.as_str()).collect())
+            .get(chat)
+            .map(|v| v.iter().map(|t| t.as_str()).collect())
             .unwrap_or_default();
 
         let unused: Vec<&crate::scenario::Mission> = pack
@@ -557,16 +631,11 @@ impl Bot {
             .iter()
             .filter(|m| !fired_texts.contains(&m.text.as_str()))
             .collect();
-        let candidates = if unused.is_empty() {
-            pack.missions.iter().collect::<Vec<_>>()
-        } else {
-            unused
-        };
-        if candidates.is_empty() {
+        if unused.is_empty() {
             return None;
         }
-        let idx = rand::thread_rng().gen_range(0..candidates.len());
-        Some(candidates[idx].clone())
+        let idx = rand::thread_rng().gen_range(0..unused.len());
+        Some(unused[idx].clone())
     }
 
     fn draw_next_fire(&self) -> Instant {

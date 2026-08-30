@@ -21,14 +21,22 @@ of solar-powered relief stations survived, each hosting a Wi-Fi mailbox. The
 stations can't talk to each other any more — their messages must travel in
 the players' pockets.
 
-Four characters live at the stations and keep producing urgent messages, each
-with a clear recipient ("We detected a fire near Orange Street! Please get
-this message to the firefighters!"). Players deliver a message by physically
-walking into the destination station's Wi-Fi bubble so their phone syncs it
-into that station's mailbox — where the character's bot sees it and replies
-with a clear success message ("Okey! Thanks for bringing this to us, we'll get
-right on it!"). **One player is enough**: a solo courier can reach every
-station; more players just means more pockets carrying messages.
+Four characters live at the stations, and each of them talks to the player in
+a **private one-to-one chat** — there is no group chat in the game. Every
+character keeps producing urgent messages with a clear recipient ("We detected
+a fire near Orange Street! Copy this into the firefighters' chat!"). The
+player is the wire: they **copy the message out of one character's chat and
+paste it into the recipient's chat**, then physically walk into the
+recipient's station Wi-Fi bubble so their phone syncs it into that station's
+mailbox — where that character's bot recognizes the text and replies with a
+clear success message ("Okey! Thanks for bringing this to us, we'll get right
+on it!"). **One player is enough**: a solo courier can reach every station;
+more players just means more pockets carrying messages.
+
+Delivery is **one-way**: the success reply lands in the recipient's chat and
+that is the payoff. The character who handed the message out never learns it
+arrived (nothing carries the news back), so it keeps handing out its next
+message on a timer.
 
 ### Physical layout (stations spread around the play area)
 
@@ -74,18 +82,19 @@ base station's Wi-Fi and the captive portal opens: **the town mayor** explains
 the fires, pleads for help, and gives the first instructions —
 
 1. Add the four characters as contacts by scanning their **QR posters on the
-   wall** around the base station.
-2. Create a **group** containing yourself + the four characters.
-3. Start carrying messages.
+   wall** around the base station. Each one becomes a private chat.
+2. When a character asks for a message to be passed on, **copy it and paste it
+   into the recipient's chat**.
+3. Walk to that recipient's station so the phone can deliver it.
 
-The base Pi's mailbox is on that same Wi-Fi, so the group is seeded into the
-base mailbox immediately.
+The base Pi's mailbox is on that same Wi-Fi, so the contact requests are
+seeded into the base mailbox immediately.
 
-The contact requests and group invitations only *reach* each bot when a player
-first syncs at that bot's station — that's fine and thematic: each character
-"comes online" when first visited, greets the group in character, and starts
+The contact requests only *reach* each bot when a player first syncs at that
+bot's station — that's fine and thematic: each character "comes online" when
+first visited, accepts the contact, greets the player in character, and starts
 producing missions. There is no separate facilitator trigger (auto-start on
-group join was the chosen design).
+contact acceptance was the chosen design).
 
 **Game rule that must be enforced socially:** players keep **mobile data off**
 (Wi-Fi on) and **forget all other saved Wi-Fi networks**. A phone with LTE
@@ -95,25 +104,31 @@ keeps auto-switching away from the station APs.
 
 ### Play loop
 
-1. A bot, for each group it's in, fires a mission message at a random interval
-   (default: uniform 3–8 min, configurable), drawn from its character's
-   template pool. Every mission names its destination character in the prose
-   itself ("…get this message to the firefighters!") — there is **no visible
-   machine metadata**; recognition works by author identity + known template
-   text (see §3).
-2. Players walking into a station's AP bubble auto-sync (Dash Chat's existing
+1. A bot, in each direct chat it has with a player, fires a mission message at
+   a random interval (default: uniform 3–8 min, configurable), drawn from its
+   character's template pool. Every mission names its destination character in
+   the prose itself ("…copy this into the firefighters' chat!") — there is
+   **no visible machine metadata**; recognition works on the text itself
+   (see §3).
+2. The player copies that message and pastes it into their chat with the
+   named character.
+3. Players walking into a station's AP bubble auto-sync (Dash Chat's existing
    mDNS local-mailbox discovery) — they pick up whatever blips that mailbox
    holds and deposit whatever they carry.
-3. When the destination character's bot sees a mission addressed to it
-   (authored by a known cast bot, text matching a template with `to = me`),
-   it replies once with that template's in-character success message.
-4. The ack travels back through the same courier network, so the players see
-   their success confirmed in the group chat.
+4. When the destination character's bot sees its own known mission text in a
+   message a *player* wrote, it replies once with that template's in-character
+   success message. Pasted at the wrong character, it gets that character's
+   "this message is not for me!" line — enough to know it went astray, and
+   nothing more.
 
-To avoid flooding, a bot keeps **at most one outstanding unacked mission per
-group** — it pauses its timer until the ack comes back.
+Nothing gates a character on delivery: the walk is one-way, so a character
+never learns whether its last message arrived. What bounds the flow is the
+pack — **each template is handed to a given player at most once**, and once a
+character has given out everything it has, it goes quiet (bar acks and Anna's
+comeback line). Five templates per character × four characters ≈ 20 deliveries
+for a solo courier.
 
-Ending: the facilitator calls time; the group chat itself is the score sheet
+Ending: the facilitator calls time; the chats themselves are the score sheet
 (count success replies). No formal end state in software.
 
 ### The anonymous informant (side plot)
@@ -166,10 +181,11 @@ matter which one they keep). Degradation, not breakage.
   this map stations are out of each other's range, so LAN replication is
   idle.
 - **`dashchat-node`** (dash-chat repo): headless node with everything a bot
-  needs — `new_qr_code()` / `add_contact()`, auto-join of group invitations
-  (already handled in stream processing), `send_message()`, `get_messages()`,
-  and a `Notification` mpsc channel that streams every processed operation
-  (header + payload) to the embedding application.
+  needs — `new_qr_code()` / `add_contact()`, `accept_contact()` (which also
+  creates the direct-chat space the whole game runs in), `direct_chat_topic()`,
+  `send_message()`, `get_messages()`, and a `Notification` mpsc channel that
+  streams every processed operation (header + payload) to the embedding
+  application.
 - **Cloud mailbox**: already running; the journalist bot and any
   hotspot-connected player sync through it.
 - **mAP lite tooling (this repo, currently unused)**: `just
@@ -222,8 +238,8 @@ reconstructed `NodeKeys` to `Node::init` (which accepts them directly), and
 idempotently re-registers the bundle's inbox topic as active
 (`node.local_store` is public, so `add_active_inbox_topic` + topic
 initialization need no upstream patch). `/var/lib/larp-bot` is thereby demoted
-to a cache: after a wipe the bot forgets group memberships and ack-dedup
-state, but players can simply re-scan the *same printed QR* and re-invite it —
+to a cache: after a wipe the bot forgets its contacts and answer-dedup state,
+but players can simply re-scan the *same printed QR* to open a fresh chat —
 the posters stay valid for the character's lifetime.
 
 The bundle sits plaintext on the FAT partition; for a game prop that's fine.
@@ -237,36 +253,49 @@ The bundle sits plaintext on the FAT partition; for a game prop that's fine.
   boots — and must encode it **exactly as the app encodes it** (reuse the
   app's serialization; verify against a real phone scan early).
 - **Auto-accept contacts.** Watch the `Notification` stream for
-  `InboxPayload::ContactRequest { code, .. }` and call `add_contact(code)` to
-  complete the handshake. (Group invitations need nothing: stream processing
-  already auto-joins.)
-- **Greeting.** On joining a new group, send the character's in-character
-  intro line ("This is Mercy Hospital, we're overwhelmed, please help…").
-- **Scenario engine.** Per group: a timer loop firing at
-  `rand_range(min_interval, max_interval)`, drawing a not-yet-used template
-  from the character's pool (reshuffle when exhausted), holding fire while
-  the group's one pending mission awaits its ack.
-- **Mission recognition & acks — no visible metadata.** Messages are pure
-  in-character prose; the machine layer rides on facts both ends already
-  know, since we author every bot:
+  `InboxPayload::ContactRequest` and call `accept_contact(agent_id)`, which
+  completes the handshake, replies with the profile *and* creates the direct
+  chat. The requester's **device** id (the op author) is what gets persisted:
+  the chat topic is derived from it.
+- **Direct-chat discovery.** `Node::get_groups()` returns group chats only, so
+  the bot derives its chats itself: every contact it accepted (its own state
+  file) unioned with every contact in the node's projection (which survives a
+  `state.json` wipe), mapped through `direct_chat_topic()`, keeping only
+  topics the node is actually subscribed to (the node's own record that the
+  space exists).
+- **Greeting.** The first time a player's chat appears, send the character's
+  in-character intro line, which also teaches the mechanic ("copy my message
+  and paste it into that person's chat").
+- **Scenario engine.** Per direct chat: a timer loop firing at
+  `rand_range(min_interval, max_interval)`, drawing a template the player has
+  not been given yet. No pool reshuffle and no ack gate — when the pack runs
+  out for that player, the character stops handing out missions.
+- **Delivery recognition — no visible metadata.** Messages are pure
+  in-character prose; the machine layer rides on the text itself, since we
+  author every pack:
 
-  - All bots ship with **all four template packs** (they live in this repo)
-    and a **cast file**: each character's public agent id, extracted from the
-    identity bundles at `keygen` time.
-  - *Recipient side:* a group message is a mission for me iff its **author is
-    a cast bot's agent id** and its text **exactly matches** a template with
-    `to = <my character>`. Then reply once with that template's success line.
-    Players typing identical text can't spoof this — they aren't the signing
-    author.
-  - *Origin side:* a mission counts as delivered when a message **authored by
-    the recipient character's agent id** matches that template's success
-    line. Success lines must be unique within each pack (enforced by a test),
-    and templates never repeat within a group, so the ack→mission mapping is
-    unambiguous.
-  - *Dedup:* the recipient persists the **header hash** of every mission
-    operation it has acked (sqlite/file), so restarts and re-syncs don't
-    double-ack. Hashes exist only in the protocol layer — nothing machine-ish
-    ever appears on screen.
+  - All bots ship with **all four template packs** (they live in this repo).
+  - *Recipient side:* a message a **player** wrote is a delivery for me iff it
+    **contains** a template with `to = <my character>`. Matching normalizes
+    whitespace and case and tolerates text around the paste (a quote header, a
+    "look at this:" prefix) — a phone clipboard is not careful, and a missed
+    delivery is a dead end for the player. There is no author check to hide
+    behind any more, so a player who retypes a mission by hand gets the ack:
+    fine, that is not a threat model, it's a LARP.
+  - *Wrong recipient:* if the pasted template's `to` is somebody else, reply
+    with the pack's `misdelivered` line — a plain "this message is not for
+    me!". It gives nothing else away: working out where the message belongs
+    is the players' job.
+  - *Dedup:* the bot persists the **header hash** of every player message it
+    has answered, so restarts and re-syncs don't double-answer. Hashes exist
+    only in the protocol layer — nothing machine-ish ever appears on screen.
+  - *Lint (unit-tested):* mission texts and success lines are unique across
+    all packs, and **no mission text is contained in any other line a player
+    might paste** — that is what keeps containment matching unambiguous.
+  - The **cast file** (each character's public device/agent id) is no longer
+    what recognition rests on. It is still shipped and loaded, used only to
+    ignore anything authored by another character bot, so a stray cast message
+    in a chat can never be mistaken for a player's delivery.
 - **Mailbox wiring.** The node's `Mailboxes` manager is pointed at exactly one
   mailbox URL: `http://127.0.0.1:<port>` on the Pis, the cloud mailbox URL on
   the DO droplet. No iroh internet connectivity is assumed on the Pis (offline
@@ -291,14 +320,16 @@ path = "/etc/larp-bot/firefighters.toml"
 ```
 
 Template file: a list of `{ to = "hospital", text = "…", success = "…" }`
-entries plus `greeting`. Authored in Spanish/Catalan/English as needed — pure
-content, no code. All four character packs live in this repo under
-`scenarios/`, and every bot loads all of them (recognition depends on it —
-see above). A unit test lints the packs: `text` and `success` unique across
-each pack, `to` values valid.
+entries plus `greeting` and `misdelivered` (the "this message is not for me!"
+line, sent verbatim when a player pastes in somebody else's message). Authored
+in Spanish/Catalan/English as needed — pure content, no code. All four
+character packs live in this repo under `scenarios/`, and every bot loads all
+of them (recognition depends on it — see above). A unit test lints the packs:
+`text` and `success` unique across all packs and never nested inside another
+pasteable line, `to` values valid.
 
 A pack may also carry an optional `[comeback]` (`after_secs` + `text`): after
-that long without any *player* message in a group, the character answers the
+that long without any *player* message in a chat, the character answers the
 next player message with `text`, once per quiet spell. Only Aunt Anna uses it
 ("Hey! How is everything over there?") — a sign of life from Riverside when
 players resurface. Tracking is in-memory and baselined on the first scan, so
@@ -411,7 +442,7 @@ booted): each character's profile lives on its bot's announcements topic,
 seeded only at its own station (Marta: only in the cloud) — and replication
 never introduces a mailbox to topics it doesn't know. Without seeding,
 contacts added from the wall posters appear *nameless* at the base station,
-right when players are telling the four characters apart to create the group.
+right when players are learning which chat belongs to which character.
 The fix uses the client push path: on a phone with internet, add all four
 characters (Marta's profile arrives via the cloud; the others via their
 stations — or plug all the Pis into one ethernet switch, where the mailboxes
@@ -447,24 +478,30 @@ laptop has internet, which is all the journalist needs. State lives in
 
 **Pick the mailbox URL to match the players' app build**: release builds use
 the production mailbox, dev builds may point at staging. A journalist synced
-to a different cloud mailbox than the players' apps never sees their group.
+to a different cloud mailbox than the players' apps never sees their chats.
 
 ## 5. End-to-end message walk-through (sanity check)
 
-Hospital bot fires: *"Injured people trapped on Elm St — get this to the
-firefighters!"* into the group topic, via the hospital Pi's localhost
-mailbox — plain prose, no visible metadata.
+Hospital bot fires: *"Injured people trapped on Elm St — copy this into the
+firefighters' chat!"* into its direct chat with the player, via the hospital
+Pi's localhost mailbox — plain prose, no visible metadata.
 
-1. A player visits the hospital bubble → phone syncs the blip.
-2. The player walks to the firefighters bubble → deposits into the
-   firefighters mailbox.
-3. The firefighters bot's node polls its localhost mailbox and sees a message
-   authored by the hospital's known agent id whose text matches a template
-   with `to = "firefighters"` — it replies *"Okey! Crews dispatched to Elm
-   St, thanks!"* (that template's success line).
-4. The ack rides back in whoever's pocket passes by, and the hospital bot
-   decrements its outstanding count when a message authored by the
-   firefighters' agent id matching that success line reaches *its* mailbox.
+1. A player visits the hospital bubble → phone syncs the blip and shows the
+   message in James's chat.
+2. The player long-presses it, copies it, and pastes it into the
+   *firefighters'* chat. That paste is authored by the player, and sits in
+   their pocket until they reach a station.
+3. The player walks to the firefighters bubble → the paste is deposited into
+   the firefighters mailbox.
+4. The firefighters bot's node polls its localhost mailbox and sees a message
+   from the player containing a template with `to = "firefighters"` — it
+   replies *"Okey! Crews dispatched to Elm St, thanks!"* (that template's
+   success line) into the same chat, where the player reads it on the spot.
+
+Had the player pasted it into Aunt Anna's chat instead, Anna would have
+answered *"Oh dear, this message is not for me!"* — enough to send the player
+looking again, without telling them where. The hospital never finds out
+either way.
 
 For Aunt Anna, the destination is her radio-link station — same mechanics.
 For the journalist, the deposit step is "join the hotspot": it goes to the
@@ -480,16 +517,25 @@ cloud mailbox, and the DO bot answers usually within seconds.
 - **QR/inbox expiry semantics** — besides the bundle's inbox expiry, check
   that nothing else garbage-collects the bot's inbox topic before game day.
 - **Post-wipe state loss** — a wipe preserves identity (flashed bundle) but
-  loses group memberships and ack-dedup, so a mid-game re-flash means players
-  re-invite the character (same printed QR) and already-acked missions may be
-  acked twice. Acceptable; don't wipe mid-game.
+  loses contacts and answer-dedup, so a mid-game re-flash means players
+  re-scan the character's poster (same printed QR) to get a chat back, and
+  already-answered deliveries may be answered twice. Acceptable; don't wipe
+  mid-game.
 - **dashchat-node offline behaviour** — the node embeds iroh/p2panda
   networking that may want internet (relays, DNS). Must verify a node on an
   offline LAN talking only to a localhost mailbox is healthy. (The mailbox
   side is already proven offline; the *node* side is not.)
-- **Ack routing asymmetry** — an ack is just another group message; nothing
-  guarantees players carry it back. Acceptable (it's gameplay), but templates
-  should nudge: "let the hospital know we got this!"
+- **The copy-paste step is the whole mechanic** — if players don't discover
+  that they must long-press a message and paste it into another chat, nothing
+  happens at all. It is taught in three places (the mayor's portal, every
+  character's greeting, every mission text) and the misdelivery line catches
+  the near-miss; still, watch the first players and be ready to say it out
+  loud.
+- **Messages pile up while nobody is around** — a character keeps firing on
+  its timer whether or not a player is in its bubble, so a long absence means
+  several missions waiting at once. Bounded by the pack (each template is
+  handed out once per player), and a queue of work is playable, but it is why
+  the pool is five templates deep, not fifty.
 - **Station Wi-Fi ranges overlapping** — with the range limiting removed the
   bubbles are full-size; on a small play area two stations may cover the same
   spot and phones will pick one arbitrarily. Space the stations, or shrink
@@ -513,16 +559,17 @@ cloud mailbox, and the DO bot answers usually within seconds.
 
 1. **`larp-bot` core** — workspace scaffolding, config, `keygen`/`qr`
    (offline identity bundles), bundle loading + inbox re-registration,
-   auto-accept, greeting, scenario engine, mission/ack recognition (author id
-   + template matching). E2E test on a laptop:
-   two `dashchat-node` test instances + one local mailbox + one bot; assert a
-   mission → courier(simulated) → ack round-trip, then wipe the bot's data
-   dir, restart it, and assert the same identity/QR still onboards.
+   auto-accept, direct-chat discovery, greeting, scenario engine, delivery
+   recognition (pasted-text matching). E2E test on a laptop:
+   `dashchat-node` test instances + one in-memory mailbox + two bots; assert a
+   mission → copy-paste(simulated, sloppy) → ack round-trip and a misdelivery
+   nudge, then wipe a bot's data dir, restart it, and assert the same
+   identity/QR still onboards.
 2. **Nix integration + base station** — `nix/larp.nix`, per-station env dirs
    with flashed identity bundles, packages, image build for a bot station;
    the base-station image; live tests: phone joins a bot station's AP, scans
-   the printed QR poster, creates group, gets greeted, receives mission — and
-   at the base, portal opens, phone syncs with the base mailbox.
+   the printed QR poster, gets greeted in a direct chat, receives a mission —
+   and at the base, portal opens, phone syncs with the base mailbox.
 3. **Journalist droplet** — NixOS config on DO against the cloud mailbox;
    test through a real phone hotspot.
 4. **Scenario content + dress rehearsal** — write the four template packs,

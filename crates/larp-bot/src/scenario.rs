@@ -4,11 +4,12 @@ use std::path::Path;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 
-/// One mission template: prose fired by the owning character, addressed (in
-/// the prose itself) to `to`, whose bot replies with `success` when the
-/// message reaches its station. There is no machine-readable metadata in the
-/// message text — recognition works by (signed author, exact text) lookup
-/// against these packs, which every bot loads in full.
+/// One mission template: prose fired by the owning character into its direct
+/// chat with a player, addressed (in the prose itself) to `to`. The player
+/// copies it and pastes it into their chat with `to`, whose bot replies with
+/// `success`. There is no machine-readable metadata in the message text —
+/// recognition works by looking the pasted text up against these packs, which
+/// every bot loads in full.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Mission {
     /// Character key of the intended recipient.
@@ -24,11 +25,18 @@ pub struct Mission {
 pub struct Pack {
     /// Display name for the character's chat profile (e.g. "Bombers").
     pub name: String,
-    /// Sent once per group when the bot joins it.
+    /// Sent once per direct chat, when the character first sees a player.
     pub greeting: String,
     /// Reply to the first player message after a quiet spell, if configured.
     #[serde(default)]
     pub comeback: Option<Comeback>,
+    /// Reply when a player pastes a mission that belongs to *another*
+    /// character ("This message is not for me!"). Deliberately does **not**
+    /// name the right recipient — the message itself says who it is for, and
+    /// working that out is the game. Without this line the character stays
+    /// silent on misdeliveries.
+    #[serde(default)]
+    pub misdelivered: Option<String>,
     #[serde(default)]
     pub missions: Vec<Mission>,
     /// The character's chat avatar as a `data:image/png;base64,…` URI (the
@@ -38,9 +46,9 @@ pub struct Pack {
     pub avatar: Option<String>,
 }
 
-/// After `after_secs` without any player message in a group, the character
-/// answers the next player message with `text` (sent verbatim, once per
-/// quiet spell).
+/// After `after_secs` without any player message in a direct chat, the
+/// character answers the next player message with `text` (sent verbatim, once
+/// per quiet spell).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Comeback {
     pub after_secs: u64,
@@ -90,7 +98,12 @@ impl Scenarios {
     /// - mission texts are unique across ALL packs (a text identifies exactly
     ///   one mission),
     /// - success lines are unique across ALL packs and never collide with a
-    ///   mission text.
+    ///   mission text,
+    /// - no mission text is *contained* in any other line a player might
+    ///   paste (another mission, a success line, a comeback, a misdelivery
+    ///   notice) — matching is containment-based (see
+    ///   [`Scenarios::mission_in_pasted_text`]), so a nested text would make
+    ///   the paste ambiguous.
     pub fn lint(&self) -> Result<()> {
         let mut texts: BTreeSet<&str> = BTreeSet::new();
         let mut successes: BTreeSet<&str> = BTreeSet::new();
@@ -136,8 +149,84 @@ impl Scenarios {
                     bail!("pack {character}: comeback text collides with a mission");
                 }
             }
+            if let Some(misdelivered) = &pack.misdelivered {
+                if misdelivered.trim().is_empty() {
+                    bail!("pack {character}: empty misdelivered text");
+                }
+            }
+        }
+
+        // Containment matching (a player's paste may carry extra text around
+        // the mission) only stays unambiguous if no mission text hides inside
+        // another line players could paste back at a bot.
+        let missions: Vec<(&str, &str)> = self
+            .packs
+            .iter()
+            .flat_map(|(character, pack)| {
+                pack.missions
+                    .iter()
+                    .map(move |m| (character.as_str(), m.text.as_str()))
+            })
+            .collect();
+        let others: Vec<(&str, &str)> = self
+            .packs
+            .iter()
+            .flat_map(|(character, pack)| {
+                let successes = pack.missions.iter().map(|m| m.success.as_str());
+                let extras = pack
+                    .comeback
+                    .iter()
+                    .map(|c| c.text.as_str())
+                    .chain(pack.misdelivered.iter().map(|m| m.as_str()));
+                successes
+                    .chain(extras)
+                    .map(move |line| (character.as_str(), line))
+            })
+            .collect();
+        for (character, text) in &missions {
+            let needle = normalize(text);
+            for (other_character, other) in missions.iter().chain(others.iter()) {
+                // Identical lines are already rejected above (unique texts,
+                // unique successes, no success/text overlap), so equality here
+                // only ever means "this is the same line".
+                if text == other {
+                    continue;
+                }
+                if normalize(other).contains(&needle) {
+                    bail!(
+                        "pack {character}: mission text is contained in another line \
+                         (pack {other_character}: {other:?}) — pasted deliveries would be ambiguous"
+                    );
+                }
+            }
         }
         Ok(())
+    }
+
+    /// Find the mission a player pasted into a chat.
+    ///
+    /// Matching is deliberately forgiving: players copy a message on a phone
+    /// and may paste it with a quote header, a "look at this:" prefix, or
+    /// mangled whitespace. Both sides are normalized (whitespace collapsed,
+    /// lowercased) and the pasted text only has to *contain* the mission —
+    /// [`Scenarios::lint`] guarantees at most one mission can match, and the
+    /// longest match wins if a lint-passing pack ever changes that.
+    ///
+    /// Returns the mission and the character key that owns it.
+    pub fn mission_in_pasted_text(&self, pasted: &str) -> Option<(&str, &Mission)> {
+        let haystack = normalize(pasted);
+        if haystack.is_empty() {
+            return None;
+        }
+        self.packs
+            .iter()
+            .flat_map(|(character, pack)| {
+                pack.missions
+                    .iter()
+                    .map(move |m| (character.as_str(), m))
+            })
+            .filter(|(_, mission)| haystack.contains(&normalize(&mission.text)))
+            .max_by_key(|(_, mission)| mission.text.len())
     }
 
     /// Find the mission with this exact text, authored by this character.
@@ -152,6 +241,22 @@ impl Scenarios {
     pub fn pack(&self, character: &str) -> Option<&Pack> {
         self.packs.get(character)
     }
+
+    /// `character`'s "this message is not for me!" line, or `None` when the
+    /// pack has none.
+    pub fn misdelivery_notice(&self, character: &str) -> Option<&str> {
+        self.pack(character)?.misdelivered.as_deref()
+    }
+}
+
+/// Fold away everything a phone's copy-paste can plausibly change: leading and
+/// trailing space, collapsed runs of whitespace (including the newlines a
+/// quote header introduces) and case.
+pub fn normalize(text: &str) -> String {
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
 }
 
 /// Encode a PNG file as the `data:image/png;base64,…` URI the app's avatar
@@ -185,6 +290,7 @@ mod tests {
             name: "Test".into(),
             greeting: "hello".into(),
             comeback: None,
+            misdelivered: None,
             missions,
             avatar: None,
         }
@@ -232,6 +338,47 @@ mod tests {
         }
         // Aunt Anna answers the first player message after a quiet spell.
         assert!(s.pack("relative").unwrap().comeback.is_some());
+        // Every character can turn away a message meant for somebody else —
+        // without giving away who it IS for. That's the players' job.
+        let names: Vec<&str> = s.packs.values().map(|p| p.name.as_str()).collect();
+        for character in ["firefighters", "hospital", "journalist", "relative"] {
+            let notice = s
+                .misdelivery_notice(character)
+                .unwrap_or_else(|| panic!("pack {character} has no misdelivered line"));
+            for name in &names {
+                assert!(
+                    !notice.contains(name),
+                    "pack {character}'s misdelivered line names {name} — it must not say who the message is for"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn pasted_text_is_matched_through_whitespace_case_and_extra_prose() {
+        let s = scenarios(&[
+            ("a", pack(vec![mission("b", "Carry this to B please", "B got it")])),
+            ("b", pack(vec![])),
+        ]);
+        let (owner, mission) = s
+            .mission_in_pasted_text("look:\n\n  CARRY  this to B   please\n— forwarded")
+            .expect("forgiving match");
+        assert_eq!(owner, "a");
+        assert_eq!(mission.to, "b");
+        assert!(s.mission_in_pasted_text("carry this to").is_none());
+        assert!(s.mission_in_pasted_text("").is_none());
+    }
+
+    #[test]
+    fn lint_rejects_a_mission_text_nested_in_another_line() {
+        let s = scenarios(&[
+            ("a", pack(vec![mission("b", "fire on main street", "ok")])),
+            (
+                "b",
+                pack(vec![mission("a", "big fire on main street now", "fine")]),
+            ),
+        ]);
+        assert!(s.lint().is_err());
     }
 
     #[test]

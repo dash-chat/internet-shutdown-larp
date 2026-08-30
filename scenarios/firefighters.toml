@@ -1,31 +1,36 @@
-# Firefighters mission pack. Texts are sent VERBATIM: recognition by the
-# other bots depends on exact text matching, so edit them here, never live.
+# Firefighters mission pack. Texts are sent VERBATIM: the other bots
+# recognize a delivery by the text a player pastes into their chat (whitespace
+# and case are forgiven, nothing else), so edit them here, never live.
 
 name = "Cindy the firefighter"
 
-greeting = """🚒 Cindy from the fire station here! Our radio is down — bring us messages and we'll act on them right away."""
+greeting = """🚒 Cindy from the fire station here! Our radio is down, so you are our messenger. When I ask you to pass something on: copy my message and paste it into that person's chat."""
+
+# Sent when a player pastes in a message meant for somebody else. Just says
+# no: working out where it belongs is the players' job.
+misdelivered = """🚒 Hey, this message is not for me!"""
 
 [[missions]]
 to = "hospital"
-text = """❓ 🚒 Two badly hurt people rescued on Main Street, on their way to the hospital. Tell the hospital to prepare the operating room!"""
+text = """❓ 🚒 Two badly hurt people rescued on Main Street, on their way to the hospital. Copy this into the hospital's chat so they get the operating room ready!"""
 success = """✅ 🏥 Operating room ready, stretchers at the door. Thanks for the fast warning!"""
 
 [[missions]]
 to = "journalist"
-text = """❓ 🚒 The creek bridge is burning — nobody must cross it! Take this warning to the journalist so she publishes it!"""
+text = """❓ 🚒 The creek bridge is burning — nobody must cross it! Copy this warning into the journalist's chat so she publishes it!"""
 success = """✅ 📰 Publishing on every channel: CREEK BRIDGE CLOSED. Thank you!"""
 
 [[missions]]
 to = "relative"
-text = """❓ 🚒 Grandma Rosa is evacuated safe to the school shelter. Get the news to Anna in Riverside!"""
+text = """❓ 🚒 Grandma Rosa is evacuated safe to the school shelter. Copy this into Anna's chat so they know in Riverside!"""
 success = """✅ 💌 What a relief!!! Tell Grandma Rosa we love her and we'll come the moment the road opens!"""
 
 [[missions]]
 to = "hospital"
-text = """❓ 🚒 We're out of burn dressings at the rescue point. Ask the hospital for bandages and IV fluids!"""
+text = """❓ 🚒 We're out of burn dressings at the rescue point. Copy this request into the hospital's chat, we need bandages and IV fluids!"""
 success = """✅ 🏥 Kit packed — send someone to the emergency entrance to pick it up!"""
 
 [[missions]]
 to = "journalist"
-text = """❓ 🚒 We need volunteers with shovels at the market square to dig a firebreak. Have the journalist put out a call!"""
+text = """❓ 🚒 We need volunteers with shovels at the market square to dig a firebreak. Copy this into the journalist's chat so she puts out the call!"""
 success = """✅ 📰 Call published: VOLUNTEERS TO THE MARKET SQUARE. People are on their way!"""

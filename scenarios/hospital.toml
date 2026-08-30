@@ -2,29 +2,31 @@
 
 name = "James the nurse"
 
-greeting = """🏥 James here, nurse at the county hospital. Our phone lines are dead — please carry our messages, every minute counts!"""
+greeting = """🏥 James here, nurse at the county hospital. Our phone lines are dead, so you are our line to the town: copy whatever I ask you to pass on into that person's chat. Every minute counts!"""
+
+misdelivered = """🏥 This message is not for me!"""
 
 [[missions]]
 to = "firefighters"
-text = """❓ 🏥 A woman is trapped by smoke at 12 Upper Street. Get this warning to the firefighters right away!"""
+text = """❓ 🏥 A woman is trapped by smoke at 12 Upper Street. Copy this warning into the firefighters' chat right away!"""
 success = """✅ 🚒 Rescue team heading to 12 Upper Street now. Great work!"""
 
 [[missions]]
 to = "journalist"
-text = """❓ 🏥 We urgently need type O negative blood donors. Have the journalist publish a call!"""
+text = """❓ 🏥 We urgently need type O negative blood donors. Copy this into the journalist's chat so she publishes the call!"""
 success = """✅ 📰 Published: O NEGATIVE DONORS NEEDED AT THE HOSPITAL. It's spreading!"""
 
 [[missions]]
 to = "relative"
-text = """❓ 🏥 John is admitted with a burned arm but out of danger. His cousin Anna in Riverside doesn't know — get her the news!"""
+text = """❓ 🏥 John is admitted with a burned arm but out of danger. His cousin Anna in Riverside doesn't know — copy this into her chat!"""
 success = """✅ 💌 Thank you!! We were so worried. Tell John we'll bring him his chocolates!"""
 
 [[missions]]
 to = "firefighters"
-text = """❓ 🏥 Our generator is failing and patients are on life support. The firefighters have a portable one — take them this urgent request!"""
+text = """❓ 🏥 Our generator is failing and patients are on life support. The firefighters have a portable one — copy this urgent request into their chat!"""
 success = """✅ 🚒 Loading the portable generator onto the truck now. Hold on!"""
 
 [[missions]]
 to = "journalist"
-text = """❓ 🏥 Smoke is blowing into our main entrance — everyone must use the north one. Take this notice to the journalist!"""
+text = """❓ 🏥 Smoke is blowing into our main entrance — everyone must use the north one. Copy this notice into the journalist's chat!"""
 success = """✅ 📰 Published: HOSPITAL ADMITTING THROUGH THE NORTH ENTRANCE."""

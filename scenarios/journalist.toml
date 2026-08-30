@@ -7,29 +7,31 @@
 
 name = "Marta the journalist"
 
-greeting = """📰 Marta from the national news desk. Nothing gets in or out of your town except through this line. Bring me news and I'll tell the world — and I'll pass down whatever the outside sends you."""
+greeting = """📰 Marta from the national news desk. Nothing gets in or out of your town except through this line. Copy whatever I send you into the chat of the person it's addressed to, and bring me back what the town wants the world to know."""
+
+misdelivered = """📰 This message is not for me, I'm afraid!"""
 
 [[missions]]
 to = "firefighters"
-text = """❓ 📰 From the village across the creek: "New smoke rising behind the old mill — the fire may have jumped the creek!" Get this to the firefighters!"""
+text = """❓ 📰 From the village across the creek: "New smoke rising behind the old mill — the fire may have jumped the creek!" Copy this into the firefighters' chat!"""
 success = """✅ 🚒 Pumper truck on its way to the old mill. Good thing the world is watching out for us!"""
 
 [[missions]]
 to = "hospital"
-text = """❓ 📰 From the regional capital: "A field medic team is on its way — where are they needed most?" Carry this question to the hospital!"""
+text = """❓ 📰 From the regional capital: "A field medic team is on its way — where are they needed most?" Copy this question into the hospital's chat!"""
 success = """✅ 🏥 Send them straight to our emergency ward. Thank you, messenger!"""
 
 [[missions]]
 to = "relative"
-text = """❓ 📰 The families who fled ask: "Anna keeps the list of everyone confirmed safe — which names is she still missing?" Take her this note!"""
+text = """❓ 📰 The families who fled ask: "Anna keeps the list of everyone confirmed safe — which names is she still missing?" Copy this note into Anna's chat!"""
 success = """✅ 💌 Bless you! I'm still missing my cousins from the mill neighborhood — add them to the list!"""
 
 [[missions]]
 to = "hospital"
-text = """❓ 📰 The aid coordinators ask: "How many injured treated so far? We need the count to size the airlift." Get this question to the hospital!"""
+text = """❓ 📰 The aid coordinators ask: "How many injured treated so far? We need the count to size the airlift." Copy this into the hospital's chat!"""
 success = """✅ 🏥 Forty-seven treated, twelve admitted, all stable. We mostly need burn kits and surgical supplies!"""
 
 [[missions]]
 to = "firefighters"
-text = """❓ 📰 The regional fire watch warns: "The wind is pushing the fire toward the pine grove — from there it will run into the lower streets." Run this to the firefighters!"""
+text = """❓ 📰 The regional fire watch warns: "The wind is pushing the fire toward the pine grove — from there it will run into the lower streets." Copy this straight into the firefighters' chat!"""
 success = """✅ 🚒 Sending a crew to cut a firebreak below the pine grove. That warning may have saved the lower town!"""

@@ -12,7 +12,9 @@ pub struct BotConfig {
     pub mailbox_url: String,
     /// The flashed identity bundle (survives wipes; see identity.rs).
     pub identity: PathBuf,
-    /// The public cast file (all characters' agent/device ids).
+    /// The public cast file (all characters' agent/device ids). Deliveries
+    /// are recognized by their text, so this only serves to tell character
+    /// bots apart from players.
     pub cast: PathBuf,
     /// Directory of scenario packs (`<character>.toml`, all characters).
     pub scenarios_dir: PathBuf,
@@ -25,12 +27,12 @@ pub struct BotConfig {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(default)]
 pub struct Timing {
-    /// Mission firing interval bounds, per group (uniform random draw).
+    /// Mission firing interval bounds, per player chat (uniform random draw).
     pub min_interval_secs: u64,
     pub max_interval_secs: u64,
-    /// Delay between a group's welcome message and its first mission.
+    /// Delay between a player's welcome message and their first mission.
     pub first_mission_delay_secs: u64,
-    /// How often the bot polls its groups for new messages.
+    /// How often the bot polls its direct chats for new messages.
     pub poll_interval_secs: u64,
 }
 

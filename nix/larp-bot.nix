@@ -71,7 +71,11 @@ in
     castFile = lib.mkOption {
       type = lib.types.str;
       default = "/boot/firmware/larp-cast.toml";
-      description = "The public cast file (all characters' agent/device ids).";
+      description = ''
+        The public cast file (all characters' agent/device ids). Deliveries
+        are recognized by their text now, so this only serves to tell
+        character bots apart from players.
+      '';
     };
 
     scenariosDir = lib.mkOption {
@@ -114,22 +118,22 @@ in
       minIntervalSecs = lib.mkOption {
         type = lib.types.ints.positive;
         default = 180;
-        description = "Minimum seconds between missions, per group.";
+        description = "Minimum seconds between missions, per player chat.";
       };
       maxIntervalSecs = lib.mkOption {
         type = lib.types.ints.positive;
         default = 480;
-        description = "Maximum seconds between missions, per group.";
+        description = "Maximum seconds between missions, per player chat.";
       };
       firstMissionDelaySecs = lib.mkOption {
         type = lib.types.ints.unsigned;
         default = 5;
-        description = "Seconds between a group's welcome message and its first mission.";
+        description = "Seconds between a player's welcome message and their first mission.";
       };
       pollIntervalSecs = lib.mkOption {
         type = lib.types.ints.positive;
         default = 3;
-        description = "Seconds between group polls.";
+        description = "Seconds between direct-chat polls.";
       };
     };
   };
