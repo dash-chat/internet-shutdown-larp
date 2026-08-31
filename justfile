@@ -13,9 +13,10 @@ mod image
 # stations); the map-lite submodule is the currently-unused mAP-lite tooling.
 mod base-station
 
-# The journalist's cloud host: deploy the bot to a Digital Ocean droplet
-# (doctl + nixos-infect), plus ssh/logs/destroy.
-mod journalist
+# The sister's cloud host (she is the one character outside town): deploy
+# her bot to a Digital Ocean droplet (doctl + nixos-infect), plus
+# ssh/logs/destroy.
+mod sister
 
 # Show available recipes.
 _default:
@@ -24,14 +25,6 @@ _default:
 # Run all tests (unit + e2e).
 test:
     cargo test --workspace
-
-# Serve the mayor portal (portal/index.html) locally to preview edits. On
-# the base station nginx proxies /api/ to the mailbox; here there is none,
-# so the status line shows "not answering" — everything else (informant
-# taps, password, flight notice) works as on the Pi.
-[doc("Serve portal/index.html locally for preview")]
-serve-portal port="8000":
-    nix run nixpkgs#python3 -- -m http.server {{ port }} --bind 127.0.0.1 --directory portal
 
 # The direct-ethernet-cable helpers live in the mailbox image repo
 # (scripts/ there, exported as nix packages: find-pi, ethernet-ssh,

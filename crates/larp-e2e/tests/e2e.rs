@@ -3,13 +3,13 @@
 //!
 //! Phase 1: poster-QR onboarding — each bot accepts the contact request and
 //!          greets the player in their private direct chat.
-//! Phase 2: the firefighters bot fires a mission into its own chat; the player
-//!          copies it into the *hospital's* chat (with a prefix, mangled
+//! Phase 2: mum's bot fires a mission into its own chat; the player
+//!          copies it into *grandpa's* chat (with a prefix, mangled
 //!          whitespace and the wrong case — the courier's clipboard is not
-//!          careful) and the hospital bot answers with the success line.
-//!          Pasting the same mission back at the firefighters instead earns a
+//!          careful) and grandpa's bot answers with the success line.
+//!          Pasting the same mission back at mum instead earns a
 //!          "this message is not for me!" nudge.
-//! Phase 3: wipe the firefighters bot's data dir, restart it from the same
+//! Phase 3: wipe mum's bot's data dir, restart it from the same
 //!          identity bundle, and prove the *same printed QR string* still
 //!          onboards a new player into a new direct chat.
 
@@ -28,41 +28,41 @@ use larp_bot::identity::IdentityBundle;
 use larp_bot::qr;
 use larp_bot::scenario::{Mission, Pack, Scenarios};
 
-const FF_MISSION: &str = "FF-MISSION-1: smoke on Main Street, carry this to the hospital!";
-const FF_SUCCESS: &str = "HOSP-ACK-1: received, ambulances rolling.";
-const HOSP_MISSION: &str = "HOSP-MISSION-1: trapped person reported, carry this to the firefighters!";
-const HOSP_SUCCESS: &str = "FF-ACK-1: rescue crew dispatched.";
-const FF_MISDELIVERED: &str = "FF-NOPE: this message is not for me!";
-const FF_AVATAR: &str = "data:image/png;base64,AQID";
+const MUM_MISSION: &str = "MUM-MISSION-1: smoke on Main Street, carry this to grandpa!";
+const MUM_SUCCESS: &str = "GP-ACK-1: received, ambulances rolling.";
+const GP_MISSION: &str = "GP-MISSION-1: trapped person reported, carry this to mum!";
+const GP_SUCCESS: &str = "MUM-ACK-1: rescue crew dispatched.";
+const MUM_MISDELIVERED: &str = "MUM-NOPE: this message is not for me!";
+const MUM_AVATAR: &str = "data:image/png;base64,AQID";
 
 fn test_scenarios() -> Scenarios {
     let mut packs = BTreeMap::new();
     packs.insert(
-        "firefighters".to_string(),
+        "mum".to_string(),
         Pack {
             name: "Firefighters".into(),
-            greeting: "FF-GREETING: fire station online.".into(),
+            greeting: "MUM-GREETING: mum online.".into(),
             comeback: None,
-            misdelivered: Some(FF_MISDELIVERED.into()),
+            misdelivered: Some(MUM_MISDELIVERED.into()),
             missions: vec![Mission {
-                to: "hospital".into(),
-                text: FF_MISSION.into(),
-                success: FF_SUCCESS.into(),
+                to: "grandpa".into(),
+                text: MUM_MISSION.into(),
+                success: MUM_SUCCESS.into(),
             }],
-            avatar: Some(FF_AVATAR.into()),
+            avatar: Some(MUM_AVATAR.into()),
         },
     );
     packs.insert(
-        "hospital".to_string(),
+        "grandpa".to_string(),
         Pack {
-            name: "Hospital".into(),
-            greeting: "HOSP-GREETING: hospital online.".into(),
+            name: "Grandpa".into(),
+            greeting: "GP-GREETING: grandpa online.".into(),
             comeback: None,
             misdelivered: None,
             missions: vec![Mission {
-                to: "firefighters".into(),
-                text: HOSP_MISSION.into(),
-                success: HOSP_SUCCESS.into(),
+                to: "mum".into(),
+                text: GP_MISSION.into(),
+                success: GP_SUCCESS.into(),
             }],
             avatar: None,
         },
@@ -173,120 +173,120 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
     let mailbox = MemMailbox::<MailboxOperation>::new();
 
     // --- The cast: two characters, generated offline like `larp-bot keygen`.
-    let ff_bundle = IdentityBundle::generate("firefighters");
-    let hosp_bundle = IdentityBundle::generate("hospital");
+    let mum_bundle = IdentityBundle::generate("mum");
+    let gp_bundle = IdentityBundle::generate("grandpa");
     let mut cast = Cast::default();
     cast.characters
-        .insert("firefighters".into(), ff_bundle.cast_entry().unwrap());
+        .insert("mum".into(), mum_bundle.cast_entry().unwrap());
     cast.characters
-        .insert("hospital".into(), hosp_bundle.cast_entry().unwrap());
+        .insert("grandpa".into(), gp_bundle.cast_entry().unwrap());
 
     // The printed wall posters (QR strings), rendered before any node exists.
-    let ff_poster = ff_bundle.contact_code().unwrap();
-    let hosp_poster = hosp_bundle.contact_code().unwrap();
+    let mum_poster = mum_bundle.contact_code().unwrap();
+    let gp_poster = gp_bundle.contact_code().unwrap();
 
     // --- Stations come up.
-    let ff_dir = tempfile::tempdir().unwrap();
-    let hosp_dir = tempfile::tempdir().unwrap();
-    let ff_bot = start_bot(ff_dir.path(), &ff_bundle, &cast, &mailbox).await;
-    let _hosp_bot = start_bot(hosp_dir.path(), &hosp_bundle, &cast, &mailbox).await;
+    let mum_dir = tempfile::tempdir().unwrap();
+    let gp_dir = tempfile::tempdir().unwrap();
+    let mum_bot = start_bot(mum_dir.path(), &mum_bundle, &cast, &mailbox).await;
+    let _hosp_bot = start_bot(gp_dir.path(), &gp_bundle, &cast, &mailbox).await;
 
     // --- A player arrives and scans both wall posters.
     let p1 = player("p1", &mailbox).await;
-    p1.add_contact(qr::decode_contact_code(&ff_poster).unwrap())
+    p1.add_contact(qr::decode_contact_code(&mum_poster).unwrap())
         .await
-        .expect("p1 adds firefighters");
-    p1.add_contact(qr::decode_contact_code(&hosp_poster).unwrap())
+        .expect("p1 adds mum");
+    p1.add_contact(qr::decode_contact_code(&gp_poster).unwrap())
         .await
-        .expect("p1 adds hospital");
+        .expect("p1 adds grandpa");
 
-    let ff_chat = chat_with(&p1, &ff_bundle);
-    let hosp_chat = chat_with(&p1, &hosp_bundle);
+    let mum_chat = chat_with(&p1, &mum_bundle);
+    let gp_chat = chat_with(&p1, &gp_bundle);
 
     // --- Phase 1: both bots accept, and greet in their own direct chat.
     wait_until("both bots greet the player", Duration::from_secs(90), || async {
-        messages_of(&p1, ff_chat)
+        messages_of(&p1, mum_chat)
             .await
             .iter()
-            .any(|t| t.contains("FF-GREETING"))
-            && messages_of(&p1, hosp_chat)
+            .any(|t| t.contains("MUM-GREETING"))
+            && messages_of(&p1, gp_chat)
                 .await
                 .iter()
-                .any(|t| t.contains("HOSP-GREETING"))
+                .any(|t| t.contains("GP-GREETING"))
     })
     .await;
 
     // The bots' profiles (avatar included — it rides the same SetProfile op)
     // reach the player, so the chats show a name and a face.
-    let ff_agent = ff_bundle.agent_id().unwrap();
-    let hosp_agent = hosp_bundle.agent_id().unwrap();
+    let mum_agent = mum_bundle.agent_id().unwrap();
+    let gp_agent = gp_bundle.agent_id().unwrap();
     wait_until("bot profiles reach p1", Duration::from_secs(60), || async {
-        let ff = p1.projection.get_profile(ff_agent).await.ok().flatten();
-        let hosp = p1.projection.get_profile(hosp_agent).await.ok().flatten();
-        ff.is_some_and(|p| p.avatar.as_deref() == Some(FF_AVATAR)) && hosp.is_some()
+        let mum = p1.projection.get_profile(mum_agent).await.ok().flatten();
+        let gp = p1.projection.get_profile(gp_agent).await.ok().flatten();
+        mum.is_some_and(|p| p.avatar.as_deref() == Some(MUM_AVATAR)) && gp.is_some()
     })
     .await;
 
-    // --- Phase 2: the firefighters hand out a mission for the hospital.
-    wait_until("firefighters fire a mission", Duration::from_secs(90), || async {
-        messages_of(&p1, ff_chat).await.iter().any(|t| t == FF_MISSION)
+    // --- Phase 2: mum hands out a mission for grandpa.
+    wait_until("mum fires a mission", Duration::from_secs(90), || async {
+        messages_of(&p1, mum_chat).await.iter().any(|t| t == MUM_MISSION)
     })
     .await;
 
-    // The courier copies it into the hospital's chat. Deliberately sloppy:
+    // The courier copies it into grandpa's chat. Deliberately sloppy:
     // a prefix, collapsed newlines and the wrong case all have to survive.
     p1.send_message(
-        hosp_chat,
-        format!("look what they gave me:\n\n   {}\n", FF_MISSION.to_uppercase()),
+        gp_chat,
+        format!("look what they gave me:\n\n   {}\n", MUM_MISSION.to_uppercase()),
         None,
         None,
     )
     .await
-    .expect("p1 pastes the mission at the hospital");
+    .expect("p1 pastes the mission at grandpa");
 
-    wait_until("the hospital acks the delivery", Duration::from_secs(90), || async {
-        messages_of(&p1, hosp_chat).await.iter().any(|t| t == FF_SUCCESS)
+    wait_until("grandpa acks the delivery", Duration::from_secs(90), || async {
+        messages_of(&p1, gp_chat).await.iter().any(|t| t == MUM_SUCCESS)
     })
     .await;
 
     // Same mission pasted back at its author: not for them either. The nudge
     // must never name the real recipient — finding them is the game.
-    p1.send_message(ff_chat, FF_MISSION.to_string(), None, None)
+    p1.send_message(mum_chat, MUM_MISSION.to_string(), None, None)
         .await
         .expect("p1 pastes the mission at the wrong station");
-    wait_until("the firefighters turn the message away", Duration::from_secs(90), || async {
-        messages_of(&p1, ff_chat)
+    wait_until("mum turns the message away", Duration::from_secs(90), || async {
+        messages_of(&p1, mum_chat)
             .await
-            .contains(&FF_MISDELIVERED.to_string())
+            .contains(&MUM_MISDELIVERED.to_string())
     })
     .await;
-    assert!(!FF_MISDELIVERED.contains("Hospital"));
+    assert!(!MUM_MISDELIVERED.contains("Grandpa"));
 
     // The origin bot recorded the mission it handed out (one per player).
     wait_until("origin records the fired mission", Duration::from_secs(30), || async {
-        BotState::load(&ff_dir.path().join("state.json"))
+        BotState::load(&mum_dir.path().join("state.json"))
             .fired
-            .get(&ff_chat.to_string())
-            .is_some_and(|texts| texts.iter().any(|t| t == FF_MISSION))
+            .get(&mum_chat.to_string())
+            .is_some_and(|texts| texts.iter().any(|t| t == MUM_MISSION))
     })
     .await;
 
-    // --- Phase 3: wipe the firefighters station and restart from the bundle.
-    ff_bot.task.abort();
-    let _ = ff_bot.task.await;
-    ff_bot.node.shutdown().await.expect("ff node shuts down");
-    std::fs::remove_dir_all(ff_dir.path()).unwrap();
-    std::fs::create_dir_all(ff_dir.path()).unwrap();
-    let _ff_bot2 = start_bot(ff_dir.path(), &ff_bundle, &cast, &mailbox).await;
+    // --- Phase 3: wipe mum's station and restart from the bundle.
+    mum_bot.task.abort();
+    let _ = mum_bot.task.await;
+    mum_bot.node.shutdown().await.expect("mum node shuts down");
+    std::fs::remove_dir_all(mum_dir.path()).unwrap();
+    std::fs::create_dir_all(mum_dir.path()).unwrap();
+    let _ff_bot2 = start_bot(mum_dir.path(), &mum_bundle, &cast, &mailbox).await;
 
     // The SAME printed poster still onboards a brand-new player...
     let p2 = player("p2", &mailbox).await;
-    p2.add_contact(qr::decode_contact_code(&ff_poster).unwrap())
+    p2.add_contact(qr::decode_contact_code(&mum_poster).unwrap())
         .await
-        .expect("p2 adds firefighters after the wipe");
+        .expect("p2 adds mum after the wipe");
     wait_until("rebuilt bot's profile reaches p2", Duration::from_secs(60), || async {
         p2.projection
-            .get_profile(ff_agent)
+            .get_profile(mum_agent)
             .await
             .ok()
             .flatten()
@@ -297,12 +297,12 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
     // ...and the character greets them in their own chat. Generous: the
     // rebuilt bot first re-syncs the entire pre-wipe history (its sync-tracker
     // watermarks were wiped too) before it gets to p2.
-    let p2_ff_chat = chat_with(&p2, &ff_bundle);
+    let p2_ff_chat = chat_with(&p2, &mum_bundle);
     wait_until("rebuilt bot greets the new player", Duration::from_secs(180), || async {
         messages_of(&p2, p2_ff_chat)
             .await
             .iter()
-            .any(|t| t.contains("FF-GREETING"))
+            .any(|t| t.contains("MUM-GREETING"))
     })
     .await;
 }

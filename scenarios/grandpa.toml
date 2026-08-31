@@ -1,0 +1,33 @@
+# Grandpa Amir's mission pack. Texts are sent VERBATIM (see mum.toml).
+# He lives alone at the top of the hill and refuses to be evacuated.
+
+name = "Grandpa Amir"
+
+greeting = """👴 Amir here, from the house at the top of the hill. I'm not leaving, so don't start with that. But nothing up here reaches anybody any more, so if I ask you to take a word to someone: copy it, paste it into their chat, and carry it down to them. You're a good one."""
+
+misdelivered = """👴 Not for me, this one!"""
+
+[[missions]]
+to = "mum"
+text = """❓ 👴 Tell my daughter to stop imagining things. The wind is going the other way up here and I have water. Copy this into Mama's chat before she sends the whole town after me."""
+success = """✅ 👩 The wind changes every hour, Dad. But all right. I can breathe for a minute."""
+
+[[missions]]
+to = "neighbour"
+text = """❓ 👴 The hens are still shut in and my knee won't get me down that path. Somebody has to open the coop. Copy this into Nadia's chat."""
+success = """✅ 👵 Coop's open, water changed, all six accounted for. Furious, but alive."""
+
+[[missions]]
+to = "sister"
+text = """❓ 👴 The girl in the city will be reading horrors. Tell her her grandfather is fine, the house is standing, and she is to stay where she is. Copy it into her chat."""
+success = """✅ 👩‍🎓 I actually cried reading this. Tell him to keep his phone by the window."""
+
+[[missions]]
+to = "mum"
+text = """❓ 👴 If this goes badly: the photo albums are in the blue trunk under the stairs. Somebody besides me should know that. Copy this into Mama's chat."""
+success = """✅ 👩 Nobody is losing the photos and nobody is losing you. Blue trunk. Noted."""
+
+[[missions]]
+to = "neighbour"
+text = """❓ 👴 There's smoke coming up behind the orchard, right over her roof, and she can't see it from her door. Copy this into Nadia's chat, quickly."""
+success = """✅ 👵 I see it now. Thank you. I'm getting everyone off that side of the street."""

@@ -16,7 +16,7 @@ struct Cli {
 enum Command {
     /// Generate a character's flashable identity bundle (run offline, once).
     Keygen {
-        /// Character key, e.g. "firefighters".
+        /// Character key, e.g. "mum".
         #[arg(long)]
         character: String,
         /// Where to write the bundle (default: ./larp-identity.toml).
@@ -54,9 +54,12 @@ enum Command {
         #[arg(long, default_value = "/etc/larp-bot/config.toml")]
         config: PathBuf,
     },
-    /// Run the anonymous informant daemon (the hidden character).
-    Anonymous {
-        #[arg(long, default_value = "/etc/larp-bot/anonymous.toml")]
+    /// Run a spec-bot daemon: a scripted character with no scenario pack —
+    /// the mayor (onboarding + the endgame trigger) or the anonymous
+    /// informant. `anonymous` is kept as an alias for the old invocation.
+    #[command(alias = "anonymous")]
+    Spec {
+        #[arg(long, default_value = "/etc/larp-bot/spec.toml")]
         config: PathBuf,
     },
 }
@@ -115,9 +118,9 @@ async fn main() -> Result<()> {
             let config = BotConfig::load(&config)?;
             larp_bot::bot::run(config).await?;
         }
-        Command::Anonymous { config } => {
-            let config = larp_bot::anonymous::AnonymousConfig::load(&config)?;
-            larp_bot::anonymous::run(config).await?;
+        Command::Spec { config } => {
+            let config = larp_bot::spec::SpecConfig::load(&config)?;
+            larp_bot::spec::run(config).await?;
         }
     }
     Ok(())

@@ -1,0 +1,42 @@
+# Mira's mission pack. Texts are sent VERBATIM (see mum.toml). She is NOT in
+# town: she studies in the city and still has internet, so she is the
+# family's only line to the outside world — reachable only where there's a
+# signal (the hotspot corner of the map). She can see the news and look
+# things up; she can't do anything with her own hands.
+
+name = "Mira (your sister)"
+
+greeting = """👩‍🎓 Mira here. I'm stuck in the city, you're all in there, and this is the only line I have to any of you. Copy whatever I send into the chat of whoever it's for, and bring me back what they say. Please don't leave me guessing."""
+
+misdelivered = """👩‍🎓 This one's not for me!"""
+
+# Mira answers the first message from the players after this long without
+# hearing from them — she's been glued to the news the whole time.
+[comeback]
+after_secs = 600
+text = """👩‍🎓 Hey!! Anything? I'm losing my mind over here."""
+
+[[missions]]
+to = "mum"
+text = """❓ 👩‍🎓 They've moved the evacuation point — it's the sports hall now, not the school. Copy this into Mama's chat before she drives to the wrong place."""
+success = """✅ 👩 The sports hall. You've just saved us an hour in that smoke."""
+
+[[missions]]
+to = "grandpa"
+text = """❓ 👩‍🎓 The map online has the fire two streets from his gate. Two. Copy this into Grandpa Amir's chat and stand there while he reads it."""
+success = """✅ 👴 Two streets, is it. All right. Tell her my shoes are by the door."""
+
+[[missions]]
+to = "neighbour"
+text = """❓ 👩‍🎓 Nobody out here knows who is still in our street. Ask her for the names of everyone who stayed — copy this into Nadia's chat."""
+success = """✅ 👵 Four of us: me, the two brothers at number four, and the man at number nine. Write us down properly."""
+
+[[missions]]
+to = "mum"
+text = """❓ 👩‍🎓 There's a bus out of the city at seven and I'm getting on it. Where do I find you? Copy this into Mama's chat."""
+success = """✅ 👩 Don't you dare come into this. And if you do anyway — the blue door of the sports hall."""
+
+[[missions]]
+to = "grandpa"
+text = """❓ 👩‍🎓 There's a pharmacy still open by the market square, for his heart pills. Copy this into Grandpa Amir's chat so he knows where to send you."""
+success = """✅ 👴 By the market square. Good. I'll give this messenger of ours my prescription."""

@@ -22,7 +22,7 @@ const QR_PROFILE_NAME_MAX_BYTES: usize = 16;
 /// topics are silently dropped).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IdentityBundle {
-    /// Character key, e.g. "firefighters". Selects the scenario pack.
+    /// Character key, e.g. "mum". Selects the scenario pack.
     pub character: String,
     /// Hex ed25519 signing-key seed (the device key).
     pub device_private_key: String,
@@ -168,7 +168,7 @@ mod tests {
 
     #[test]
     fn bundle_toml_roundtrip() {
-        let bundle = IdentityBundle::generate("hospital");
+        let bundle = IdentityBundle::generate("grandpa");
         let toml_str = toml::to_string_pretty(&bundle).unwrap();
         let back: IdentityBundle = toml::from_str(&toml_str).unwrap();
         assert_eq!(back.device_private_key, bundle.device_private_key);
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn inbox_topic_is_derived_from_key_and_nonce() {
-        let bundle = IdentityBundle::generate("firefighters");
+        let bundle = IdentityBundle::generate("mum");
         // Same inputs → same topic; a different nonce → a different topic.
         assert_eq!(
             bundle.inbox_topic_bytes().unwrap(),
@@ -194,10 +194,10 @@ mod tests {
 
     #[test]
     fn overlong_profile_name_is_rejected() {
-        let mut bundle = IdentityBundle::generate("journalist");
-        bundle.profile_name = Some("Marta the journalist".into());
+        let mut bundle = IdentityBundle::generate("sister");
+        bundle.profile_name = Some("Laia the sister who studies in the city".into());
         assert!(bundle.validate().is_err());
-        bundle.profile_name = Some("Marta".into());
+        bundle.profile_name = Some("Laia".into());
         bundle.validate().unwrap();
     }
 }

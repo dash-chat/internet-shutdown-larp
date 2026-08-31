@@ -2,23 +2,27 @@
 # base station hosts its own Pi wifi like every other station (wifi-ap.env).
 # Kept for the mAP-lite setup below, should the Pi AP prove too weak.
 #
+# !! DOES NOT EVALUATE AS-IS ANY MORE. It references the captive-portal
+# module this repo deleted when the mayor moved into Dash Chat (the
+# `services.nginx.virtualHosts.captive-portal` alias and the `captive-portal`
+# iptables chain below both came from nix/captive-portal.nix). Reviving the
+# mAP-lite path means restoring that file from git history first — or
+# stripping the two portal references, since the game no longer needs a
+# portal at all, only DHCP + DNS on the cable.
+#
 # Base-station networking: a MikroTik mAP lite broadcasts the mesh (a real AP
 # that comfortably carries 30-40 concurrent clients — the Pi's brcmfmac AP
 # mode does not), wired to this Pi over ethernet (the Pi can even power it,
 # see the mailbox image's usb_max_current_enable). The Pi hosts no wifi at
-# all; instead it owns DHCP + wildcard DNS on the cable, so every client's
-# connectivity probe lands on the portal nginx and the captive-portal screen
-# pops — without RouterOS's hotspot feature, which is locked behind
-# device-mode (physical button press) on current firmware.
+# all; instead it owns DHCP + wildcard DNS on the cable.
 #
 # Traffic-wise this is the same as the old hotspot plan: clients sync with
 # the Pi's mailbox client -> mAP -> Pi, one wifi transit plus the cable.
-# Nothing is gated: the portal is onboarding UX (the mayor), and headless
-# clients need no bypass.
+# Nothing is gated, and headless clients need no bypass.
 #
-# The mAP side is one idempotent script applied by `just provision` in
-# ../map-lite-portal: ether1 moves from WAN to the LAN bridge and the
-# built-in DHCP server is disabled.
+# The mAP side is one idempotent script applied by
+# `just base-station::map-lite::provision`: ether1 moves from WAN to the LAN
+# bridge and the built-in DHCP server is disabled.
 {
   config,
   lib,

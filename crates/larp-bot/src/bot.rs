@@ -202,6 +202,91 @@ pub(crate) async fn register_mailbox(node: &Node, url: &str) {
     info!(%url, "mailbox registered");
 }
 
+/// Every direct chat a bot has with a player.
+///
+/// Direct chats are not group chats — `Node::get_groups` never returns them —
+/// so they are derived from contacts. Two sources, unioned, so neither kind of
+/// state loss is fatal: the accepted-contacts set (what this bot answered
+/// itself, hex device ids from its `state.json`) and the node's own contact
+/// projection (which survives a `state.json` wipe). A candidate only counts
+/// once its chat topic is actually subscribed — that is the node's own record
+/// of `create_direct_chat_space` having run, and it filters out contact
+/// requests that were never accepted.
+///
+/// Shared by the character bot and the spec bots (the informant, the mayor).
+pub(crate) async fn direct_chats(
+    node: &Node,
+    me: DeviceId,
+    accepted: &BTreeSet<String>,
+) -> Result<Vec<(DeviceId, ChatId)>> {
+    let mut devices: BTreeSet<DeviceId> = BTreeSet::new();
+    for recorded in accepted {
+        match DeviceId::from_str(recorded) {
+            Ok(device) => {
+                devices.insert(device);
+            }
+            Err(err) => warn!(%recorded, ?err, "unparseable device id in state.json"),
+        }
+    }
+    for agent in node.projection.all_contact_agent_ids().await? {
+        for device in node.projection.lookup_devices_by_agent_id(agent).await? {
+            devices.insert(device);
+        }
+    }
+    devices.remove(&me);
+
+    let subscribed = node.subscribed_topics().await?;
+    Ok(devices
+        .into_iter()
+        .map(|device| {
+            #[allow(deprecated)] // FakeAgentId is what direct_chat_topic takes today
+            let chat = node.direct_chat_topic(FakeAgentId::from(device));
+            (device, chat)
+        })
+        .filter(|(_, chat)| subscribed.contains(&TopicId::from(*chat)))
+        .collect())
+}
+
+/// Every chat message in a direct chat, oldest first, as
+/// `(author device, op hash, text)`.
+///
+/// dashchat-node has `OpStore::get_interleaved_logs`, but 0.19 gates it behind
+/// the `testing` feature ("only used for testing and should stay that way"),
+/// so the same walk over the public log API is done here. Ops with an
+/// undecodable body are skipped rather than failing the whole scan. The op
+/// hash is what both callers dedup their replies on.
+pub(crate) async fn chat_messages(
+    node: &Node,
+    chat: ChatId,
+) -> Result<Vec<(DeviceId, String, String)>> {
+    let log_id = chat.into();
+    let mut ops = Vec::new();
+    for author in node.op_store.get_authors(log_id).await? {
+        for op in node.op_store.get_log(&author, &log_id, None).await? {
+            let Some(body) = op.body else { continue };
+            let Ok(payload) = Payload::try_from_body(&body) else {
+                warn!(hash = ?op.header.hash(), "undecodable op payload, skipping");
+                continue;
+            };
+            ops.push((op.header, payload));
+        }
+    }
+    ops.sort_by_key(|(header, _)| header.timestamp);
+    Ok(ops
+        .into_iter()
+        .filter_map(|(header, payload)| {
+            let Payload::Chat(ChatPayload::Message(content)) = payload else {
+                return None;
+            };
+            Some((
+                DeviceId::from(header.verifying_key),
+                hex::encode(header.hash().as_bytes()),
+                content.message().to_string(),
+            ))
+        })
+        .collect())
+}
+
 pub struct Bot {
     node: Node,
     bundle: IdentityBundle,
@@ -359,48 +444,9 @@ impl Bot {
         Ok(())
     }
 
-    /// Every direct chat this character has with a player.
-    ///
-    /// Direct chats are not group chats — `Node::get_groups` never returns
-    /// them — so they are derived from contacts, exactly as the informant
-    /// does. Two sources, unioned, so neither kind of state loss is fatal:
-    /// the accepted-contacts set (what this bot answered itself) and the
-    /// node's own contact projection (which survives a `state.json` wipe).
-    /// A candidate only counts once its chat topic is actually subscribed —
-    /// that is the node's own record of `create_direct_chat_space` having
-    /// run, and it filters out contact requests that were never accepted.
-    async fn direct_chats(&self) -> Result<Vec<(DeviceId, ChatId)>> {
-        let me = self.bundle.device_id()?;
-        let mut devices: BTreeSet<DeviceId> = BTreeSet::new();
-        for recorded in &self.state.accepted_contacts {
-            match DeviceId::from_str(recorded) {
-                Ok(device) => {
-                    devices.insert(device);
-                }
-                Err(err) => warn!(%recorded, ?err, "unparseable device id in state.json"),
-            }
-        }
-        for agent in self.node.projection.all_contact_agent_ids().await? {
-            for device in self.node.projection.lookup_devices_by_agent_id(agent).await? {
-                devices.insert(device);
-            }
-        }
-        devices.remove(&me);
-
-        let subscribed = self.node.subscribed_topics().await?;
-        Ok(devices
-            .into_iter()
-            .map(|device| {
-                #[allow(deprecated)] // FakeAgentId is what direct_chat_topic takes today
-                let chat = self.node.direct_chat_topic(FakeAgentId::from(device));
-                (device, chat)
-            })
-            .filter(|(_, chat)| subscribed.contains(&TopicId::from(*chat)))
-            .collect())
-    }
-
     async fn tick(&mut self) -> Result<()> {
-        for (device, chat) in self.direct_chats().await? {
+        let me = self.bundle.device_id()?;
+        for (device, chat) in direct_chats(&self.node, me, &self.state.accepted_contacts).await? {
             let key = chat.to_string();
 
             // Greet a player the first time we see their chat.
@@ -442,26 +488,7 @@ impl Bot {
         key: &str,
     ) -> Result<()> {
         let my_device = self.bundle.device_id()?;
-
-        // Every decoded op in the chat, oldest first — the interleaved logs of
-        // all its authors. dashchat-node has `OpStore::get_interleaved_logs`,
-        // but 0.19 gates it behind the `testing` feature ("only used for
-        // testing and should stay that way"), so the same walk over the public
-        // log API is done here. Ops with an undecodable body are skipped
-        // rather than failing the whole scan.
-        let log_id = chat.into();
-        let mut ops = Vec::new();
-        for author in self.node.op_store.get_authors(log_id).await? {
-            for op in self.node.op_store.get_log(&author, &log_id, None).await? {
-                let Some(body) = op.body else { continue };
-                let Ok(payload) = Payload::try_from_body(&body) else {
-                    warn!(hash = ?op.header.hash(), "undecodable op payload, skipping");
-                    continue;
-                };
-                ops.push((op.header, payload));
-            }
-        }
-        ops.sort_by_key(|(header, _)| header.timestamp);
+        let messages = chat_messages(&self.node, chat).await?;
 
         let comeback = self
             .scenarios
@@ -482,11 +509,7 @@ impl Bot {
         // answers no single op). The op is only marked answered once its reply
         // is actually out, so a send that fails is retried next tick.
         let mut replies: Vec<(Option<String>, String)> = Vec::new();
-        for (header, payload) in ops {
-            let Payload::Chat(ChatPayload::Message(content)) = payload else {
-                continue;
-            };
-            let author = DeviceId::from(header.verifying_key);
+        for (author, op_hash, text) in messages {
             if author == my_device {
                 continue;
             }
@@ -496,8 +519,6 @@ impl Bot {
             if self.cast.character_of_device(&author).is_some() {
                 continue;
             }
-            let op_hash = hex::encode(header.hash().as_bytes());
-            let text = content.message().to_string();
 
             // The player wrote something. If this character has a comeback
             // line, their first message after a quiet spell gets it.

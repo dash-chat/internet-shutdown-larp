@@ -8,7 +8,7 @@ use serde::Deserialize;
 #[derive(Clone, Debug, Deserialize)]
 pub struct BotConfig {
     /// The mailbox this bot syncs through: `http://127.0.0.1:<port>` on the
-    /// Pis, the cloud mailbox URL on the journalist droplet.
+    /// Pis, the cloud mailbox URL on the sister's droplet.
     pub mailbox_url: String,
     /// The flashed identity bundle (survives wipes; see identity.rs).
     pub identity: PathBuf,

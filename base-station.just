@@ -1,33 +1,30 @@
 # The base station: a Pi hosting its own wifi network like every other
-# station (wifi-ap.env on the boot partition), serving the mayor captive
-# portal and the mailbox. The mAP-lite-as-AP setup (map-lite submodule +
-# nix/base-station.nix) is kept but currently unused.
+# station (wifi-ap.env on the boot partition), serving the mailbox and
+# running the MAYOR's bot — the contact players scan first, whose greeting
+# explains the whole game and whose trigger phrase ends it (docs/design.md).
+#
+# There is no separate base-station image any more: the mayor is a chat
+# character, not a captive portal, so this card runs the plain station image
+# and differs only in the files flashed onto it. The mAP-lite-as-AP setup
+# (map-lite submodule + nix/base-station.nix) is kept but currently unused.
 
 # The mAP lite AP tooling (currently unused): connect / cli / provision.
 mod map-lite
 
-# Build the base-station SD image: the station image with the mayor portal
-# in place of the generic captive-portal SPA. The Pi hosts its own wifi like
-# the other stations. Flash with `just base-station::flash`, which writes
-# the wifi-ap.env. (Shells out to image::build-image — cross-module
-# dependencies are not a thing in just.)
-[doc("Build the base-station SD image (mayor portal; flash with base-station::flash)")]
-build:
-    {{ just_executable() }} image::build-image sdImage-base-station base-station.img
-
-# Flash the base-station Pi card: base-station.img plus wifi-ap.env — the
-# base station broadcasts its own wifi, like the character stations. The AP
-# is OPEN by default; pass a password (8-63 chars, WPA2) to lock it. Build
-# first with `just base-station::build`. With no device, the SD card is
-# auto-detected (see image::flash). Like every station card, it also gets
-# the anonymous identity, so the informant answers here too.
-[doc("Flash the base-station Pi card; AP is <ssid> (open unless password given); auto-detects the SD card; also runs the anonymous informant")]
+# Flash the base-station Pi card: the station image plus wifi-ap.env, the
+# mayor's identity and the anonymous informant's. No character identity and
+# no cast file, so the character-bot service stays dormant here. The AP is
+# OPEN by default; pass a password (8-63 chars, WPA2) to lock it. Build the
+# image first with `just image::build`. With no device, the SD card is
+# auto-detected (see image::flash).
+[doc("Flash the base-station Pi card (mayor + informant, no character bot); AP is <ssid>, open unless a password is given; auto-detects the SD card")]
 flash device="" ssid="internet-shutdown-larp" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
     ssid={{ quote(ssid) }}
     password={{ quote(password) }}
+    [ -f secrets/mayor-identity.toml ] || { echo "no secrets/mayor-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/anonymous-identity.toml ] || { echo "no secrets/anonymous-identity.toml — run 'just characters::generate' first"; exit 1; }
     if [ -n "$password" ] && { [ "${#password}" -lt 8 ] || [ "${#password}" -gt 63 ]; }; then
       echo "wifi password must be 8-63 characters (WPA2), got ${#password}"; exit 1
@@ -38,6 +35,7 @@ flash device="" ssid="internet-shutdown-larp" password="":
     # An empty PASSWORD= line means an open network (see the mailbox image's
     # wifi-ap.env semantics).
     printf 'SSID=%s\nPASSWORD=%s\n' "$ssid" "$password" > "$envdir/wifi-ap.env"
+    cp secrets/mayor-identity.toml "$envdir/larp-mayor.toml"
     cp secrets/anonymous-identity.toml "$envdir/larp-anonymous.toml"
-    "$just" image::flash {{ quote(device) }} "$envdir" base-station.img
-    echo ">> card is ready to boot as $ssid$([ -z "$password" ] && echo ' (open network)' || true) + anonymous informant"
+    "$just" image::flash {{ quote(device) }} "$envdir"
+    echo ">> card is ready to boot as $ssid$([ -z "$password" ] && echo ' (open network)' || true) + mayor + anonymous informant"

@@ -65,7 +65,7 @@ mod tests {
     /// compare byte-for-byte.
     #[test]
     fn contact_code_roundtrips_through_the_upstream_parser() {
-        let bundle = IdentityBundle::generate("journalist");
+        let bundle = IdentityBundle::generate("sister");
         let code = bundle.contact_code().unwrap();
         let decoded = decode_contact_code(&code).unwrap();
         assert_eq!(decoded.device_pubkey, bundle.device_id().unwrap());
@@ -77,7 +77,7 @@ mod tests {
     /// registers, or contact requests land on a topic nobody listens to.
     #[test]
     fn decoded_nonce_matches_the_registered_inbox_topic() {
-        let bundle = IdentityBundle::generate("hospital");
+        let bundle = IdentityBundle::generate("grandpa");
         let decoded = decode_contact_code(&bundle.contact_code().unwrap()).unwrap();
         let mut hasher = blake3::Hasher::new();
         hasher.update(decoded.device_pubkey.as_bytes());

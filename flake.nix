@@ -66,7 +66,7 @@
             rustToolchain # larp-bot workspace (crates/)
             pkg-config # native deps of the dash-chat crate tree
             openssl
-            doctl # journalist droplet recipes (just journalist::*)
+            doctl # sister droplet recipes (the out-of-town character) (just sister::*)
           ];
         };
 
@@ -76,10 +76,10 @@
         default = self.packages.x86_64-linux.larp-bot;
         larp-bot = (pkgsWithRust "x86_64-linux").callPackage ./nix/larp-bot-package.nix { };
         # The flashable station image (aarch64 build; needs binfmt emulation
-        # on an x86_64 builder, same as the mailbox image).
+        # on an x86_64 builder, same as the mailbox image). There is only one:
+        # the base station runs this image too, and differs only in the files
+        # its card is flashed with.
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
-        # The base-station variant: the station image plus the mayor portal.
-        sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
         # The mailbox image's flashing + cable-debugging helpers, reused by
         # the just recipes.
         inherit (mailbox-image.packages.x86_64-linux)
@@ -95,7 +95,6 @@
         default = self.packages.aarch64-linux.larp-bot;
         larp-bot = (pkgsWithRust "aarch64-linux").callPackage ./nix/larp-bot-package.nix { };
         sdImage = self.nixosConfigurations.larp-station.config.system.build.sdImage;
-        sdImage-base-station = self.nixosConfigurations.base-station.config.system.build.sdImage;
         inherit (mailbox-image.packages.aarch64-linux)
           detect-sd-card
           flash-sd-image
@@ -105,7 +104,7 @@
           ;
       };
 
-      # The bot as a reusable NixOS module — e.g. for the journalist's cloud
+      # The bot as a reusable NixOS module — e.g. for the out-of-town character's cloud
       # host, which runs only the bot against the cloud mailbox:
       #
       #   imports = [ internet-shutdown-larp.nixosModules.larp-bot ];
@@ -114,17 +113,17 @@
       #     package = internet-shutdown-larp.packages.x86_64-linux.larp-bot;
       #     scenariosDir = "${internet-shutdown-larp}/scenarios";
       #     mailboxUrl = "<the cloud mailbox URL the players' app uses>";
-      #     identityFile = "/var/lib/larp-secrets/journalist-identity.toml";
+      #     identityFile = "/var/lib/larp-secrets/sister-identity.toml";
       #     castFile = "/var/lib/larp-secrets/larp-cast.toml";
       #   };
       nixosModules.larp-bot = ./nix/larp-bot.nix;
 
-      # The journalist's cloud host (docs/design.md §Journalist): a droplet
+      # The sister's cloud host (docs/design.md §Journalist): a droplet
       # running only the bot against the cloud mailbox. Deployed with
-      # `just journalist::deploy` — doctl creates an Ubuntu droplet,
+      # `just sister::deploy` — doctl creates an Ubuntu droplet,
       # nixos-infect converts it in place, and nixos-rebuild pushes this
       # config over SSH.
-      nixosConfigurations.journalist-droplet = nixpkgs.lib.nixosSystem {
+      nixosConfigurations.sister-droplet = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           # Boot, SSH keys + hostname from droplet metadata, do-agent.
@@ -137,7 +136,7 @@
               device = "/dev/vda1";
               fsType = "ext4";
             };
-            networking.hostName = "larp-journalist";
+            networking.hostName = "larp-sister";
             # nixos-infect leaves DNS to DHCP; when that hands nothing over
             # the bot dies with "dns error" on every mailbox sync. Pin DO's
             # resolvers with a public fallback.
@@ -158,7 +157,7 @@
               # Same URL as dash-chat's PRODUCTION_MAILBOX_URL: plain http,
               # the server has no TLS listener on 443.
               mailboxUrl = "http://mailbox.darksoil.studio";
-              identityFile = "/var/lib/larp-secrets/journalist-identity.toml";
+              identityFile = "/var/lib/larp-secrets/sister-identity.toml";
               castFile = "/var/lib/larp-secrets/larp-cast.toml";
             };
           }
@@ -166,15 +165,22 @@
       };
 
       # The station image: the plain mailbox appliance extended with the
-      # character bot. One image serves every station — the bot only starts on
-      # cards whose FAT boot partition carries larp-identity.toml +
-      # larp-cast.toml (see nix/larp-bot.nix and docs/design.md).
+      # character bot. ONE image serves every station, base station included —
+      # which of the three bots run is decided entirely by the files a flash
+      # recipe puts on the FAT boot partition (see nix/larp-bot.nix and
+      # docs/design.md):
+      #
+      #   larp-identity.toml + larp-cast.toml → the character bot
+      #   larp-anonymous.toml                 → the informant (every card)
+      #   larp-mayor.toml                     → the mayor (base station only)
+      #
+      # No captive portal anywhere: the mayor moved into Dash Chat, so joining
+      # any station's wifi looks like a dead network and the app finds the
+      # mailbox over mDNS on its own port.
       nixosConfigurations.larp-station = mailbox-image.nixosConfigurations.mailbox-pi.extendModules {
         modules = [
           ./nix/larp-bot.nix
           ./nix/timezone.nix
-          # Re-adds the captive portal the mailbox image dropped (2026-07-09b).
-          ./nix/captive-portal.nix
           (
             { ... }:
             {
@@ -187,13 +193,11 @@
                 # (they all do — every station runs the informant).
                 anonymousSpec = ./anonymous.toml;
                 anonymousAvatar = ./anonymous.png;
+                # Arms the mayor the same way. Only base-station.just writes
+                # his identity, so he runs on exactly one card.
+                mayorSpec = ./mayor.toml;
+                mayorAvatar = ./mayor.png;
               };
-
-              # Character stations pop no portal — joining their wifi should
-              # look like a dead network (the app finds the mailbox via mDNS +
-              # its own port, not through the portal nginx). Only the base
-              # station onboards through a portal; it re-enables this below.
-              dashchat.captivePortal.enable = false;
 
               # Full-range APs and power_save off need no overrides any more:
               # the mailbox image dropped its range limiting (tx clamp, rate
@@ -201,25 +205,6 @@
               # save off itself on AP start. Likewise the wait for wlan0's
               # IPv4 before the mailbox's one-shot mDNS announcement lives
               # in the mailbox image (appliance.nix, added 2026-07-10).
-            }
-          )
-        ];
-      };
-
-      # The base-station image: the station image with the mayor portal
-      # (nix/captive-portal.nix serves portal/index.html by default and
-      # proxies /api/ to the mailbox). The Pi hosts its own wifi like every
-      # other station (wifi-ap.env on the boot partition — see
-      # base-station.just). The mAP-lite-as-AP variant (nix/base-station.nix,
-      # Pi wired behind a MikroTik mAP lite) is kept but currently unused.
-      nixosConfigurations.base-station = self.nixosConfigurations.larp-station.extendModules {
-        modules = [
-          (
-            { lib, ... }:
-            {
-              # The one station that keeps the captive portal (the station
-              # image above turns it off for the character stations).
-              dashchat.captivePortal.enable = lib.mkForce true;
             }
           )
         ];

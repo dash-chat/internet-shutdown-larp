@@ -1,23 +1,23 @@
-# The journalist's cloud host (docs/design.md §Journalist): a Digital Ocean
+# The sister's cloud host (docs/design.md §Journalist): a Digital Ocean
 # droplet running only the bot against the cloud mailbox. One-time setup:
 # `doctl auth init` with a DO API token, and at least one SSH key registered
 # in the account (`doctl compute ssh-key import`). doctl comes with the
 # devShell (flake.nix).
 
-droplet_name := "larp-journalist"
+droplet_name := "larp-sister"
 
 # Deploy is idempotent: the first run creates an Ubuntu droplet whose
 # cloud-init converts it to NixOS (nixos-infect), then pushes the flake's
-# journalist-droplet config + secrets; later runs skip straight to the push,
+# sister-droplet config + secrets; later runs skip straight to the push,
 # so re-run after changing scenarios/, the bot, or the flake config.
-[doc("Deploy the journalist bot to a DO droplet (creates + converts to NixOS on first run; re-run to update)")]
+[doc("Deploy the sister's bot to a DO droplet (creates + converts to NixOS on first run; re-run to update)")]
 deploy region="ams3" size="s-1vcpu-1gb":
     #!/usr/bin/env bash
     set -euo pipefail
     ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
     name={{ quote(droplet_name) }}
 
-    [ -f secrets/journalist-identity.toml ] || { echo "no secrets/journalist-identity.toml — run 'just characters::generate' first"; exit 1; }
+    [ -f secrets/sister-identity.toml ] || { echo "no secrets/sister-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
     doctl account get > /dev/null || { echo "doctl is not authorized — run 'doctl auth init'"; exit 1; }
 
@@ -44,15 +44,15 @@ deploy region="ams3" size="s-1vcpu-1gb":
 
     echo ">> pushing secrets"
     ssh "${ssh_opts[@]}" "root@$ip" mkdir -p /var/lib/larp-secrets
-    scp "${ssh_opts[@]}" secrets/journalist-identity.toml secrets/larp-cast.toml "root@$ip:/var/lib/larp-secrets/"
+    scp "${ssh_opts[@]}" secrets/sister-identity.toml secrets/larp-cast.toml "root@$ip:/var/lib/larp-secrets/"
     # The bot runs as a DynamicUser, so the secrets must be world-readable —
     # same exposure as the stations' FAT boot partition.
-    ssh "${ssh_opts[@]}" "root@$ip" chmod 644 /var/lib/larp-secrets/journalist-identity.toml /var/lib/larp-secrets/larp-cast.toml
+    ssh "${ssh_opts[@]}" "root@$ip" chmod 644 /var/lib/larp-secrets/sister-identity.toml /var/lib/larp-secrets/larp-cast.toml
 
     echo ">> building + switching the droplet to the flake config"
     export NIX_SSHOPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-    nixos-rebuild switch --flake .#journalist-droplet --target-host "root@$ip" --use-substitutes
-    echo ">> deployed — follow the bot with 'just journalist::logs'"
+    nixos-rebuild switch --flake .#sister-droplet --target-host "root@$ip" --use-substitutes
+    echo ">> deployed — follow the bot with 'just sister::logs'"
 
 # SSH into the droplet (extra args are passed to ssh).
 ssh *args:
@@ -61,11 +61,11 @@ ssh *args:
     ip="$(doctl compute droplet get {{ quote(droplet_name) }} --format PublicIPv4 --no-header)"
     exec ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "root@$ip" {{ args }}
 
-# Follow the journalist bot's journal on the droplet.
+# Follow the sister's bot's journal on the droplet.
 logs:
-    @just journalist::ssh journalctl -u larp-bot -f
+    @just sister::ssh journalctl -u larp-bot -f
 
 [doc("Tear the droplet down (the identity survives in secrets/ — a later deploy recreates the same character)")]
-[confirm("destroy the journalist droplet? [y/N]")]
+[confirm("destroy the sister droplet? [y/N]")]
 destroy:
     doctl compute droplet delete {{ quote(droplet_name) }} --force

@@ -1,0 +1,34 @@
+# Nadia's mission pack. Texts are sent VERBATIM (see mum.toml). She lives
+# next door and has stayed behind to mind the pets and the houses of
+# everyone who fled.
+
+name = "Nadia the neighbour"
+
+greeting = """👵 Nadia, from next door. Half the street ran off and left me their animals and their keys, and now not even the telephone works. So whatever I ask you to pass on: copy it into that person's chat and take it to them. You're a treasure."""
+
+misdelivered = """👵 Ay, this isn't for me!"""
+
+[[missions]]
+to = "mum"
+text = """❓ 👵 The dog turned up at my door shaking like a leaf. Bruno is here, he's fine, he's eaten. Tell them — copy this into Mama's chat."""
+success = """✅ 👩 Oh thank God. We've been calling his name all afternoon. Give him a sausage from us."""
+
+[[missions]]
+to = "grandpa"
+text = """❓ 👵 Tell that stubborn man there's a bed made up in my house and it's a good deal further from the fire than his is. Copy this into Grandpa Amir's chat."""
+success = """✅ 👴 A bed, she says. Tell her I'll take the coffee and I'll think about the bed."""
+
+[[missions]]
+to = "sister"
+text = """❓ 👵 The girl in the city should hear that her street is still standing and her window is still in one piece. Copy this into her chat."""
+success = """✅ 👩‍🎓 Nadia, you angel. Scratch the cats for me and don't leave it too late to get out yourself."""
+
+[[missions]]
+to = "mum"
+text = """❓ 👵 They're asking every family at the shelter to bring blankets and a torch, there's nothing there. Copy this into Mama's chat before she sets off."""
+success = """✅ 👩 Blankets and two torches in the car. Trust you to be thinking of everybody else."""
+
+[[missions]]
+to = "grandpa"
+text = """❓ 👵 I walked up and closed all his shutters, so tell him not to come down that hill for nothing. Copy this into Grandpa Amir's chat."""
+success = """✅ 👴 She climbed all that way for my shutters. Tell her thank you. Tell her I saw her."""

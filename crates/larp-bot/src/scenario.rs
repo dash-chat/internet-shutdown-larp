@@ -325,23 +325,28 @@ mod tests {
         assert!(s.lint().is_err());
     }
 
+    /// The shipped cast: the family and the neighbour (docs/design.md).
+    const CAST: [&str; 4] = ["grandpa", "mum", "neighbour", "sister"];
+
     #[test]
     fn shipped_packs_lint() {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../scenarios");
         let s = Scenarios::load_dir(dir).unwrap();
-        for character in ["firefighters", "hospital", "journalist", "relative"] {
+        assert_eq!(s.packs.keys().map(String::as_str).collect::<Vec<_>>(), CAST);
+        for character in CAST {
             let pack = s.pack(character).expect("missing pack");
             assert!(
                 pack.avatar.as_deref().is_some_and(|a| a.starts_with("data:image/png;base64,")),
                 "pack {character} has no avatar (scenarios/{character}.png missing?)"
             );
         }
-        // Aunt Anna answers the first player message after a quiet spell.
-        assert!(s.pack("relative").unwrap().comeback.is_some());
+        // Laia, stuck outside town, answers the first player message after a
+        // quiet spell.
+        assert!(s.pack("sister").unwrap().comeback.is_some());
         // Every character can turn away a message meant for somebody else —
         // without giving away who it IS for. That's the players' job.
         let names: Vec<&str> = s.packs.values().map(|p| p.name.as_str()).collect();
-        for character in ["firefighters", "hospital", "journalist", "relative"] {
+        for character in CAST {
             let notice = s
                 .misdelivery_notice(character)
                 .unwrap_or_else(|| panic!("pack {character} has no misdelivered line"));

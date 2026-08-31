@@ -62,7 +62,7 @@ cli admin_password="" router_ip="192.168.88.1":
 
 # Turns a stock mAP lite into the base-station AP: ether1 joins the LAN
 # bridge (the cable to the Pi), the built-in DHCP server is disabled (the Pi
-# behind it serves DHCP/DNS and the captive portal — the base-station image),
+# behind it serves DHCP/DNS),
 # and the wifi range is clamped, mirroring the Pi stations' range-limited
 # APs: fixed tx power (dBm; the radio clamps at its own floor) and the
 # weakest client signal (dBm, at the AP) allowed to join — and to stay:
@@ -180,9 +180,9 @@ provision ssid wifi_key="" admin_password="" tx_power="1" min_signal="-60" route
         Router address:  $router_ip
 
         Wire the mAP lite's ethernet port to the base-station Pi
-        ('just base-station::build', then 'just base-station::flash
-        /dev/sdX'). The Pi serves DHCP/DNS and the
-        captive portal — until it's up and cabled, clients joining '$ssid'
+        ('just image::build', then 'just base-station::flash
+        /dev/sdX'). The Pi serves DHCP/DNS —
+        until it's up and cabled, clients joining '$ssid'
         will get no IP address (this machine's current lease survives until
         it expires or reconnects).
 

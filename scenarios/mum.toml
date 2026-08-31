@@ -1,0 +1,36 @@
+# Mama's mission pack. Texts are sent VERBATIM: the other bots recognize a
+# delivery by the text a player pastes into their chat (whitespace and case
+# are forgiven, nothing else), so edit them here, never live.
+
+name = "Mama"
+
+greeting = """👩 It's Mama. The phones are dead, the internet's dead, and you're the only one of us out on the street. So you're the postman now: when I ask you to pass something on, copy my message, paste it into that person's chat, and walk it over to them. And stay out of the smoke, please."""
+
+# Sent when a player pastes in a message meant for somebody else. Just says
+# no: working out where it belongs is the players' job.
+misdelivered = """👩 Love, this one isn't for me!"""
+
+[[missions]]
+to = "grandpa"
+text = """❓ 👩 Your grandfather isn't answering and the fire is on his side of the hill now. Get this to him: come down tonight, Dad. Tonight. Copy it into Grandpa Amir's chat."""
+success = """✅ 👴 Tell your mother I'm still here and still standing. All right, all right. I'll pack a bag."""
+
+[[missions]]
+to = "neighbour"
+text = """❓ 👩 They won't let the cat into the shelter and I'm not leaving Luna shut in the house on her own. Ask if she can take her — copy this into Nadia's chat."""
+success = """✅ 👵 Of course, bring her over. She can sleep in the kitchen with the rest of the zoo."""
+
+[[missions]]
+to = "sister"
+text = """❓ 👩 Your sister is watching all this from the city and imagining the worst. Tell her: we're all fine, all of us, and we'll be at the school tonight. Copy it into her chat."""
+success = """✅ 👩‍🎓 I've been refreshing the news since six this morning. I can finally breathe. Tell Mama I love her."""
+
+[[missions]]
+to = "grandpa"
+text = """❓ 👩 I need to know how many heart pills he has left so I can ask for more at the shelter. Copy this into Grandpa Amir's chat, and don't let him fob you off."""
+success = """✅ 👴 Two blisters. Ten days, more or less. Tell her not to make a fuss about it."""
+
+[[missions]]
+to = "neighbour"
+text = """❓ 👩 We left in such a rush I'm certain the back window is still open. The keys are under the flowerpot. Copy this into Nadia's chat, she'll know what to do."""
+success = """✅ 👵 Window's shut and I've got your keys here. Don't think about the house, just look after yourselves."""
