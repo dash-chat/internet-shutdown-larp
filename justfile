@@ -63,9 +63,10 @@ deploy:
     [ -n "$char" ] || { echo "no character on the card (/boot/firmware/larp-identity.toml) — is this a flashed station?"; exit 1; }
     [ -f "secrets/$char-identity.toml" ] || { echo "the card runs '$char' but there is no secrets/$char-identity.toml"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
-    echo ">> station runs '$char' — switching the system"
-    nix run .#ethernet-deploy --accept-flake-config -- . larp-station
-    echo ">> refreshing character files on the boot partition"
+    # Card files FIRST, system second: the switch restarts the bots, and a
+    # new bot against old card files refuses to start (the identity-vs-
+    # profile-name guard), while an old bot with new files is fine.
+    echo ">> station runs '$char' — refreshing character files on the boot partition"
     on_pi "sudo tee /boot/firmware/larp-identity.toml >/dev/null" < "secrets/$char-identity.toml"
     on_pi "sudo tee /boot/firmware/larp-cast.toml >/dev/null" < secrets/larp-cast.toml
     units=(larp-bot)
@@ -77,6 +78,8 @@ deploy:
       on_pi "sudo tee /boot/firmware/larp-anonymous.toml >/dev/null" < secrets/anonymous-identity.toml
       units+=(larp-bot-anonymous)
     fi
+    echo ">> switching the system"
+    nix run .#ethernet-deploy --accept-flake-config -- . larp-station
     echo ">> restarting: ${units[*]}"
     on_pi "sudo systemctl restart ${units[*]}"
     echo ">> deployed: '$char' station is on the new system with fresh card files"
