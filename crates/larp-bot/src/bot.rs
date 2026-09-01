@@ -8,6 +8,11 @@
 //! into *that* character's chat, whose bot recognizes the text and answers with
 //! the mission's success line. Pasting a mission at the wrong character earns a
 //! "this message is not for me!" nudge.
+//!
+//! A landed delivery also earns the courier their next job on the spot: the
+//! receiving character immediately fires a fresh mission of its own into the
+//! chat, preferring one that doesn't send the player straight back to the
+//! character whose message they just delivered.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -635,9 +640,11 @@ impl Bot {
         // ack quotes the delivery it acks, the way a person answering three
         // pasted messages would.
         let mut replies: Vec<(Option<String>, String)> = Vec::new();
-        // Set when a delivery meant for this character is acked in this scan:
-        // that is the moment the informant tip may follow.
-        let mut delivered = false;
+        // Characters whose missions were delivered here in this scan. Any
+        // entry means a delivery was acked — the moment the informant tip may
+        // follow, and the trigger for the follow-up mission (which prefers
+        // destinations outside this set).
+        let mut delivered_from: BTreeSet<String> = BTreeSet::new();
         for (author, op_hash, text) in messages {
             if author == my_device {
                 continue;
@@ -674,7 +681,7 @@ impl Bot {
             }
             let reply = if mission.to == self.bundle.character {
                 info!(from = %owner, "delivery received, acking");
-                delivered = true;
+                delivered_from.insert(owner.to_string());
                 Some(mission.success.clone())
             } else {
                 // Wrong station. Turn them away without naming the right one:
@@ -731,12 +738,45 @@ impl Bot {
                 dirty = true;
             }
         }
-        if delivered && self.maybe_tip_informant(chat, key).await? {
+        if !delivered_from.is_empty() && self.maybe_tip_informant(chat, key).await? {
             dirty = true;
         }
         if dirty {
             self.state.save(&self.state_path)?;
         }
+        if !delivered_from.is_empty() {
+            self.fire_followup_mission(chat, key, &delivered_from).await?;
+        }
+        Ok(())
+    }
+
+    /// A delivery just landed: hand the courier their next job on the spot.
+    /// The draw prefers missions not addressed to the characters whose
+    /// messages they just delivered (steering them somewhere new rather than
+    /// straight back), falling back to any unused template when those are all
+    /// that's left. Resets the chat's timer so the background drip doesn't
+    /// pile a second mission right on top. Silent once the pack is exhausted.
+    async fn fire_followup_mission(
+        &mut self,
+        chat: ChatId,
+        key: &str,
+        avoid: &BTreeSet<String>,
+    ) -> Result<()> {
+        let Some(mission) = self.pick_mission(key, avoid) else {
+            return Ok(());
+        };
+        info!(to = %mission.to, chat = %key, "delivery landed, firing a follow-up mission");
+        self.node
+            .send_message(chat, mission.text.clone(), None, None)
+            .await?;
+        self.state
+            .fired
+            .entry(key.to_string())
+            .or_default()
+            .push(mission.text);
+        self.state.save(&self.state_path)?;
+        let next = self.draw_next_fire();
+        self.next_fire.insert(key.to_string(), next);
         Ok(())
     }
 
@@ -771,10 +811,12 @@ impl Bot {
         Ok(true)
     }
 
-    /// Drop the next mission into a player's chat when its timer comes due.
+    /// Drop the next mission into a player's chat when its timer comes due —
+    /// the background drip behind [`Bot::fire_followup_mission`]'s
+    /// delivery-triggered fires.
     ///
-    /// Nothing gates this on delivery any more: the courier walks one way, so
-    /// this character never learns whether its last message reached its
+    /// Nothing gates this on delivery: the courier walks one way, so this
+    /// character never learns whether its last message reached its
     /// destination. What bounds the flow instead is the pack — each template
     /// is used at most once per player, and the character falls silent (bar
     /// acks and comebacks) once it has handed out everything it has.
@@ -800,7 +842,7 @@ impl Bot {
         if Instant::now() < *due {
             return Ok(());
         }
-        let Some(mission) = self.pick_mission(key) else {
+        let Some(mission) = self.pick_mission(key, &BTreeSet::new()) else {
             // Pack exhausted for this player: re-check on the next interval
             // instead of every tick.
             let next = self.draw_next_fire();
@@ -822,12 +864,14 @@ impl Bot {
         Ok(())
     }
 
-    /// A template this player has not been given yet: the pack's `first`
-    /// mission before anything else (the deterministic opener — Nadia's
-    /// network announcement), then random draws. `None` once the pack is
-    /// exhausted — templates never repeat in a chat, so a pasted delivery
-    /// always maps to exactly one mission.
-    fn pick_mission(&self, chat: &str) -> Option<crate::scenario::Mission> {
+    /// A template this player has not been given yet, preferring missions not
+    /// addressed to anyone in `avoid` — see
+    /// [`crate::scenario::Pack::pick_unused_mission`] for the draw's rules.
+    fn pick_mission(
+        &self,
+        chat: &str,
+        avoid: &BTreeSet<String>,
+    ) -> Option<crate::scenario::Mission> {
         let pack = self.scenarios.pack(&self.bundle.character)?;
         let fired_texts: Vec<&str> = self
             .state
@@ -835,20 +879,7 @@ impl Bot {
             .get(chat)
             .map(|v| v.iter().map(|t| t.as_str()).collect())
             .unwrap_or_default();
-
-        let unused: Vec<&crate::scenario::Mission> = pack
-            .missions
-            .iter()
-            .filter(|m| !fired_texts.contains(&m.text.as_str()))
-            .collect();
-        if let Some(opener) = unused.iter().find(|m| m.first) {
-            return Some((*opener).clone());
-        }
-        if unused.is_empty() {
-            return None;
-        }
-        let idx = rand::thread_rng().gen_range(0..unused.len());
-        Some(unused[idx].clone())
+        pack.pick_unused_mission(&fired_texts, avoid).cloned()
     }
 
     fn draw_next_fire(&self) -> Instant {

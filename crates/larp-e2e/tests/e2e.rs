@@ -10,7 +10,9 @@
 //!          Pasting the same mission back at mum instead earns a
 //!          "this message is not for me!" nudge. The completed delivery
 //!          also earns the informant's contact as a deep link (there is no
-//!          informant poster) — once, and only for a real delivery.
+//!          informant poster) — once, and only for a real delivery — and
+//!          triggers a follow-up mission from grandpa on the spot, drawn
+//!          away from mum (the delivered mission's originator).
 //! Phase 3: wipe mum's bot's data dir, restart it from the same
 //!          identity bundle, and prove the *same printed QR string* still
 //!          onboards a new player into a new direct chat.
@@ -34,6 +36,10 @@ const MUM_MISSION: &str = "MUM-MISSION-1: smoke on Main Street, carry this to gr
 const MUM_SUCCESS: &str = "GP-ACK-1: received, ambulances rolling.";
 const GP_MISSION: &str = "GP-MISSION-1: trapped person reported, carry this to mum!";
 const GP_SUCCESS: &str = "MUM-ACK-1: rescue crew dispatched.";
+const GP_MISSION_2: &str = "GP-MISSION-2: medicine running low, carry this to mum!";
+const GP_SUCCESS_2: &str = "MUM-ACK-2: pharmacy run arranged.";
+const GP_SIDE_MISSION: &str = "GP-MISSION-3: the shelter needs blankets, carry this to sis!";
+const GP_SIDE_SUCCESS: &str = "SIS-ACK-1: blankets on the way.";
 const MUM_MISDELIVERED: &str = "MUM-NOPE: this message is not for me!";
 const MUM_AVATAR: &str = "data:image/png;base64,AQID";
 const GP_TIP: &str = "GP-TIP: somebody inside the town hall wants you: {link}";
@@ -69,12 +75,45 @@ fn test_scenarios() -> Scenarios {
             misdelivered: None,
             informant_tip: Some(GP_TIP.into()),
             mayor_fallen: None,
-            missions: vec![Mission {
-                first: false,
-                to: "mum".into(),
-                text: GP_MISSION.into(),
-                success: GP_SUCCESS.into(),
-            }],
+            // The opener goes out on the first-mission delay; the other two
+            // sit behind the (test-long) timer, so only the delivery-triggered
+            // follow-up can surface one of them — and it must prefer the one
+            // NOT addressed to mum, the delivered mission's originator.
+            missions: vec![
+                Mission {
+                    first: true,
+                    to: "mum".into(),
+                    text: GP_MISSION.into(),
+                    success: GP_SUCCESS.into(),
+                },
+                Mission {
+                    first: false,
+                    to: "mum".into(),
+                    text: GP_MISSION_2.into(),
+                    success: GP_SUCCESS_2.into(),
+                },
+                Mission {
+                    first: false,
+                    to: "sister".into(),
+                    text: GP_SIDE_MISSION.into(),
+                    success: GP_SIDE_SUCCESS.into(),
+                },
+            ],
+            avatar: None,
+        },
+    );
+    // Pack-only third character: nobody runs her bot here, she just gives
+    // grandpa's follow-up somewhere to point besides mum.
+    packs.insert(
+        "sister".to_string(),
+        Pack {
+            name: "Sis".into(),
+            greeting: "SIS-GREETING: sis online.".into(),
+            comeback: None,
+            misdelivered: None,
+            informant_tip: None,
+            mayor_fallen: None,
+            missions: vec![],
             avatar: None,
         },
     );
@@ -92,8 +131,10 @@ fn test_node_config() -> NodeConfig {
 
 fn fast_timing() -> Timing {
     Timing {
-        min_interval_secs: 1,
-        max_interval_secs: 2,
+        // Longer than the whole test: after the first-delay opener, the only
+        // way another mission appears is the delivery-triggered follow-up.
+        min_interval_secs: 600,
+        max_interval_secs: 600,
         first_mission_delay_secs: 1,
         poll_interval_secs: 1,
     }
@@ -282,6 +323,14 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
     })
     .await;
 
+    // Grandpa's opener goes out on the same first-mission delay — wait it
+    // out, so the delivery-triggered follow-up below draws from the two
+    // remaining templates rather than the deterministic opener.
+    wait_until("grandpa fires his opener", Duration::from_secs(90), || async {
+        messages_of(&p1, gp_chat).await.iter().any(|t| t == GP_MISSION)
+    })
+    .await;
+
     // The courier copies it into grandpa's chat. Deliberately sloppy:
     // a prefix, collapsed newlines and the wrong case all have to survive.
     p1.send_message(
@@ -305,6 +354,20 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
             .await
             .contains(&(MUM_SUCCESS.to_string(), true)),
         "the success line should be a reply to the delivery, not a loose message"
+    );
+
+    // The landed delivery immediately earns the courier a follow-up mission —
+    // and with the timer parked 600s out, only the success trigger can have
+    // fired it. It steers away from mum, the delivered mission's originator:
+    // of grandpa's two remaining templates, the sis-bound one must come up.
+    wait_until("grandpa fires a follow-up mission", Duration::from_secs(90), || async {
+        messages_of(&p1, gp_chat).await.iter().any(|t| t == GP_SIDE_MISSION)
+    })
+    .await;
+    assert!(
+        !messages_of(&p1, gp_chat).await.iter().any(|t| t == GP_MISSION_2),
+        "the follow-up must not send the courier straight back to the originator \
+         while another destination is available"
     );
 
     // The delivery earns the informant: his contact arrives as a tappable

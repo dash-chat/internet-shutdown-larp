@@ -145,9 +145,18 @@ keeps auto-switching away from the station APs.
    success message. Pasted at the wrong character, it gets that character's
    "this message is not for me!" line — enough to know it went astray, and
    nothing more.
+5. The landed delivery immediately earns the courier their next job: the
+   receiving character fires a fresh mission of its own into the chat on the
+   spot, drawn **preferring a destination other than the delivered mission's
+   originator** (falling back to the full pool when that's all that's left),
+   so the walk keeps moving forward instead of ping-ponging between two
+   stations. The chat's random timer resets, so the two paths never pile
+   missions on top of each other.
 
-Nothing gates a character on delivery: the walk is one-way, so a character
-never learns whether its last message arrived. What bounds the flow is the
+The random timer never gates on delivery: the walk is one-way, so a character
+never learns whether its *own* last message arrived (the follow-up above is
+fired by the *receiving* character, the one station that does witness a
+success). What bounds the flow is the
 pack — **each template is handed to a given player at most once**, and once a
 character has given out everything it has, it goes quiet (bar acks, Mira's
 comeback line and her informant tip). Five or six templates per character
@@ -372,8 +381,12 @@ The bundle sits plaintext on the FAT partition; for a game prop that's fine.
   and paste it into that person's chat").
 - **Scenario engine.** Per direct chat: a timer loop firing at
   `rand_range(min_interval, max_interval)`, drawing a template the player has
-  not been given yet. No pool reshuffle and no ack gate — when the pack runs
-  out for that player, the character stops handing out missions.
+  not been given yet — plus an immediate follow-up fire every time a delivery
+  lands here, preferring templates not addressed back to the delivered
+  mission's originator (the timer resets after it, so the two never
+  double-fire). No pool reshuffle and no ack gate on a character's *own*
+  missions — when the pack runs out for that player, the character stops
+  handing out missions.
 - **Delivery recognition — no visible metadata.** Messages are pure
   in-character prose; the machine layer rides on the text itself, since we
   author every pack:

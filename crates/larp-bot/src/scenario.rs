@@ -79,6 +79,41 @@ pub struct Pack {
 pub const INFORMANT_LINK_PLACEHOLDER: &str = "{link}";
 
 impl Pack {
+    /// A mission this player has not been given yet: the pack's `first`
+    /// opener before anything else (the deterministic opener — Nadia's
+    /// network announcement), then a random draw. When `avoid` is non-empty
+    /// the draw prefers missions not addressed to those characters — used
+    /// after a delivery lands, so the follow-up doesn't send the courier
+    /// straight back where they came from — but falls back to the full
+    /// unused pool rather than starving the player. `None` once the pack is
+    /// exhausted: templates never repeat in a chat, so a pasted delivery
+    /// always maps to exactly one mission.
+    pub fn pick_unused_mission(
+        &self,
+        fired_texts: &[&str],
+        avoid: &BTreeSet<String>,
+    ) -> Option<&Mission> {
+        use rand::Rng as _;
+        let unused: Vec<&Mission> = self
+            .missions
+            .iter()
+            .filter(|m| !fired_texts.contains(&m.text.as_str()))
+            .collect();
+        if let Some(opener) = unused.iter().find(|m| m.first) {
+            return Some(opener);
+        }
+        let preferred: Vec<&Mission> = unused
+            .iter()
+            .copied()
+            .filter(|m| !avoid.contains(&m.to))
+            .collect();
+        let pool = if preferred.is_empty() { &unused } else { &preferred };
+        if pool.is_empty() {
+            return None;
+        }
+        let idx = rand::thread_rng().gen_range(0..pool.len());
+        Some(pool[idx])
+    }
     /// The tip as it goes into the chat: the pack's line with the placeholder
     /// replaced by `link`. `None` when the pack has no tip.
     pub fn informant_tip_message(&self, link: &str) -> Option<String> {
@@ -614,6 +649,35 @@ mod tests {
         p.informant_tip = Some("psst, fire on main street, and {link}".into());
         let s = scenarios(&[("a", p), ("b", pack(vec![]))]);
         assert!(s.lint().is_err());
+    }
+
+    #[test]
+    fn pick_prefers_missions_away_from_the_avoided_character() {
+        let p = pack(vec![mission("b", "t1", "s1"), mission("c", "t2", "s2")]);
+        let avoid = BTreeSet::from(["b".to_string()]);
+        // The draw is random, so hammer it: with "b" avoided and a "c"
+        // mission available, "b" must never come up.
+        for _ in 0..50 {
+            assert_eq!(p.pick_unused_mission(&[], &avoid).unwrap().to, "c");
+        }
+    }
+
+    #[test]
+    fn pick_falls_back_to_avoided_targets_rather_than_starving() {
+        let p = pack(vec![mission("b", "t1", "s1"), mission("b", "t2", "s2")]);
+        let avoid = BTreeSet::from(["b".to_string()]);
+        assert_eq!(p.pick_unused_mission(&["t1"], &avoid).unwrap().text, "t2");
+        assert!(p.pick_unused_mission(&["t1", "t2"], &avoid).is_none());
+    }
+
+    #[test]
+    fn pick_serves_the_opener_first_even_when_its_target_is_avoided() {
+        let mut opener = mission("b", "t1", "s1");
+        opener.first = true;
+        let p = pack(vec![opener, mission("c", "t2", "s2")]);
+        let avoid = BTreeSet::from(["b".to_string()]);
+        assert_eq!(p.pick_unused_mission(&[], &avoid).unwrap().text, "t1");
+        assert_eq!(p.pick_unused_mission(&["t1"], &avoid).unwrap().text, "t2");
     }
 
     #[test]
