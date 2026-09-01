@@ -17,3 +17,6 @@ result*
 
 # local bot runs (larp-run)
 .run/
+
+# deploy-all: the closure recorded by `just deploy-fetch`
+.deploy-toplevel

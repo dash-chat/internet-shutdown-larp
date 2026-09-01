@@ -29,9 +29,11 @@ let
     anonymous_identity = "${cfg.anonymousIdentityFile}"
     # The mayor's spec bot touches this when his trigger fires. Only the base
     # card ever has both bots, so only Nadia ever sees it appear — her
-    # mayor_fallen eruption rides on it. StateDirectory is 0755 and the flag
-    # 0644, so reading across the two DynamicUser services just works.
-    mayor_fallen_flag = "/var/lib/larp-bot-mayor/triggered"
+    # mayor_fallen eruption rides on it. NOT inside the mayor's state dir:
+    # with DynamicUser, a StateDirectory really lives under /var/lib/private
+    # (0700, root-only) behind a symlink, so a flag in there is invisible to
+    # every other service. /var/lib/larp is a shared tmpfiles dir instead.
+    mayor_fallen_flag = "/var/lib/larp/mayor-triggered"
 
     [timing]
     min_interval_secs = ${toString cfg.timing.minIntervalSecs}
@@ -49,6 +51,7 @@ let
       identityFile,
       spec,
       avatar,
+      triggeredFlag ? null,
     }:
     pkgs.writeText "${unit}.toml" ''
       mailbox_url = "${cfg.mailboxUrl}"
@@ -56,6 +59,7 @@ let
       spec = "${spec}"
       ${lib.optionalString (avatar != null) ''avatar = "${avatar}"''}
       data_dir = "/var/lib/${unit}"
+      ${lib.optionalString (triggeredFlag != null) ''triggered_flag = "${triggeredFlag}"''}
     '';
 
   specService =
@@ -89,6 +93,12 @@ let
         ProtectHome = true;
         NoNewPrivileges = true;
         PrivateTmp = true;
+      }
+      // lib.optionalAttrs (args.triggeredFlag or null != null) {
+        # ProtectSystem=strict leaves only the StateDirectory writable; the
+        # trigger flag deliberately lives outside it (see mayor_fallen_flag
+        # above), so its directory must be opened up explicitly.
+        ReadWritePaths = [ (builtins.dirOf args.triggeredFlag) ];
       };
 
       environment.RUST_LOG = lib.mkDefault "larp_bot=info,dashchat_node=warn,mailbox_client=warn";
@@ -226,6 +236,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # The cross-service handshake dir (the mayor's trigger flag): sticky and
+    # world-writable like /tmp, because the flag's writer is a DynamicUser
+    # with no stable uid to chown to. Wiped with the rest of /var/lib on a
+    # game-day reset.
+    systemd.tmpfiles.rules = [ "d /var/lib/larp 1777 root root -" ];
+
     systemd.services.larp-bot = {
       description = "LARP character bot (Dash Chat node)";
       wantedBy = [ "multi-user.target" ];
@@ -271,6 +287,7 @@ in
           identityFile = cfg.anonymousIdentityFile;
           spec = cfg.anonymousSpec;
           avatar = cfg.anonymousAvatar;
+          triggeredFlag = null;
         };
 
     # The mayor: onboarding in his greeting, the endgame in his trigger. Only
@@ -281,6 +298,9 @@ in
         identityFile = cfg.mayorIdentityFile;
         spec = cfg.mayorSpec;
         avatar = cfg.mayorAvatar;
+        # Where Nadia's bot looks (mayor_fallen_flag in configFile above) —
+        # outside his private state dir, so her service can actually see it.
+        triggeredFlag = "/var/lib/larp/mayor-triggered";
       };
   };
 }

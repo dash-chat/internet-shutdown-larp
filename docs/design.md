@@ -151,7 +151,10 @@ keeps auto-switching away from the station APs.
    originator** (falling back to the full pool when that's all that's left),
    so the walk keeps moving forward instead of ping-ponging between two
    stations. The chat's random timer resets, so the two paths never pile
-   missions on top of each other.
+   missions on top of each other. One exception: when the delivery earns the
+   informant tip (Mira, once per player), the tip **is** the follow-up — no
+   regular mission goes out with it, so the side plot isn't buried the
+   moment it opens.
 
 The random timer never gates on delivery: the walk is one-way, so a character
 never learns whether its *own* last message arrived (the follow-up above is

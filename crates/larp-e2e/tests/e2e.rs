@@ -11,7 +11,8 @@
 //!          "this message is not for me!" nudge. The completed delivery
 //!          also earns the informant's contact as a deep link (there is no
 //!          informant poster) — once, and only for a real delivery — and
-//!          triggers a follow-up mission from grandpa on the spot, drawn
+//!          the tip REPLACES the usual follow-up mission. A second delivery
+//!          finds the chat already tipped and earns the follow-up, drawn
 //!          away from mum (the delivered mission's originator).
 //! Phase 3: wipe mum's bot's data dir, restart it from the same
 //!          identity bundle, and prove the *same printed QR string* still
@@ -34,6 +35,8 @@ use larp_bot::scenario::{Mission, Pack, Scenarios};
 
 const MUM_MISSION: &str = "MUM-MISSION-1: smoke on Main Street, carry this to grandpa!";
 const MUM_SUCCESS: &str = "GP-ACK-1: received, ambulances rolling.";
+const MUM_MISSION_2: &str = "MUM-MISSION-2: the road is blocked, carry this to grandpa!";
+const MUM_SUCCESS_2: &str = "GP-ACK-2: noted, taking the long way.";
 const GP_MISSION: &str = "GP-MISSION-1: trapped person reported, carry this to mum!";
 const GP_SUCCESS: &str = "MUM-ACK-1: rescue crew dispatched.";
 const GP_MISSION_2: &str = "GP-MISSION-2: medicine running low, carry this to mum!";
@@ -57,12 +60,24 @@ fn test_scenarios() -> Scenarios {
             // (a misdelivery), which must never earn the informant.
             informant_tip: None,
             mayor_fallen: None,
-            missions: vec![Mission {
-                first: false,
-                to: "grandpa".into(),
-                text: MUM_MISSION.into(),
-                success: MUM_SUCCESS.into(),
-            }],
+            // The opener is what mum hands out in the test; the second
+            // template exists so the player can retype it by hand (matching
+            // is text-based) for a second delivery at grandpa — the one that
+            // earns a follow-up, the first being eaten by the informant tip.
+            missions: vec![
+                Mission {
+                    first: true,
+                    to: "grandpa".into(),
+                    text: MUM_MISSION.into(),
+                    success: MUM_SUCCESS.into(),
+                },
+                Mission {
+                    first: false,
+                    to: "grandpa".into(),
+                    text: MUM_MISSION_2.into(),
+                    success: MUM_SUCCESS_2.into(),
+                },
+            ],
             avatar: Some(MUM_AVATAR.into()),
         },
     );
@@ -356,20 +371,6 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
         "the success line should be a reply to the delivery, not a loose message"
     );
 
-    // The landed delivery immediately earns the courier a follow-up mission —
-    // and with the timer parked 600s out, only the success trigger can have
-    // fired it. It steers away from mum, the delivered mission's originator:
-    // of grandpa's two remaining templates, the sis-bound one must come up.
-    wait_until("grandpa fires a follow-up mission", Duration::from_secs(90), || async {
-        messages_of(&p1, gp_chat).await.iter().any(|t| t == GP_SIDE_MISSION)
-    })
-    .await;
-    assert!(
-        !messages_of(&p1, gp_chat).await.iter().any(|t| t == GP_MISSION_2),
-        "the follow-up must not send the courier straight back to the originator \
-         while another destination is available"
-    );
-
     // The delivery earns the informant: his contact arrives as a tappable
     // add-contact deep link, since he has no poster to scan any more. Sent
     // plain, not threaded — it answers nothing, it starts something.
@@ -400,6 +401,40 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
             .contains(&gp_chat.to_string())
     })
     .await;
+
+    // The tip ate the follow-up: a delivery that hands out the informant
+    // must NOT also hand out a regular mission — the side plot is the job.
+    // The tip lands after the follow-up decision, so by now it's final.
+    assert!(
+        !messages_of(&p1, gp_chat)
+            .await
+            .iter()
+            .any(|t| t == GP_MISSION_2 || t == GP_SIDE_MISSION),
+        "a tipping delivery must not also fire a follow-up mission"
+    );
+
+    // A SECOND delivery (retyped by hand — matching is text-based, mum never
+    // sent this one to the player) finds the chat already tipped, so it earns
+    // the regular follow-up. With the timer parked 600s out, only the success
+    // trigger can fire it — and it steers away from mum, the delivered
+    // mission's originator: of grandpa's two remaining templates, the
+    // sis-bound one must come up.
+    p1.send_message(gp_chat, MUM_MISSION_2.to_string(), None, None)
+        .await
+        .expect("p1 delivers a second message to grandpa");
+    wait_until("grandpa acks the second delivery", Duration::from_secs(90), || async {
+        messages_of(&p1, gp_chat).await.iter().any(|t| t == MUM_SUCCESS_2)
+    })
+    .await;
+    wait_until("grandpa fires a follow-up mission", Duration::from_secs(90), || async {
+        messages_of(&p1, gp_chat).await.iter().any(|t| t == GP_SIDE_MISSION)
+    })
+    .await;
+    assert!(
+        !messages_of(&p1, gp_chat).await.iter().any(|t| t == GP_MISSION_2),
+        "the follow-up must not send the courier straight back to the originator \
+         while another destination is available"
+    );
 
     // Same mission pasted back at its author: not for them either. The nudge
     // must never name the real recipient — finding them is the game.

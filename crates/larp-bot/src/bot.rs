@@ -88,6 +88,15 @@ impl BotState {
     }
 }
 
+/// How long a human would plausibly take to type `text`: one second for
+/// every four words. Awaited before every message a bot sends — an instant
+/// reply reads as a machine, a beat of "typing" reads as a person. Shared
+/// with the spec bots (the mayor, the informant).
+pub(crate) async fn typing_pause(text: &str) {
+    let words = text.split_whitespace().count() as u64;
+    tokio::time::sleep(Duration::from_millis(words * 1000 / 4)).await;
+}
+
 /// Overwrite the freshly-migrated local store's identity with the flashed
 /// bundle, and register the bundle's inbox topic as active. Idempotent; runs
 /// before the Node ever reads its keys. `Node::init`'s startup path then
@@ -559,6 +568,7 @@ impl Bot {
                     .greeting
                     .clone();
                 info!(player = %device, "greeting a new player");
+                typing_pause(&greeting).await;
                 self.node.send_message(chat, greeting, None, None).await?;
                 self.state.greeted.insert(key.clone());
                 self.state.save(&self.state_path)?;
@@ -596,6 +606,7 @@ impl Bot {
             return Ok(());
         };
         info!(chat = %key, "the mayor has fallen — announcing");
+        typing_pause(&line).await;
         self.node.send_message(chat, line, None, None).await?;
         self.state.fallen_announced.insert(key.to_string());
         self.state.save(&self.state_path)?;
@@ -715,6 +726,7 @@ impl Bot {
             // thread falls back to a plain message. (The hex op hash parses
             // straight into the p2panda `Hash` the node wants.)
             let target = answers.as_ref().and_then(|hash| hash.parse().ok());
+            typing_pause(&reply).await;
             let sent = if target.is_some() {
                 match self
                     .node
@@ -738,13 +750,18 @@ impl Bot {
                 dirty = true;
             }
         }
-        if !delivered_from.is_empty() && self.maybe_tip_informant(chat, key).await? {
+        let tipped_now = !delivered_from.is_empty() && self.maybe_tip_informant(chat, key).await?;
+        if tipped_now {
             dirty = true;
         }
         if dirty {
             self.state.save(&self.state_path)?;
         }
-        if !delivered_from.is_empty() {
+        // When the tip just went out, it IS the follow-up: handing the player
+        // the informant's contact opens the side plot, and stacking a regular
+        // mission on top would bury it. Only Mira ever tips, once per player —
+        // her later deliveries earn ordinary follow-ups again.
+        if !delivered_from.is_empty() && !tipped_now {
             self.fire_followup_mission(chat, key, &delivered_from).await?;
         }
         Ok(())
@@ -766,6 +783,7 @@ impl Bot {
             return Ok(());
         };
         info!(to = %mission.to, chat = %key, "delivery landed, firing a follow-up mission");
+        typing_pause(&mission.text).await;
         self.node
             .send_message(chat, mission.text.clone(), None, None)
             .await?;
@@ -806,6 +824,7 @@ impl Bot {
             return Ok(false);
         };
         info!(chat = %key, "passing the informant's contact to a player");
+        typing_pause(&tip).await;
         self.node.send_message(chat, tip, None, None).await?;
         self.state.tipped.insert(key.to_string());
         Ok(true)
@@ -850,6 +869,7 @@ impl Bot {
             return Ok(());
         };
         info!(to = %mission.to, chat = %key, "firing mission");
+        typing_pause(&mission.text).await;
         self.node
             .send_message(chat, mission.text.clone(), None, None)
             .await?;

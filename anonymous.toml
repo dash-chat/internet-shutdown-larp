@@ -29,6 +29,6 @@ greeting = [
   """Fear is how he holds this town. We need to bring him down.""",
   """I was in his office an hour ago, there is a ton of incriminating evidence that would mean several years in prison. I couldn't take any paper, so I copied this one line, word for word:""",
   """Let the north side burn until they stop asking questions.""",
-  """Walk to the town hall and paste this one line into the mayor's own chat. Then stay and watch him read it.""",
+  """Walk to the town hall and paste the previous message into the mayor's own chat. Then stay and watch him read it.""",
   """Face him with his own words.""",
 ]

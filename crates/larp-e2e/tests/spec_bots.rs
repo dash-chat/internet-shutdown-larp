@@ -107,6 +107,7 @@ async fn informant_whispers_after_contact_request() {
         None,
         Duration::from_secs(1),
         dir.path().join("state.json"),
+        None,
     );
     let _task = tokio::spawn(bot.run_loop(rx));
 
@@ -178,6 +179,7 @@ async fn mayor_falls_when_a_player_sends_him_his_own_words() {
         None,
         Duration::from_secs(1),
         dir.path().join("state.json"),
+        None,
     );
     let _task = tokio::spawn(bot.run_loop(rx));
 

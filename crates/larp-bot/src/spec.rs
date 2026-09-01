@@ -150,6 +150,14 @@ pub struct SpecConfig {
     pub data_dir: PathBuf,
     #[serde(default = "default_poll_interval_secs")]
     pub poll_interval_secs: u64,
+    /// Where to touch the flag when a trigger fires. Defaults to `triggered`
+    /// in the data dir — but the mayor's deployment points it somewhere the
+    /// neighbour's bot can actually see: both services run as DynamicUser,
+    /// and a DynamicUser StateDirectory really lives under /var/lib/private
+    /// (0700, root-only), so a flag inside it is invisible across services
+    /// (nix/larp-bot.nix puts it in /var/lib/larp instead).
+    #[serde(default)]
+    pub triggered_flag: Option<PathBuf>,
 }
 
 impl SpecConfig {
@@ -208,6 +216,8 @@ pub struct SpecBot {
     poll: Duration,
     state: SpecState,
     state_path: PathBuf,
+    /// Touched when a trigger fires (see [`SpecConfig::triggered_flag`]).
+    triggered_flag: PathBuf,
 }
 
 /// Run a spec bot daemon: seed identity, start the node, register the
@@ -253,6 +263,7 @@ pub async fn run(config: SpecConfig) -> Result<()> {
         avatar,
         Duration::from_secs(config.poll_interval_secs.max(1)),
         state_path,
+        config.triggered_flag,
     )
     .run_loop(notification_rx)
     .await
@@ -266,7 +277,10 @@ impl SpecBot {
         profile_avatar: Option<String>,
         poll: Duration,
         state_path: PathBuf,
+        triggered_flag: Option<PathBuf>,
     ) -> Self {
+        let triggered_flag =
+            triggered_flag.unwrap_or_else(|| state_path.with_file_name("triggered"));
         Self {
             node,
             me,
@@ -275,6 +289,7 @@ impl SpecBot {
             poll,
             state: SpecState::load(&state_path),
             state_path,
+            triggered_flag,
         }
     }
 
@@ -384,6 +399,7 @@ impl SpecBot {
             let chat = self.node.direct_chat_topic(FakeAgentId::from(device));
             info!(to = %requester, "sending the greeting");
             for message in &self.spec.greeting {
+                crate::bot::typing_pause(message).await;
                 self.node
                     .send_message(chat, message.clone(), None, None)
                     .await?;
@@ -419,6 +435,7 @@ impl SpecBot {
             // that never arrives would strand the endgame.
             let mut target = op_hash.parse().ok();
             for message in reply {
+                crate::bot::typing_pause(&message).await;
                 if target.is_some() {
                     match self
                         .node
@@ -450,7 +467,7 @@ impl SpecBot {
 
     /// Where this bot records that one of its triggers has fired.
     pub fn triggered_flag_path(&self) -> PathBuf {
-        self.state_path.with_file_name("triggered")
+        self.triggered_flag.clone()
     }
 }
 

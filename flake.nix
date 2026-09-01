@@ -67,6 +67,8 @@
             pkg-config # native deps of the dash-chat crate tree
             openssl
             doctl # sister droplet recipes (the out-of-town character) (just sister::*)
+            nmap # deploy-all's station sweep — in the shell, not `nix run`,
+            # because the game wifi has no internet to fetch it from
           ];
         };
 
