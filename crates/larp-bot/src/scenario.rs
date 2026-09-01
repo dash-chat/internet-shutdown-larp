@@ -58,11 +58,12 @@ pub struct Pack {
     /// No line, or no informant identity on the card — no tip.
     #[serde(default)]
     pub informant_tip: Option<String>,
-    /// Sent unprompted, once per chat, when the mayor falls — the character
-    /// bot polls the flag his spec bot writes (`BotConfig::mayor_fallen_flag`)
-    /// and erupts the moment it appears. Only Nadia carries this line: her
-    /// bot shares the base-station Pi with the mayor's, so she is the one
-    /// character who can actually see it happen.
+    /// Sent unprompted when the mayor falls — the character bot polls the
+    /// flag his spec bot writes (`BotConfig::mayor_fallen_flag`) and erupts
+    /// the moment it appears, into the chat of the player who felled him
+    /// (the flag names them; once per chat). Only Nadia carries this line:
+    /// her bot shares the base-station Pi with the mayor's, so she is the
+    /// one character who can actually see it happen.
     #[serde(default)]
     pub mayor_fallen: Option<String>,
     #[serde(default)]

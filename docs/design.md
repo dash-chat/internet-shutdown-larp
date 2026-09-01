@@ -241,20 +241,26 @@ replays it.
 Then the win actually *lands*: seconds later **Nadia erupts, unprompted**, in
 her own chat. The player is standing at the base station — her bot shares
 that Pi with the mayor's, which is exactly what makes this possible. When his
-trigger fires, his bot touches a `triggered` flag next to its state
-(`/var/lib/larp-bot-mayor/triggered`); her bot polls the path
+trigger fires, his bot appends the triggering player's device id to a flag
+file (`/var/lib/larp/mayor-triggered` — a shared tmpfiles dir, NOT his state
+dir: a DynamicUser StateDirectory lives under `/var/lib/private`, 0700, and
+would be invisible to her service); her bot polls the path
 (`BotConfig::mayor_fallen_flag`, wired in `nix/larp-bot.nix`) and, the tick
-it appears, sends her `mayor_fallen` line to every chat, once per player:
-he's gone, the fires are going out, the internet is coming back, you can
-relax now — thank you. The resolution comes from the character the player
-has been working with all game, not from the villain, and it arrives without
-the player having to do anything but stand there. Only Nadia has the line
-(linted): everywhere else the flag never appears, so a `mayor_fallen` in any
-other pack would be dead content. The game still closes entirely
-in-fiction — no out-of-character congratulations.
+it appears, sends her `mayor_fallen` line — **only into that player's chat**,
+once: he's gone, the fires are going out, the internet is coming back, you
+can relax now — thank you. The collapse is the courier's payoff, not
+broadcast news; other players keep playing until their own endgame (each can
+fell him with their own message — the flag collects one device id per line).
+An *empty* flag (a facilitator's manual `touch`) means everyone hears. The
+resolution comes from the character the player has been working with all
+game, not from the villain, and it arrives without the player having to do
+anything but stand there. Only Nadia has the line (linted): everywhere else
+the flag never appears, so a `mayor_fallen` in any other pack would be dead
+content. The game still closes entirely in-fiction — no out-of-character
+congratulations.
 
 (Resetting for a new game day = wiping `/var/lib` on the base Pi: the flag
-lives next to the mayor's state, so both clear together.)
+and the mayor's state both live under it, so they clear together.)
 
 Because the mayor's bot sits on the base station, the last delivery of the
 game is a walk back to where it started. A single player can finish the whole

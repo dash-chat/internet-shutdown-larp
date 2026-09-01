@@ -547,13 +547,16 @@ impl Bot {
     }
 
     async fn tick(&mut self) -> Result<()> {
-        // Has the mayor come apart? Checked once per tick: his spec bot
-        // shares this Pi on the base station and touches the flag the moment
-        // a trigger fires. Everywhere else the file simply never appears.
-        let mayor_fallen = self
+        // Has the mayor come apart, and at whose hands? Checked once per
+        // tick: his spec bot shares this Pi on the base station and writes
+        // the flag the moment a trigger fires — one triggering player's
+        // device id per line. Everywhere else the file simply never appears.
+        // `Some(empty set)` is a facilitator's bare `touch`: everyone hears.
+        let mayor_felled_by: Option<BTreeSet<String>> = self
             .mayor_fallen_flag
             .as_deref()
-            .is_some_and(|flag| flag.exists());
+            .and_then(|flag| std::fs::read_to_string(flag).ok())
+            .map(|raw| raw.split_whitespace().map(str::to_string).collect());
 
         let me = self.bundle.device_id()?;
         for (device, chat) in direct_chats(&self.node, me, &self.state.accepted_contacts).await? {
@@ -579,8 +582,12 @@ impl Bot {
                 );
             }
 
-            if mayor_fallen {
-                self.maybe_announce_fallen(chat, &key).await?;
+            if let Some(felled_by) = &mayor_felled_by {
+                // The eruption goes to the player who felled him — the payoff
+                // for delivering the sentence — not to every open chat.
+                if felled_by.is_empty() || felled_by.contains(&device.to_string()) {
+                    self.maybe_announce_fallen(chat, &key).await?;
+                }
             }
             self.process_chat_messages(chat, &key).await?;
             self.maybe_fire_mission(chat, &key).await?;
@@ -589,9 +596,11 @@ impl Bot {
     }
 
     /// Erupt: the mayor has fallen and this character saw it happen. Sent
-    /// unprompted, once per chat, the tick the flag appears — the payoff for
-    /// the player standing right there when he came apart. Silent for packs
-    /// with no `mayor_fallen` line (everyone but Nadia, who shares his Pi).
+    /// unprompted, once per chat, the tick the flag appears — but only into
+    /// the chats of the players the flag names as having felled him (the
+    /// caller checks): the collapse is the courier's payoff, not broadcast
+    /// news. Silent for packs with no `mayor_fallen` line (everyone but
+    /// Nadia, who shares his Pi).
     async fn maybe_announce_fallen(&mut self, chat: ChatId, key: &str) -> Result<()> {
         if self.state.fallen_announced.contains(key) {
             return Ok(());

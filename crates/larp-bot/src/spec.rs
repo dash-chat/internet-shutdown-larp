@@ -417,17 +417,17 @@ impl SpecBot {
     /// Only *player*-authored messages count. This bot's own lines are
     /// skipped, which is what lets a spec quote its own phrases safely.
     async fn answer_triggers(&mut self, chat: ChatId) -> Result<()> {
-        let mut replies: Vec<(String, Vec<String>)> = Vec::new();
+        let mut replies: Vec<(String, String, Vec<String>)> = Vec::new();
         for (author, op_hash, text) in crate::bot::chat_messages(&self.node, chat).await? {
             if author == self.me || self.state.answered.contains(&op_hash) {
                 continue;
             }
             if let Some(trigger) = self.spec.triggered_by(&text) {
                 info!(phrase = %trigger.phrase, "trigger phrase received");
-                replies.push((op_hash, trigger.reply.clone()));
+                replies.push((op_hash, author.to_string(), trigger.reply.clone()));
             }
         }
-        for (op_hash, reply) in replies {
+        for (op_hash, felled_by, reply) in replies {
             // The first line is threaded onto the message that triggered it —
             // the mayor answering the evidence the player just put in front of
             // him — and the rest of his unravelling follows as plain messages.
@@ -452,13 +452,23 @@ impl SpecBot {
             }
             self.state.answered.insert(op_hash);
             self.state.save(&self.state_path)?;
-            // Signal the fall to the outside: touch `triggered` next to
-            // state.json. Nadia's character bot shares this Pi and polls the
-            // path (BotConfig::mayor_fallen_flag) to erupt in every chat the
-            // moment the mayor comes apart. Same dir as the state, so a
-            // game-day reset (wiping /var/lib) clears both together.
+            // Signal the fall to the outside: append the triggering player's
+            // device id to the flag file. Nadia's character bot shares this
+            // Pi and polls the path (BotConfig::mayor_fallen_flag) to erupt —
+            // only in the chats of the players named in the flag, since the
+            // fall is THEIR payoff, not the whole town's news feed. Appended,
+            // not overwritten: several players can each fell him. An empty
+            // flag (a facilitator's manual `touch`) means everyone.
             let flag = self.triggered_flag_path();
-            if let Err(err) = std::fs::write(&flag, b"") {
+            let written = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&flag)
+                .and_then(|mut f| {
+                    use std::io::Write as _;
+                    f.write_all(format!("{felled_by}\n").as_bytes())
+                });
+            if let Err(err) = written {
                 warn!(path = %flag.display(), ?err, "could not write the triggered flag");
             }
         }

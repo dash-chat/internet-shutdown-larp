@@ -251,10 +251,14 @@ async fn mayor_falls_when_a_player_sends_him_his_own_words() {
     }
 
     // The fall is signalled outside the chat too: the flag Nadia's bot polls
-    // (same Pi, BotConfig::mayor_fallen_flag) exists once the trigger fired.
+    // (same Pi, BotConfig::mayor_fallen_flag) exists once the trigger fired —
+    // and names the player who felled him, so her eruption reaches only the
+    // courier who earned it.
+    let flag = std::fs::read_to_string(dir.path().join("triggered"))
+        .expect("the collapse must write the triggered flag for Nadia's eruption");
     assert!(
-        dir.path().join("triggered").exists(),
-        "the collapse must touch the triggered flag for Nadia's eruption"
+        flag.split_whitespace().any(|l| l == p1.device_id().to_string()),
+        "the flag must name the player who felled the mayor, got {flag:?}"
     );
 
     // Exactly once: the op hash is remembered, so the bot's repeated scans of
