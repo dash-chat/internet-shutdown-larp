@@ -78,6 +78,13 @@ let
         RestartSec = 5;
         DynamicUser = true;
 
+        # The stations have no NTP and (batteryless) no RTC; the bot steps
+        # the clock forward from the timestamps on received messages instead
+        # (crates/larp-bot/src/clock.rs). Without this the step is refused
+        # and replies never thread onto the deliveries they answer.
+        AmbientCapabilities = [ "CAP_SYS_TIME" ];
+        CapabilityBoundingSet = [ "CAP_SYS_TIME" ];
+
         ProtectSystem = "strict";
         ProtectHome = true;
         NoNewPrivileges = true;
@@ -240,6 +247,11 @@ in
         Restart = "always";
         RestartSec = 5;
         DynamicUser = true;
+
+        # See specService above: the offline stations' clock is stepped
+        # forward from received-message timestamps, which needs CAP_SYS_TIME.
+        AmbientCapabilities = [ "CAP_SYS_TIME" ];
+        CapabilityBoundingSet = [ "CAP_SYS_TIME" ];
 
         ProtectSystem = "strict";
         ProtectHome = true;

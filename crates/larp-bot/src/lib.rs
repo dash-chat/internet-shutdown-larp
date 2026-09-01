@@ -7,6 +7,7 @@
 
 pub mod bot;
 pub mod cast;
+pub mod clock;
 pub mod config;
 pub mod identity;
 pub mod qr;

@@ -280,6 +280,14 @@ pub(crate) async fn chat_messages(
         }
     }
     ops.sort_by_key(|(header, _)| header.timestamp);
+    // The offline stations' NTP substitute (see crate::clock): the phones
+    // know the time and stamp every op with it, so the newest op in the chat
+    // pulls a lagging station clock forward. Must at least be considered on
+    // every scan — the clock matters most for stamping the very replies this
+    // scan is about to produce.
+    if let Some((header, _)) = ops.last() {
+        crate::clock::step_clock_forward(u64::from(header.timestamp));
+    }
     Ok(ops
         .into_iter()
         .filter_map(|(header, payload)| {

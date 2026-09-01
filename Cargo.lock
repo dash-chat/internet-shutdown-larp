@@ -2883,6 +2883,7 @@ dependencies = [
  "dashchat-node",
  "hex",
  "image",
+ "libc",
  "mailbox-client",
  "qrcode",
  "rand 0.8.8",
