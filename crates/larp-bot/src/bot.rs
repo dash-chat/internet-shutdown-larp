@@ -551,7 +551,9 @@ impl Bot {
         // tick: his spec bot shares this Pi on the base station and writes
         // the flag the moment a trigger fires — one triggering player's
         // device id per line. Everywhere else the file simply never appears.
-        // `Some(empty set)` is a facilitator's bare `touch`: everyone hears.
+        // An empty file names nobody and announces to nobody: a stray
+        // `touch` (or a pre-id-format leftover) must not congratulate the
+        // whole town, which is exactly what one did on 2026-09-02.
         let mayor_felled_by: Option<BTreeSet<String>> = self
             .mayor_fallen_flag
             .as_deref()
@@ -585,7 +587,7 @@ impl Bot {
             if let Some(felled_by) = &mayor_felled_by {
                 // The eruption goes to the player who felled him — the payoff
                 // for delivering the sentence — not to every open chat.
-                if felled_by.is_empty() || felled_by.contains(&device.to_string()) {
+                if felled_by.contains(&device.to_string()) {
                     self.maybe_announce_fallen(chat, &key).await?;
                 }
             }

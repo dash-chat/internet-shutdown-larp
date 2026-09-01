@@ -218,6 +218,17 @@ pub struct SpecBot {
     state_path: PathBuf,
     /// Touched when a trigger fires (see [`SpecConfig::triggered_flag`]).
     triggered_flag: PathBuf,
+    /// True when this process started with no state file at all — a wipe (or
+    /// first boot). While true, the first scan of each chat BASELINES it:
+    /// every message already there is marked answered without a reply. The
+    /// mailbox and the players' phones keep the full history through a wipe,
+    /// so without this the mayor would replay his collapse (and re-write the
+    /// flag) from old messages — which happened on 2026-09-02. Never true on
+    /// a normal restart, so a live player's fast paste is never swallowed.
+    fresh_start: bool,
+    /// Chats already baselined this run (in-memory; only used while
+    /// `fresh_start`).
+    baselined_chats: BTreeSet<String>,
 }
 
 /// Run a spec bot daemon: seed identity, start the node, register the
@@ -281,6 +292,7 @@ impl SpecBot {
     ) -> Self {
         let triggered_flag =
             triggered_flag.unwrap_or_else(|| state_path.with_file_name("triggered"));
+        let fresh_start = !state_path.exists();
         Self {
             node,
             me,
@@ -290,6 +302,8 @@ impl SpecBot {
             state: SpecState::load(&state_path),
             state_path,
             triggered_flag,
+            fresh_start,
+            baselined_chats: BTreeSet::new(),
         }
     }
 
@@ -417,15 +431,34 @@ impl SpecBot {
     /// Only *player*-authored messages count. This bot's own lines are
     /// skipped, which is what lets a spec quote its own phrases safely.
     async fn answer_triggers(&mut self, chat: ChatId) -> Result<()> {
+        // A wiped bot re-syncs history it already answered once (the dedup
+        // hashes died with the state): the first scan of each chat after a
+        // fresh start swallows what's already there instead of replying.
+        let baseline =
+            self.fresh_start && !self.baselined_chats.contains(&chat.to_string());
         let mut replies: Vec<(String, String, Vec<String>)> = Vec::new();
+        let mut swallowed = 0usize;
         for (author, op_hash, text) in crate::bot::chat_messages(&self.node, chat).await? {
             if author == self.me || self.state.answered.contains(&op_hash) {
+                continue;
+            }
+            if baseline {
+                self.state.answered.insert(op_hash);
+                swallowed += 1;
                 continue;
             }
             if let Some(trigger) = self.spec.triggered_by(&text) {
                 info!(phrase = %trigger.phrase, "trigger phrase received");
                 replies.push((op_hash, author.to_string(), trigger.reply.clone()));
             }
+        }
+        if baseline {
+            self.baselined_chats.insert(chat.to_string());
+            if swallowed > 0 {
+                info!(chat = %chat, swallowed, "fresh start: baselined pre-existing messages");
+                self.state.save(&self.state_path)?;
+            }
+            return Ok(());
         }
         for (op_hash, felled_by, reply) in replies {
             // The first line is threaded onto the message that triggered it —
@@ -458,7 +491,7 @@ impl SpecBot {
             // only in the chats of the players named in the flag, since the
             // fall is THEIR payoff, not the whole town's news feed. Appended,
             // not overwritten: several players can each fell him. An empty
-            // flag (a facilitator's manual `touch`) means everyone.
+            // flag names nobody (a bare `touch` is deliberately inert).
             let flag = self.triggered_flag_path();
             let written = std::fs::OpenOptions::new()
                 .create(true)

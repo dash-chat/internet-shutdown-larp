@@ -251,7 +251,8 @@ once: he's gone, the fires are going out, the internet is coming back, you
 can relax now — thank you. The collapse is the courier's payoff, not
 broadcast news; other players keep playing until their own endgame (each can
 fell him with their own message — the flag collects one device id per line).
-An *empty* flag (a facilitator's manual `touch`) means everyone hears. The
+An *empty* flag names nobody and announces to nobody — a stray `touch`
+cannot congratulate the whole town. The
 resolution comes from the character the player has been working with all
 game, not from the villain, and it arrives without the player having to do
 anything but stand there. Only Nadia has the line (linted): everywhere else

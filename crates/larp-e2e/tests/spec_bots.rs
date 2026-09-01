@@ -181,7 +181,7 @@ async fn mayor_falls_when_a_player_sends_him_his_own_words() {
         dir.path().join("state.json"),
         None,
     );
-    let _task = tokio::spawn(bot.run_loop(rx));
+    let task = tokio::spawn(bot.run_loop(rx));
 
     let p1 = TestNode::new(NodeConfig::testing(), "p1").await;
     p1.add_mailbox_client(mailbox.client()).await;
@@ -272,4 +272,51 @@ async fn mayor_falls_when_a_player_sends_him_his_own_words() {
             "the mayor repeated himself: {line:?}"
         );
     }
+
+    // --- A game-day reset must not replay the endgame. Wipe the mayor's
+    // whole data dir (state, node data, flag) and restart him from the
+    // bundle: the mailbox still holds tonight's history, including the
+    // trigger message, but a fresh-start bot BASELINES what it re-syncs
+    // instead of answering it.
+    task.abort();
+    let _ = task.await;
+    node.shutdown().await.expect("mayor node shuts down");
+    std::fs::remove_dir_all(dir.path()).unwrap();
+    std::fs::create_dir_all(dir.path()).unwrap();
+    let (node2, rx2) = build_node(dir.path(), &bundle, NodeConfig::testing())
+        .await
+        .expect("rebuilt mayor node builds");
+    node2.mailboxes.register(mailbox.client()).await;
+    let bot2 = SpecBot::new(
+        node2.clone(),
+        bundle.device_id().unwrap(),
+        mayor_spec(),
+        None,
+        Duration::from_secs(1),
+        dir.path().join("state.json"),
+        None,
+    );
+    let _task2 = tokio::spawn(bot2.run_loop(rx2));
+
+    // The baseline is persisted into the fresh state's answered set — once
+    // it lands, the re-synced trigger has definitively been swallowed.
+    wait_until("the rebuilt mayor baselines the history", Duration::from_secs(90), || async {
+        !larp_bot::spec::SpecState::load(&dir.path().join("state.json"))
+            .answered
+            .is_empty()
+    })
+    .await;
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    let texts = messages_of(&p1, chat).await;
+    for line in &collapse {
+        assert_eq!(
+            texts.iter().filter(|t| *t == line).count(),
+            1,
+            "the wiped mayor replayed his collapse: {line:?}"
+        );
+    }
+    assert!(
+        !dir.path().join("triggered").exists(),
+        "the wiped mayor re-wrote the triggered flag from old history"
+    );
 }
