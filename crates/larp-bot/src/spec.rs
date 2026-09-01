@@ -6,12 +6,15 @@
 //! - **the mayor**, whose QR poster hangs at the base station and whose
 //!   greeting *is* the game's onboarding — he explains the fires, the copy-
 //!   paste-and-walk mechanic, and the mobile-data rule, in his first
-//!   messages. His trigger is the endgame: send him the informant's password
-//!   in his own chat and he comes apart;
-//! - **the anonymous informant**, whose poster is hidden somewhere on the
-//!   map. He has no triggers; he hands out the password that ends the mayor.
+//!   messages. His trigger is the endgame: paste the line the informant
+//!   leaked out of his own written order into his chat and he comes apart;
+//! - **the anonymous informant**, who has no poster at all. Mira hands out
+//!   his contact as a deep link once a player has carried something to her
+//!   (`informant_tip` in her pack). He has no triggers; what he gives out is
+//!   the mayor's own sentence, which is what ends the mayor.
 //!
-//! Neither appears in `larp-cast.toml` — no other character knows they exist.
+//! Neither appears in `larp-cast.toml`. Only Mira knows the informant exists,
+//! and all she has of him is the contact link she passes on.
 //!
 //! The informant's identity bundle runs on every station at once. That is safe
 //! enough because p2panda logs are per (device, topic): the instances only
@@ -395,7 +398,25 @@ impl SpecBot {
             }
         }
         for (op_hash, reply) in replies {
+            // The first line is threaded onto the message that triggered it —
+            // the mayor answering the evidence the player just put in front of
+            // him — and the rest of his unravelling follows as plain messages.
+            // A target the node refuses falls back to a plain send: a collapse
+            // that never arrives would strand the endgame.
+            let mut target = op_hash.parse().ok();
             for message in reply {
+                if target.is_some() {
+                    match self
+                        .node
+                        .send_message(chat, message.clone(), None, target.take())
+                        .await
+                    {
+                        Ok(_) => continue,
+                        Err(err) => {
+                            warn!(?err, "could not thread the answer as a reply, sending plain");
+                        }
+                    }
+                }
                 self.node.send_message(chat, message, None, None).await?;
             }
             self.state.answered.insert(op_hash);
@@ -477,14 +498,19 @@ mod tests {
             name = "Mayor"
             greeting = ["citizens"]
             [[triggers]]
-            phrase = "ahawegotyou"
+            phrase = "let the north side burn"
             reply = ["caught"]
             "#,
         )
         .unwrap();
         s.lint().unwrap();
-        assert!(s.triggered_by("someone told me:  AHAWEGOTYOU \n— go").is_some());
-        assert!(s.triggered_by("ahawegot").is_none());
+        // What a player actually pastes: the informant's whole message, case
+        // mangled, wrapped in their own words.
+        assert!(
+            s.triggered_by("look what they sent me:\n  LET THE NORTH   side burn \n— his own words")
+                .is_some()
+        );
+        assert!(s.triggered_by("let the north side").is_none());
         assert!(s.triggered_by("").is_none());
     }
 

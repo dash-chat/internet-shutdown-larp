@@ -1,11 +1,11 @@
 //! Spec-bot end-to-end tests — the side plot, from both ends.
 //!
-//! 1. The informant: a player scans the hidden QR poster, the bot accepts the
-//!    contact request and sends its greeting (the whole secret) into the
-//!    direct chat.
-//! 2. The mayor: a player sends him the informant's password in his own chat,
-//!    and he answers with the collapse — exactly once, however often the chat
-//!    is re-scanned.
+//! 1. The informant: a player follows the contact link Mira handed them (he
+//!    has no poster), the bot accepts the contact request and sends its
+//!    greeting — the whole secret — into the direct chat.
+//! 2. The mayor: a player sends him the line the informant leaked out of his
+//!    own written order, in his own chat, and he answers with the collapse —
+//!    exactly once, however often the chat is re-scanned.
 
 use std::time::Duration;
 
@@ -19,7 +19,7 @@ use larp_bot::identity::IdentityBundle;
 use larp_bot::qr;
 use larp_bot::spec::{Spec, SpecBot};
 
-const PASSWORD: &str = "ANON-CODE-XYZZY";
+const LEAKED_LINE: &str = "ANON-LINE: let the north side burn";
 
 fn informant_spec() -> Spec {
     let spec: Spec = toml::from_str(&format!(
@@ -27,7 +27,7 @@ fn informant_spec() -> Spec {
         name = "Anonymous"
         greeting = [
             "ANON-REVEAL: the mayor lit the fires himself.",
-            "ANON-PASS: his password is {PASSWORD}.",
+            "ANON-LEAK: I copied one line out of his order: {LEAKED_LINE}.",
             "ANON-SEND: paste it into the mayor's own chat.",
         ]
         "#
@@ -44,9 +44,9 @@ fn mayor_spec() -> Spec {
         greeting = ["MAYOR-GREETING: citizens, scan the four posters."]
 
         [[triggers]]
-        phrase = "{PASSWORD}"
+        phrase = "{LEAKED_LINE}"
         reply = [
-            "MAYOR-CAUGHT: where did you get that word?",
+            "MAYOR-CAUGHT: where did you get that sentence?",
             "MAYOR-FLED: the mayor has fled town.",
         ]
         "#
@@ -87,9 +87,10 @@ async fn informant_whispers_after_contact_request() {
     dashchat_node::testing::setup_tracing(&["info"], false);
     let mailbox = MemMailbox::<MailboxOperation>::new();
 
-    // The hidden character, generated offline; its poster is printed once.
+    // The informant, generated offline; his contact code is never printed —
+    // Mira hands it out as a deep link.
     let bundle = IdentityBundle::generate("anonymous");
-    let poster = bundle.contact_code().unwrap();
+    let contact_code = bundle.contact_code().unwrap();
     let spec = informant_spec();
     let script = spec.greeting.clone();
 
@@ -109,7 +110,7 @@ async fn informant_whispers_after_contact_request() {
     );
     let _task = tokio::spawn(bot.run_loop(rx));
 
-    // A player scans the poster: this queues a contact request into the
+    // A player follows the link: this queues a contact request into the
     // informant's inbox topic through the shared mailbox.
     let p1 = TestNode::new(NodeConfig::testing(), "p1").await;
     p1.add_mailbox_client(mailbox.client()).await;
@@ -121,7 +122,7 @@ async fn informant_whispers_after_contact_request() {
     })
     .await
     .unwrap();
-    p1.add_contact(qr::decode_contact_code(&poster).unwrap())
+    p1.add_contact(qr::decode_contact_code(&contact_code).unwrap())
         .await
         .expect("p1 adds the informant");
 
@@ -152,16 +153,16 @@ async fn informant_whispers_after_contact_request() {
     .await;
 }
 
-/// The endgame: the password the informant handed out is delivered to the
+/// The endgame: the line the informant leaked is delivered to the
 /// mayor the same way every mission is — pasted into his chat, sloppily —
 /// and he answers once and only once.
 #[tokio::test(flavor = "multi_thread")]
-async fn mayor_falls_when_a_player_sends_him_the_password() {
+async fn mayor_falls_when_a_player_sends_him_his_own_words() {
     dashchat_node::testing::setup_tracing(&["info"], false);
     let mailbox = MemMailbox::<MailboxOperation>::new();
 
     let bundle = IdentityBundle::generate("mayor");
-    let poster = bundle.contact_code().unwrap();
+    let contact_code = bundle.contact_code().unwrap();
     let spec = mayor_spec();
     let collapse = spec.triggers[0].reply.clone();
 
@@ -190,7 +191,7 @@ async fn mayor_falls_when_a_player_sends_him_the_password() {
     })
     .await
     .unwrap();
-    p1.add_contact(qr::decode_contact_code(&poster).unwrap())
+    p1.add_contact(qr::decode_contact_code(&contact_code).unwrap())
         .await
         .expect("p1 adds the mayor");
 
@@ -208,22 +209,44 @@ async fn mayor_falls_when_a_player_sends_him_the_password() {
     })
     .await;
 
-    // The player pastes the password in, as sloppily as a phone clipboard
+    // The player pastes the line in, as sloppily as a phone clipboard
     // makes it: a prefix, mangled case, trailing prose.
     p1.send_message(
         chat,
-        format!("anonymous said to send you this:\n  {}\n", PASSWORD.to_lowercase()),
+        format!("anonymous said to send you this:\n  {}\n", LEAKED_LINE.to_lowercase()),
         None,
         None,
     )
     .await
-    .expect("p1 sends the password");
+    .expect("p1 sends the leaked line");
 
     wait_until("the mayor comes apart", Duration::from_secs(90), || async {
         let texts = messages_of(&p1, chat).await;
         collapse.iter().all(|line| texts.contains(line))
     })
     .await;
+
+    // His first line is threaded onto the evidence the player put in front of
+    // him; the rest of the unravelling is plain.
+    let threaded: Vec<(String, bool)> = p1
+        .get_messages(chat)
+        .await
+        .map(|msgs| {
+            msgs.iter()
+                .map(|m| (m.content.message().to_string(), m.content.reply().is_some()))
+                .collect()
+        })
+        .unwrap_or_default();
+    assert!(
+        threaded.contains(&(collapse[0].clone(), true)),
+        "the mayor's first answer should reply to the pasted line"
+    );
+    for line in &collapse[1..] {
+        assert!(
+            threaded.contains(&(line.clone(), false)),
+            "only the first line is threaded: {line:?}"
+        );
+    }
 
     // Exactly once: the op hash is remembered, so the bot's repeated scans of
     // the same chat never replay the collapse.

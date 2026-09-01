@@ -8,29 +8,33 @@
 # happens. His bot runs on the base-station Pi only, so his downfall lands
 # where the game began.
 #
-# The trigger phrase MUST match the password the informant hands out
-# (anonymous.toml) — a unit test in crates/larp-bot/src/spec.rs enforces it.
+# The trigger is not a password: it is the line the informant copied out of
+# the mayor's own order (anonymous.toml), pasted back into his chat like every
+# other message in this game. It MUST stay word-for-word identical to the line
+# the informant hands out — a unit test in crates/larp-bot/src/spec.rs
+# enforces it. Matching is forgiving about case, whitespace and surrounding
+# prose, so a player who pastes the informant's whole message still lands it.
 
 name = "The Mayor"
 
 greeting = [
   """🏛️ Citizens. This is the mayor, from the town hall. If you are reading this, you are one of the few still out on the streets.""",
   """🔥 Fires are burning on every side of us. The phones are dead, the internet is dead, and the relief stations cannot reach each other any more. Nothing moves through this town now except what people carry.""",
-  """📋 First: scan the five other posters around you. That is your family and your neighbour, and each poster opens a private chat with one of them.""",
+  """📋 First: scan the four other posters around you. That is your family and your neighbour, and each poster opens a private chat with one of them.""",
   """📋 Then: when one of them asks you to pass something on, COPY their message, PASTE it into the chat of the person it is meant for, and walk to that person's station so your phone can hand it over. That is the whole job.""",
   """📵 Keep your mobile data OFF and forget every other wifi network. There is nothing out there to connect to any more.""",
   """🏛️ Go. The town is counting on you. I will be right here, watching over all of you.""",
 ]
 
-# The endgame. The informant gives players this password; the players deliver
-# it to the mayor the same way they deliver everything else. Answered once per
-# message (the op hash is remembered), so a re-sync never replays it.
+# The endgame. The informant leaks this line out of the mayor's own order; the
+# players deliver it to him the way they deliver everything else. Answered once
+# per message (the op hash is remembered), so a re-sync never replays it.
 [[triggers]]
-phrase = "ahawegotyou"
+phrase = "Let the north side burn until they stop asking questions"
 reply = [
-  """🏛️ …Where did you get that word?""",
-  """🏛️ That is a private file. That is MY private file. Who has been talking to you?""",
-  """🚨 It's open. All of it. The orders to light the fires. The order to cut the phones and the internet. The plan for a town too frightened and too cut off to ask questions.""",
+  """🏛️ …Where did you get that sentence.""",
+  """🏛️ Those are my words. That paper does not leave my office. Who put it in your hands?""",
+  """🚨 It doesn't matter. It's out. The order to light the north side. The order to cut the phones and the internet. A town too frightened and too cut off to ask a single question — that was the plan, and that is my handwriting on it.""",
   """🏃💨 The mayor's car is already speeding past the old mill, a suitcase on the back seat. He is gone. The town is yours again.""",
   """🎉 Congrats — you completed the LARP! Send feedback about your experience with Dash Chat using the "Feedback" button on the top right in the app.""",
 ]

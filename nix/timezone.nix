@@ -1,4 +1,4 @@
-# Timezone provisioning, following the wifi-ap.env pattern: a oneshot
+# Timezone provisioning, following the wifi.env pattern: a oneshot
 # service applies /boot/firmware/timezone.env (TIMEZONE=<IANA zone>) at
 # boot, falling back to Europe/Madrid when the file (or the variable) is
 # absent. Drop a timezone.env on a card's FAT boot partition to override —

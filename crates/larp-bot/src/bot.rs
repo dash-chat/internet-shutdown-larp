@@ -54,6 +54,10 @@ pub struct BotState {
     /// Each template is used at most once per player.
     #[serde(default)]
     pub fired: BTreeMap<String, Vec<String>>,
+    /// Direct chats already given the informant's contact (hex chat ids).
+    /// At most one tip per player: after it, repeats are noise.
+    #[serde(default)]
+    pub tipped: std::collections::BTreeSet<String>,
 }
 
 impl BotState {
@@ -287,12 +291,43 @@ pub(crate) async fn chat_messages(
         .collect())
 }
 
+/// How a character hands out the informant's contact, once a delivery lands.
+///
+/// The informant has no QR poster: this is the only way a player meets him.
+/// Every station card carries his identity (the informant service runs on all
+/// of them), so the character bot can build his add-contact deep link from the
+/// same file — and a player who taps it reaches whichever informant process is
+/// on the station they are standing in.
+#[derive(Clone, Debug)]
+pub struct InformantTip {
+    /// `https://dashchat.org/add-contact/<code>`.
+    pub link: String,
+}
+
+impl InformantTip {
+    /// Build the tip from the flashed informant bundle. `None` (with a log
+    /// line) when the card carries none.
+    pub fn from_identity_file(path: &Path) -> Option<Self> {
+        match IdentityBundle::load(path).and_then(|b| b.contact_code()) {
+            Ok(code) => Some(Self {
+                link: crate::qr::contact_deep_link(&code),
+            }),
+            Err(err) => {
+                warn!(path = %path.display(), ?err, "no informant identity, tips disabled");
+                None
+            }
+        }
+    }
+}
+
 pub struct Bot {
     node: Node,
     bundle: IdentityBundle,
     cast: ResolvedCast,
     scenarios: Scenarios,
     timing: Timing,
+    /// `None` on a card without the informant, or for a pack with no tip line.
+    informant: Option<InformantTip>,
     state: BotState,
     state_path: PathBuf,
     /// Per-chat next mission fire time (in-memory; reseeded on restart).
@@ -322,10 +357,23 @@ pub async fn run(config: BotConfig) -> Result<()> {
 
     register_mailbox(&node, &config.mailbox_url).await;
 
+    let informant = config
+        .anonymous_identity
+        .as_deref()
+        .and_then(InformantTip::from_identity_file);
+
     let state_path = config.data_dir.join("state.json");
-    Bot::new(node, bundle, cast, scenarios, config.timing, state_path)?
-        .run_loop(notification_rx)
-        .await
+    Bot::new(
+        node,
+        bundle,
+        cast,
+        scenarios,
+        config.timing,
+        informant,
+        state_path,
+    )?
+    .run_loop(notification_rx)
+    .await
 }
 
 impl Bot {
@@ -335,6 +383,7 @@ impl Bot {
         cast: ResolvedCast,
         scenarios: Scenarios,
         timing: Timing,
+        informant: Option<InformantTip>,
         state_path: PathBuf,
     ) -> Result<Self> {
         anyhow::ensure!(
@@ -348,6 +397,7 @@ impl Bot {
             cast,
             scenarios,
             timing,
+            informant,
             state: BotState::load(&state_path),
             state_path,
             next_fire: BTreeMap::new(),
@@ -506,9 +556,15 @@ impl Bot {
         let mut comeback_due = false;
 
         // What to say, and which player op each line answers (the comeback
-        // answers no single op). The op is only marked answered once its reply
-        // is actually out, so a send that fails is retried next tick.
+        // answers no single op). That op is two things at once: the dedup key,
+        // marked only once the reply is actually out so a failed send is
+        // retried next tick, and the message the answer is THREADED onto — an
+        // ack quotes the delivery it acks, the way a person answering three
+        // pasted messages would.
         let mut replies: Vec<(Option<String>, String)> = Vec::new();
+        // Set when a delivery meant for this character is acked in this scan:
+        // that is the moment the informant tip may follow.
+        let mut delivered = false;
         for (author, op_hash, text) in messages {
             if author == my_device {
                 continue;
@@ -545,6 +601,7 @@ impl Bot {
             }
             let reply = if mission.to == self.bundle.character {
                 info!(from = %owner, "delivery received, acking");
+                delivered = true;
                 Some(mission.success.clone())
             } else {
                 // Wrong station. Turn them away without naming the right one:
@@ -572,16 +629,73 @@ impl Bot {
         }
         let mut dirty = false;
         for (answers, reply) in replies {
-            self.node.send_message(chat, reply, None, None).await?;
+            // `Node::send_message` validates the reply target against the
+            // chat's ops and refuses the send if it doesn't like it. An ack
+            // that never goes out would strand the delivery, so a rejected
+            // thread falls back to a plain message. (The hex op hash parses
+            // straight into the p2panda `Hash` the node wants.)
+            let target = answers.as_ref().and_then(|hash| hash.parse().ok());
+            let sent = if target.is_some() {
+                match self
+                    .node
+                    .send_message(chat, reply.clone(), None, target)
+                    .await
+                {
+                    Ok(_) => true,
+                    Err(err) => {
+                        warn!(?err, "could not thread the answer as a reply, sending plain");
+                        false
+                    }
+                }
+            } else {
+                false
+            };
+            if !sent {
+                self.node.send_message(chat, reply, None, None).await?;
+            }
             if let Some(op_hash) = answers {
                 self.state.answered.insert(op_hash);
                 dirty = true;
             }
         }
+        if delivered && self.maybe_tip_informant(chat, key).await? {
+            dirty = true;
+        }
         if dirty {
             self.state.save(&self.state_path)?;
         }
         Ok(())
+    }
+
+    /// Hand the player the informant's contact.
+    ///
+    /// Called right after a delivery is acked, and deterministic: carrying a
+    /// message to a character who has a tip line always earns it. The line
+    /// goes out with the informant's add-contact deep link substituted in,
+    /// and the chat is marked so it never happens twice. Returns whether the
+    /// state changed.
+    ///
+    /// Silent when the card has no informant identity or the pack has no tip
+    /// line — as shipped, every character but Mira is in the second case.
+    async fn maybe_tip_informant(&mut self, chat: ChatId, key: &str) -> Result<bool> {
+        if self.state.tipped.contains(key) {
+            return Ok(false);
+        }
+        let Some(informant) = self.informant.clone() else {
+            return Ok(false);
+        };
+        let Some(tip) = self
+            .scenarios
+            .pack(&self.bundle.character)
+            .expect("checked at startup")
+            .informant_tip_message(&informant.link)
+        else {
+            return Ok(false);
+        };
+        info!(chat = %key, "passing the informant's contact to a player");
+        self.node.send_message(chat, tip, None, None).await?;
+        self.state.tipped.insert(key.to_string());
+        Ok(true)
     }
 
     /// Drop the next mission into a player's chat when its timer comes due.

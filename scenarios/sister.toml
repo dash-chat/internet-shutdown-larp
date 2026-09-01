@@ -1,47 +1,55 @@
-# Mira's mission pack. Texts are sent VERBATIM (see mum.toml). She is NOT in
-# town: she studies in the city and still has internet, so she is the
-# family's only line to the outside world — reachable only where there's a
-# signal (the hotspot corner of the map). She can see the news and look
-# things up; she can't do anything with her own hands.
+# Mira's mission pack. Texts are sent VERBATIM (see mum.toml). She is IN town
+# like everybody else, on her own Pi station: she took the desk at the school
+# shelter, so she is the one who knows who has arrived, who has not, and what
+# the hall can and cannot give people. Everyone's names pass through her.
+#
+# She is also the only way into the side plot. The informant has no poster:
+# he wrote to HER, because hers is the desk everything passes through, and she
+# passes his contact on (informant_tip below) once a player has actually
+# carried something to her.
+#
+# Voice: the youngest one, texting fast, half a thought per line.
 
 name = "Mira (your sister)"
 
-greeting = """👩‍🎓 Mira here. I'm stuck in the city, you're all in there, and this is the only line I have to any of you. Copy whatever I send into the chat of whoever it's for, and bring me back what they say. Please don't leave me guessing."""
+greeting = """👩‍🎓 Mira here. They've put me on the desk at the school so I'm the one with the list of who's made it in. Nothing reaches me except what people carry, so — copy whatever I send you into that person's chat, walk it over, and bring me back what they say. Don't leave me guessing, please."""
 
 misdelivered = """👩‍🎓 This one's not for me!"""
 
+# The informant's ONLY way into the game. After a player brings her a message
+# meant for her, she passes his contact on — always, and once per player
+# (see crates/larp-bot/src/bot.rs). {link} becomes his add-contact deep link:
+# the player taps it, or copies it into Dash Chat's "add contact" field.
+informant_tip = """👩‍🎓 Wait, don't go yet. Something came to this desk about two hours ago. No name on it. Someone inside the town hall saying the fires weren't luck, and that they can prove it. I can't leave this list and I'm not sending that to Mama. You're the one out there walking. Talk to them yourself: {link}"""
+
 # Mira answers the first message from the players after this long without
-# hearing from them — she's been glued to the news the whole time.
+# hearing from them — she's been staring at the door of that hall the whole
+# time, waiting for names.
 [comeback]
 after_secs = 600
 text = """👩‍🎓 Hey!! Anything? I'm losing my mind over here."""
 
 [[missions]]
 to = "mum"
-text = """❓ 👩‍🎓 They've moved the evacuation point — it's the sports hall now, not the school. Copy this into Mama's chat before she drives to the wrong place."""
-success = """✅ 👩 The sports hall. You've just saved us an hour in that smoke."""
+text = """❓ 👩‍🎓 They've moved us, it's the school hall now, not the sports centre. Copy this into Mama's chat before she walks to the wrong place."""
+success = """✅ 👩 The school. You've just saved us an hour in that smoke."""
 
 [[missions]]
 to = "grandpa"
-text = """❓ 👩‍🎓 The map online has the fire two streets from his gate. Two. Copy this into Grandpa Amir's chat and stand there while he reads it."""
+text = """❓ 👩‍🎓 Everyone coming through this door says the fire is two streets from his gate. Two!! Copy this into Grandpa Amir's chat and stand there while he reads it."""
 success = """✅ 👴 Two streets, is it. All right. Tell her my shoes are by the door."""
 
 [[missions]]
 to = "neighbour"
-text = """❓ 👩‍🎓 Nobody out here knows who is still in our street. Ask her for the names of everyone who stayed — copy this into Nadia's chat."""
+text = """❓ 👩‍🎓 Half our street is missing off my list and I don't know if they're out or still in there. Ask Nadia for the names of everyone who stayed — copy this into Nadia's chat."""
 success = """✅ 👵 Four of us: me, the two brothers at number four, and the man at number nine. Write us down properly."""
 
 [[missions]]
 to = "mum"
-text = """❓ 👩‍🎓 There's a bus out of the city at seven and I'm getting on it. Where do I find you? Copy this into Mama's chat."""
-success = """✅ 👩 Don't you dare come into this. And if you do anyway — the blue door of the sports hall."""
+text = """❓ 👩‍🎓 I've kept beds for us by the blue door but the hall fills up at dark and I can't hold them after that. Tell her to come now — copy this into Mama's chat."""
+success = """✅ 👩 We're coming, all of us, before dark. Tell her to stop worrying about beds and eat something."""
 
 [[missions]]
 to = "grandpa"
 text = """❓ 👩‍🎓 There's a pharmacy still open by the market square, for his heart pills. Copy this into Grandpa Amir's chat so he knows where to send you."""
 success = """✅ 👴 By the market square. Good. I'll give this messenger of ours my prescription."""
-
-[[missions]]
-to = "cousin"
-text = """❓ 👩‍🎓 The news out here says the sports hall is full and turning families away. Is that true? I need to know before I send Mama driving there. Copy this into Rafa's chat."""
-success = """✅ 🙋‍♂️ Not full, not close to full. Whoever wrote that has never set foot in here. Send them straight to me."""

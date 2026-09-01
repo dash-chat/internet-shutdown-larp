@@ -2,20 +2,26 @@
 # this file must stay out of scenarios/ (every character bot parses that whole
 # directory as mission packs, and this schema is different). Texts are sent
 # VERBATIM into the direct chat, in order. Every station runs the informant,
-# and every one tells the whole secret: the mayor's password, and what to do
-# with it — paste it into the mayor's own chat, the way every other message in
-# this game travels.
+# and every one tells the whole story.
 #
-# The password here MUST stay in step with the mayor's trigger phrase
-# (mayor.toml); a unit test in crates/larp-bot/src/spec.rs fails if it drifts,
-# because a password nobody hands out makes the endgame unreachable.
+# He has no QR poster any more. The only way to meet him is Mira's tip: she
+# works the shelter desk, the insider wrote to HER, and she passes his contact
+# on as a deep link once the player has carried something to her
+# (scenarios/sister.toml, informant_tip).
+#
+# What he hands out is not a password: it is one line copied VERBATIM out of
+# the mayor's own written order. The mayor listens for that exact line
+# (mayor.toml) — a unit test in crates/larp-bot/src/spec.rs fails if the two
+# drift apart, because a line nobody hands out makes the endgame unreachable.
+# Keep it quotable and keep it his voice: the player pastes it into his chat
+# and it has to read as evidence, not as a magic word.
 
 name = "Anonymous"
 
 greeting = [
-  """🕵️ You don't know me. I work inside the town hall. Listen carefully: the mayor is lying to all of you.""",
-  """🔥 The fires were no accident — he ordered them lit, and HE shut down the internet and the phones. A town cut off and afraid is a town he controls.""",
-  """🗝️ It is all written down in his private files, and he keeps them behind a single password. I have that password.""",
-  """🔑 It is: ahawegotyou — all one word, exactly like that.""",
-  """📮 You know what to do with a message by now. Copy it, and paste it into the mayor's own chat. Send it to his face and watch him come apart.""",
+  """🕵️ So Mira gave you this. She's braver than she looks. You don't know me — I work inside the town hall, and I'm going to be quick.""",
+  """🔥 The fires were no accident. He ordered them lit, and he ordered the phones and the internet cut. A town that is frightened and cannot talk to itself is a town that does exactly as it's told.""",
+  """🗝️ It's all in writing. I stood in his office tonight with his own order in my hands, and I copied one line out of it, word for word.""",
+  """📄 Here it is, exactly as he wrote it: Let the north side burn until they stop asking questions.""",
+  """📮 You know what to do with a message by now. Copy that line, paste it into the mayor's own chat, and put it in front of him. He knows what he wrote. Watch what he does when he sees it come back.""",
 ]

@@ -24,6 +24,9 @@ let
     cast = "${cfg.castFile}"
     scenarios_dir = "${cfg.scenariosDir}"
     data_dir = "/var/lib/larp-bot"
+    # Only its public half is read: the contact code that goes into Mira's
+    # informant tip. A card without the file just never tips.
+    anonymous_identity = "${cfg.anonymousIdentityFile}"
 
     [timing]
     min_interval_secs = ${toString cfg.timing.minIntervalSecs}
@@ -149,7 +152,10 @@ in
       default = "/boot/firmware/larp-anonymous.toml";
       description = ''
         The flashed anonymous identity bundle. The informant service is
-        gated on this path existing.
+        gated on this path existing, and the character bot reads its public
+        half to build the add-contact deep link Mira hands out (the informant
+        has no QR poster). Missing means no informant and no tips, and the
+        character bot runs as usual.
       '';
     };
 

@@ -12,17 +12,18 @@ layout, message mechanics, identity bundles, and the milestone plan.
 
 ## The cast
 
-Four family characters trade missions (`scenarios/`): **Mama** at home,
-**Grandpa Amir** up the hill, **Nadia the neighbour** next door, and
-**Mira**, the sister stuck in the city with the only working internet — she
-runs on a cloud droplet, the rest on their own Pi.
+Four family characters trade missions (`scenarios/`), each on their own Pi:
+**Mama** at home, **Grandpa Amir** up the hill, **Nadia the neighbour** next
+door, and **Mira**, the sister on the desk at the school shelter with the list
+of who has arrived.
 
 Two more have no missions and no cast entry, and between them they are the
 side plot (`mayor.toml`, `anonymous.toml`): **the Mayor**, whose QR poster
 players scan first and whose greeting *is* the tutorial, and **Anonymous**,
-whose poster is hidden on the map and who hands out the password that brings
-the mayor down. Sending that password to the mayor — copied and pasted into
-his chat, like every other message in this game — ends it.
+who has no poster at all — Mira hands out his contact as a deep link once a
+player has carried something to her. What he gives them is one line copied
+word for word out of the mayor's own written order. Pasting that line into
+the mayor's chat, like every other message in this game, ends it.
 
 ## What's here
 
@@ -40,6 +41,12 @@ his chat, like every other message in this game — ends it.
   base station included. Which bots run is decided entirely by the identity
   files a flash recipe puts on the card. No captive portal anywhere.
 
+The Pis host no Wi-Fi: the image dropped AP mode, so each station sits behind
+its own AP and joins it as a client (`wifi.env`, `WIFI_SSID=OfflineWifi`, open
+network by default). Same SSID everywhere so a phone re-joins by itself at
+every stop — but keep the APs on **separate LANs**, or the stations replicate
+to each other and there is nothing left to carry.
+
 ## Quick start
 
 ```sh
@@ -47,9 +54,8 @@ nix develop                 # rust toolchain + just
 just test                   # unit + e2e tests
 
 just characters::generate              # all identities + cast file → secrets/
-just characters::posters               # printable QR posters (six of them)
+just characters::posters               # printable QR posters (five: family + mayor)
 just image::build                      # the station SD image (one for every card)
 just characters::flash mum             # flash + station files (auto-detects the SD card)
 just base-station::flash               # the base card: mayor + informant, no character
-just sister::deploy                    # the sister's bot → Digital Ocean droplet (doctl)
 ```

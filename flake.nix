@@ -118,11 +118,12 @@
       #   };
       nixosModules.larp-bot = ./nix/larp-bot.nix;
 
-      # The sister's cloud host (docs/design.md §Journalist): a droplet
-      # running only the bot against the cloud mailbox. Deployed with
-      # `just sister::deploy` — doctl creates an Ubuntu droplet,
-      # nixos-infect converts it in place, and nixos-rebuild pushes this
-      # config over SSH.
+      # CURRENTLY UNUSED (kept, see sister.just): Mira moved into town onto her
+      # own Pi station, so no character runs off-map any more. This is the
+      # cloud host she used to run on: a droplet running only the bot against
+      # the cloud mailbox, deployed with `just sister::deploy` — doctl creates
+      # an Ubuntu droplet, nixos-infect converts it in place, and nixos-rebuild
+      # pushes this config over SSH.
       nixosConfigurations.sister-droplet = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
@@ -174,9 +175,9 @@
       #   larp-anonymous.toml                 → the informant (every card)
       #   larp-mayor.toml                     → the mayor (base station only)
       #
-      # No captive portal anywhere: the mayor moved into Dash Chat, so joining
-      # any station's wifi looks like a dead network and the app finds the
-      # mailbox over mDNS on its own port.
+      # No captive portal anywhere: the mayor moved into Dash Chat, so the
+      # game's wifi looks like a dead network and the app finds the mailbox
+      # over mDNS on its own port.
       nixosConfigurations.larp-station = mailbox-image.nixosConfigurations.mailbox-pi.extendModules {
         modules = [
           ./nix/larp-bot.nix
@@ -199,12 +200,17 @@
                 mayorAvatar = ./mayor.png;
               };
 
-              # Full-range APs and power_save off need no overrides any more:
-              # the mailbox image dropped its range limiting (tx clamp, rate
-              # floor, RSSI gate, ap-guard) in 2026-07-09b and turns power
-              # save off itself on AP start. Likewise the wait for wlan0's
-              # IPv4 before the mailbox's one-shot mDNS announcement lives
-              # in the mailbox image (appliance.nix, added 2026-07-10).
+              # No wifi overrides here any more. The mailbox image dropped AP
+              # mode altogether (the Pi's brcmfmac AP was the main source of
+              # field failures), taking the range limiting with it: a station
+              # now JOINS the game's wifi as a plain client, reading SSID and
+              # password at boot from wifi.env on the FAT boot partition
+              # (nix/wifi-client.nix upstream, written by the flash recipes).
+              # An AP per station broadcasts it — all named OfflineWifi and
+              # open, so a player's phone re-joins by itself at every stop.
+              # The wait for the wireless IPv4 before the mailbox's one-shot
+              # mDNS announcement also lives in the mailbox image
+              # (appliance.nix, added 2026-07-10).
             }
           )
         ];

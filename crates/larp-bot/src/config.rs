@@ -20,6 +20,13 @@ pub struct BotConfig {
     pub scenarios_dir: PathBuf,
     /// Node data dir. A cache: safe to wipe, identity comes from the bundle.
     pub data_dir: PathBuf,
+    /// The flashed anonymous informant bundle (`larp-anonymous.toml`) — the
+    /// same file the informant service runs on, present on every station card.
+    /// Only its public half is used: the contact code that goes into the
+    /// informant tip (see `Pack::informant_tip`). Absent or unreadable — the
+    /// sister's droplet, which carries no informant — simply means no tips.
+    #[serde(default)]
+    pub anonymous_identity: Option<PathBuf>,
     #[serde(default)]
     pub timing: Timing,
 }

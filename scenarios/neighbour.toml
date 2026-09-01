@@ -1,39 +1,42 @@
 # Nadia's mission pack. Texts are sent VERBATIM (see mum.toml). She lives
 # next door and has stayed behind to mind the pets and the houses of
 # everyone who fled.
+#
+# Voice: the neighbour who talks to you like you're one of hers — quick,
+# affectionate, everybody's business is her business. She is NOT family, so
+# she says "your mum" / "your grandad" / "your sister", never "Mama" — but
+# every mission still names the chat to paste into, because that name is how
+# the player finds the right one.
 
 name = "Nadia the neighbour"
 
-greeting = """👵 Nadia, from next door. Half the street ran off and left me their animals and their keys, and now not even the telephone works. So whatever I ask you to pass on: copy it into that person's chat and take it to them. You're a treasure."""
+greeting = """👵 Nadia, from next door. Half the street ran off and left me their animals and their keys, and now not even the phone works. So whatever I ask you to pass on: copy it into that person's chat and take it to them. You're a treasure, you are."""
 
 misdelivered = """👵 Ay, this isn't for me!"""
 
+# No informant_tip: only Mira hands out the informant (see mum.toml).
+
 [[missions]]
 to = "mum"
-text = """❓ 👵 The dog turned up at my door shaking like a leaf. Bruno is here, he's fine, he's eaten. Tell them — copy this into Mama's chat."""
-success = """✅ 👩 Oh thank God. We've been calling his name all afternoon. Give him a sausage from us."""
+text = """❓ 👵 The dog turned up at my door shaking like a leaf. Bruno's here, he's fine, he's eaten. Tell your mum before she frets herself sick — copy this into Mama's chat."""
+success = """✅ 👩 Oh thank god. We've been calling his name all afternoon. Give him a sausage from us."""
 
 [[missions]]
 to = "grandpa"
-text = """❓ 👵 Tell that stubborn man there's a bed made up in my house and it's a good deal further from the fire than his is. Copy this into Grandpa Amir's chat."""
-success = """✅ 👴 A bed, she says. Tell her I'll take the coffee and I'll think about the bed."""
+text = """❓ 👵 Tell your grandad there's a bed made up in my house, and it's a good deal further from the fire than his is. Copy this into Grandpa Amir's chat."""
+success = """✅ 👴 A bed, she says. Tell her I'll take the coffee. I'll think about the bed."""
 
 [[missions]]
 to = "sister"
-text = """❓ 👵 The girl in the city should hear that her street is still standing and her window is still in one piece. Copy this into her chat."""
-success = """✅ 👩‍🎓 Nadia, you angel. Scratch the cats for me and don't leave it too late to get out yourself."""
+text = """❓ 👵 Your sister, stuck on that desk at the school, should hear that her street's still standing and her window's still in one piece. Copy this into Mira's chat."""
+success = """✅ 👩‍🎓 Nadia you angel. Scratch the cats for me, and don't leave it too late to come down here yourself."""
 
 [[missions]]
 to = "mum"
-text = """❓ 👵 They're asking every family at the shelter to bring blankets and a torch, there's nothing there. Copy this into Mama's chat before she sets off."""
-success = """✅ 👩 Blankets and two torches in the car. Trust you to be thinking of everybody else."""
+text = """❓ 👵 They're telling every family to bring blankets and a torch, there's nothing at that hall. Your mum needs to know before she sets off — copy this into Mama's chat."""
+success = """✅ 👩 Blankets and two torches, in the bag. Trust you to be thinking of everyone else."""
 
 [[missions]]
 to = "grandpa"
-text = """❓ 👵 I walked up and closed all his shutters, so tell him not to come down that hill for nothing. Copy this into Grandpa Amir's chat."""
+text = """❓ 👵 I walked up and shut all his shutters, so tell your grandad not to come down that hill for nothing. Copy this into Grandpa Amir's chat."""
 success = """✅ 👴 She climbed all that way for my shutters. Tell her thank you. Tell her I saw her."""
-
-[[missions]]
-to = "cousin"
-text = """❓ 👵 Somebody at that shelter needs to write down that this street is not empty — there are still people living on it. Copy this into Rafa's chat."""
-success = """✅ 🙋‍♂️ It's on my board now, and there's a van going up your way at first light. Nobody's writing you off."""

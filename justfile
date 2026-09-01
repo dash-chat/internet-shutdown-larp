@@ -9,13 +9,14 @@ mod characters
 # Station SD images: build + flash (station and base-station variants).
 mod image
 
-# The base station: flash the Pi card (hosts its own wifi, like the other
-# stations); the map-lite submodule is the currently-unused mAP-lite tooling.
+# The base station: flash the Pi card (joins the game's wifi, like the other
+# stations); the map-lite submodule provisions a MikroTik mAP lite as the AP
+# that broadcasts it.
 mod base-station
 
-# The sister's cloud host (she is the one character outside town): deploy
-# her bot to a Digital Ocean droplet (doctl + nixos-infect), plus
-# ssh/logs/destroy.
+# The sister's cloud host: CURRENTLY UNUSED — Mira runs on a Pi station like
+# everyone else now. Kept for a future off-map character (doctl +
+# nixos-infect deploy, ssh/logs/destroy).
 mod sister
 
 # Show available recipes.

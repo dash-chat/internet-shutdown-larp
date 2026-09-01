@@ -22,7 +22,7 @@ stations can't talk to each other any more — their messages must travel in
 the players' pockets.
 
 The cast is **the player's own family and the woman next door**: everyone the
-player would actually be frantic about in a fire. Five of them live at the
+player would actually be frantic about in a fire. Four of them live at the
 stations, and each talks to the player in a **private one-to-one chat** —
 there is no group chat in the game. Every character keeps producing urgent
 messages with a clear recipient ("The hens are still shut in and my knee
@@ -44,23 +44,20 @@ message on a timer.
 
 ```
    MAMA (home)                            GRANDPA AMIR (top of the hill)
-   (Pi: AP + mailbox + bot)             (Pi: AP + mailbox + bot)
+   (AP + Pi: mailbox + bot)             (AP + Pi: mailbox + bot)
         ┌─────────────────────────────────────────┐
         │                                         │
         │                BASE STATION             │
-        │      (Pi 5 hosting its own Wi-Fi AP,    │
-        │       the mayor's bot and the mailbox;  │
-        │       all six QR posters on the wall)   │
+        │      (an AP broadcasting OfflineWifi    │
+        │       + a Pi 5 with the mayor's bot     │
+        │       and the mailbox; all five QR      │
+        │       posters on the wall)              │
         │                                         │
         └─────────────────────────────────────────┘
-   NADIA (next door)                    SIGNAL to the CITY
-   (Pi: AP + mailbox + bot)             (phone hotspot with internet; the
-                                         sister is OUTSIDE the town — her
-                                         bot runs on Digital Ocean via the
-                                         existing cloud mailbox)
-
-                  RAFA (the sports hall / shelter)
-                  (Pi: AP + mailbox + bot)
+   NADIA (next door)                    MIRA (the school shelter)
+   (AP + Pi: mailbox + bot)             (AP + Pi: mailbox + bot; the desk
+                                         with the list of who has arrived —
+                                         and the only door to the informant)
 ```
 
 Corner assignment is arbitrary — the only requirement is that the stations
@@ -70,16 +67,15 @@ are far enough apart that carrying a message means actually walking.
 
 | Character | Persona | Infrastructure |
 |---|---|---|
-| **mum** | **Mama**, at the family house, packing for the shelter and holding everyone together | Pi 5: Wi-Fi AP + mailbox + bot |
-| **grandpa** | **Grandpa Amir**, alone at the top of the hill, refusing to be evacuated | Pi 5: Wi-Fi AP + mailbox + bot |
-| **neighbour** | **Nadia the neighbour**, next door, who stayed behind with everyone's pets and keys | Pi 5: Wi-Fi AP + mailbox + bot |
-| **cousin** | **Rafa, the player's cousin**, at the sports hall with the clipboard — he is *at* the evacuation point the rest of the cast is trying to reach, and holds the list of who has arrived | Pi 5: Wi-Fi AP + mailbox + bot |
-| **sister** | **Mira, the player's sister** — studying in the city, **outside the town** and the only one who still has internet: she sees the news, looks things up, and can do nothing with her own hands. The hotspot corner is the family's only line to her | Phone hotspot (internet); bot on a Digital Ocean droplet syncing through the **existing cloud mailbox** |
-| **mayor** *(base station)* | **The Mayor** — a chat contact like everyone else, but with no scenario pack: his greeting *is* the game's onboarding, and one trigger phrase is the endgame (§The mayor and the informant) | Pi 5 running the same station image, flashed with his identity and no character identity: Wi-Fi AP + mailbox + his bot. *(The mAP-lite-as-AP variant — a MikroTik mAP lite broadcasting the wifi with the Pi wired behind it, `nix/base-station.nix` — is kept but currently unused, in case the Pi's radio can't carry the 30-40 concurrent base-station clients)* |
+| **mum** | **Mama**, at the family house, packing for the shelter and holding everyone together | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
+| **grandpa** | **Grandpa Amir**, alone at the top of the hill, refusing to be evacuated | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
+| **neighbour** | **Nadia the neighbour**, next door, who stayed behind with everyone's pets and keys | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
+| **sister** | **Mira, the player's sister**, on the desk at the school shelter: she holds the list of who has arrived, so everyone's names pass through her. She is also **the only door to the side plot** — the informant wrote to her desk, and she is the one character who hands his contact on (§The mayor and the informant) | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
+| **mayor** *(base station)* | **The Mayor** — a chat contact like everyone else, but with no scenario pack: his greeting *is* the game's onboarding, and one trigger phrase is the endgame (§The mayor and the informant) | own AP (`OfflineWifi`) + a Pi 5 running the same station image, flashed with his identity and no character identity: mailbox + his bot. *(This AP carries the 30-40 concurrent base-station clients, so it wants to be the best one available — a MikroTik mAP lite, say, not a spare phone)* |
 
-Total hardware: **5 × Pi 5** (base, mum, grandpa, neighbour, cousin) + **1
-phone** (the hotspot that reaches the sister) + **1 DO droplet** (already
-running the cloud mailbox; gains the sister's bot).
+Total hardware: **5 × Pi 5** (base, mum, grandpa, neighbour, sister) + **an AP
+per station** (§Wi-Fi). Nothing runs off-map any more: no hotspot corner, no
+droplet, no cloud mailbox in the game loop.
 
 ### Game setup (at the base station)
 
@@ -93,7 +89,7 @@ instruction that has to exist on paper. He accepts immediately (his bot is on
 that same Pi, on that same Wi-Fi) and his greeting is the briefing: the fires,
 the dead network, and then the three rules —
 
-1. Scan the other five **QR posters on the wall**. Each becomes a private chat
+1. Scan the other four **QR posters on the wall**. Each becomes a private chat
    with one of the player's family or their neighbour.
 2. When one of them asks for a message to be passed on, **copy it and paste it
    into the recipient's chat**.
@@ -101,7 +97,7 @@ the dead network, and then the three rules —
 
 (Plus: mobile data off, forget other networks.)
 
-The base Pi's mailbox is on that same Wi-Fi, so the five contact requests are
+The base Pi's mailbox is on that same Wi-Fi, so the four contact requests are
 seeded into the base mailbox immediately.
 
 The contact requests only *reach* each bot when a player first syncs at that
@@ -138,9 +134,9 @@ keeps auto-switching away from the station APs.
 Nothing gates a character on delivery: the walk is one-way, so a character
 never learns whether its last message arrived. What bounds the flow is the
 pack — **each template is handed to a given player at most once**, and once a
-character has given out everything it has, it goes quiet (bar acks and Mira's
-comeback line). Six templates each for the four original characters, plus
-five for the cousin, ≈ 29 deliveries for a solo courier.
+character has given out everything it has, it goes quiet (bar acks, Mira's
+comeback line and her informant tip). Five templates each for the four
+characters, ≈ 20 deliveries for a solo courier.
 
 Ending: the facilitator calls time; the chats themselves are the score sheet
 (count success replies). No formal end state in software.
@@ -160,33 +156,57 @@ answer). The whole side plot is those two files, `mayor.toml` and
 **The mayor** runs on the base-station Pi only. His greeting is the
 onboarding (above). He listens for one phrase.
 
-**Anonymous**'s QR poster is hidden somewhere on the map instead of hanging
-on the base-station wall. A player who scans it sends a contact request that
-travels, like everything else, through the mailboxes in players' pockets.
-**Every** station runs the informant — every flash recipe copies the same
-anonymous identity onto the card. When the request reaches any station, the
-bot accepts and whispers into the direct chat: the mayor is lying — he lit
-the fires, he shut down the internet, and he is using the emergency to
-control the town. He keeps it all in files behind one password, and the
-informant hands that password over: **`ahawegotyou`**.
+**Anonymous has no QR poster at all.** The only way to meet him is **Mira**:
+he wrote to the shelter desk, because that is the desk every name in town
+passes through. Once a player has actually carried a message *to* her, her
+bot follows the success line with her `informant_tip` — her own words plus
+his **add-contact deep link**, `https://dashchat.org/add-contact/<code>`.
+Tapping it opens Dash Chat and sends the contact request; a phone that fails
+to route the tap can paste the same line into Add contact, which accepts the
+link and the bare code alike. This is deterministic, not a chance: one door,
+and it is behind a real delivery. Sent at most once per player (recorded in
+the bot's `state.json`).
+
+Every character bot could carry a tip line — the mechanism is a per-pack
+`informant_tip` field with a `{link}` placeholder — but as shipped exactly
+one does, and a unit test enforces that. More doors would make the side plot
+a lottery; none would make it unreachable.
+
+The side plot is gated on a delivery reaching Mira, so three missions are
+addressed to her (one each from Mama, Grandpa and Nadia) and a courier doing
+the rounds hits one early. Strip them all and the informant would be
+unreachable — the pack linter fails for exactly that: a character with an
+`informant_tip` that nobody is ever sent to.
+
+**Every** station runs the informant, and every station card carries his
+identity (every flash recipe copies it) — which is also where the character
+bot on that card reads the public half to build the link. So the contact
+request is answered by whichever station the player is standing in. The bot
+accepts and whispers into the direct chat: the mayor is lying — he lit the
+fires, he shut down the internet, and he is using the emergency to control
+the town. And then the evidence: one line the informant copied **word for
+word** out of the mayor's own written order —
+
+> Let the north side burn until they stop asking questions.
 
 Then the payoff, and the reason this plot lives in the chat app: the
 informant tells the player to do the one thing this game has been teaching
-them all along — **copy the password and paste it into the mayor's own
-chat**. The mayor's bot matches it the same forgiving way a delivery is
-matched (whitespace, case and surrounding prose forgiven), and answers with
-the collapse: the files are open, the orders to light the fires and cut the
-network are in them, and **the mayor flees town** — ending with the
+them all along — **copy that line and paste it into the mayor's own chat**.
+Not a password, not a magic word: his own sentence, handed back to him. The
+mayor's bot matches it the same forgiving way a delivery is matched
+(whitespace, case and surrounding prose forgiven, so pasting the informant's
+whole message works), and answers with the collapse: those are his words,
+that is his handwriting, the orders to light the fires and cut the network
+are all in the file, and **the mayor flees town** — ending with the
 congratulations line. Answered once per message (the op hash is persisted),
 so a re-sync never replays it.
 
 Because the mayor's bot sits on the base station, the last delivery of the
 game is a walk back to where it started. A single player can finish the whole
 plot. A unit test asserts that what the informant hands out is exactly what
-the mayor listens for — a drifted password would make the endgame
-unreachable.
+the mayor listens for — a drifted line would make the endgame unreachable.
 
-The informant's stations all run the **same** identity (one printed poster).
+The informant's stations all run the **same** identity (one contact code).
 p2panda logs are per `(device, topic)`, and a failed op ingest is dropped
 per-op, so the instances only ever collide on the announcements topic (all
 branches carry the same "Anonymous" profile — first one in wins) and on a
@@ -195,20 +215,26 @@ the first station's chat — and every station tells the full story, so it
 doesn't matter which one they keep). Degradation, not breakage. The mayor has
 no such caveat: one identity, one card.
 
+A consequence worth knowing on game day: because the link is tapped rather
+than scanned, the player meets the informant **wherever they happen to be
+standing** when they tap it — usually still at Mira's station. Nothing has to
+be hidden on the map any more, and nothing has to be found by accident.
+
 ---
 
 ## 2. What already exists (reused unmodified)
 
 - **The `mailbox-image` flake input** (raspberry-pi-mailbox-server): NixOS SD
-  image for Pi 5 with `hostapd` AP, dnsmasq and the
-  `replicating-local-mailbox-server` from the dash-chat flake input. Per-card
-  configuration via env files on the FAT boot partition (`wifi-ap.env`). This
-  repo's station image is that image `extendModules`-ed with the bot. The
-  image ships deliberately range-limited (minimum tx power, link-quality
-  eviction, hostapd distance gates); **this repo overrides all of that back
-  to full range** — see §4.
+  image for Pi 5 running the `replicating-local-mailbox-server` from the
+  dash-chat flake input. Per-card configuration via env files on the FAT boot
+  partition (`wifi.env`). This repo's station image is that image
+  `extendModules`-ed with the bot. The image **hosts no AP**: the Pi's
+  brcmfmac AP mode was the main source of field failures and was dropped
+  upstream, along with all the range limiting that came with it. The radio is
+  a **client** only (`nix/wifi-client.nix` upstream) — see §4.
 - **mDNS announce/discovery**: stations announce `_dashchat._tcp.local.`, so
-  players' apps auto-discover the mailbox when they join a station's Wi-Fi.
+  players' apps auto-discover the mailbox once they and the station are on
+  the same station AP.
 - **Mailbox replication** (`replicating-local-mailbox-server`): bidirectional
   `/blips/get` sync of known topics between mDNS-discovered mailboxes. On
   this map stations are out of each other's range, so LAN replication is
@@ -219,14 +245,17 @@ no such caveat: one identity, one card.
   `send_message()`, `get_messages()`, and a `Notification` mpsc channel that
   streams every processed operation (header + payload) to the embedding
   application.
-- **Cloud mailbox**: already running; the sister's bot and any
-  hotspot-connected player sync through it.
-- **mAP lite tooling (this repo, currently unused)**: `just
-  base-station::map-lite::provision` turns a stock device into the
-  base-station AP (ether1 bridged to the Pi, DHCP off — see
-  `nix/base-station.nix`). Kept in case the Pi's own AP can't carry the
-  base-station load; for now the base station hosts its own Pi wifi like
-  every other station.
+- **Cloud mailbox**: still running, but **out of the game** since Mira moved
+  into town — nothing on the map syncs through it any more. It stays useful
+  for testing a bot from a laptop (`just characters::run`).
+- **mAP lite tooling (this repo)**: `just base-station::map-lite::provision`
+  turns a stock device into a station AP. Since no Pi hosts wifi any more,
+  every station needs an AP of some kind next to it; the mAP lite is the
+  known-good one (it comfortably carries the 30-40 concurrent clients the
+  base station sees). Its `provision` recipe also disables the device's own
+  DHCP server, which assumed the Pi served DHCP on the cable
+  (`nix/base-station.nix`) — with the Pi now a plain wifi client, leave the
+  AP's DHCP server ON instead.
 
 ## 3. New component: `larp-bot` crate
 
@@ -254,7 +283,7 @@ an alias of `spec` for the old invocation.
 
 The character's identity is **not** generated on the Pi — it's a small
 **identity bundle** generated once on the laptop and flashed onto each card's
-FAT boot partition alongside `wifi-ap.env`/`larp.env`. Re-flashing the image
+FAT boot partition alongside `wifi.env`/`larp.env`. Re-flashing the image
 or wiping `/var/lib/larp-bot` must never invalidate the printed QR posters.
 
 What has to be in the bundle (all three, or a wipe kills the QR):
@@ -336,32 +365,36 @@ The bundle sits plaintext on the FAT partition; for a game prop that's fine.
     ignore anything authored by another character bot, so a stray cast message
     in a chat can never be mistaken for a player's delivery.
 - **Mailbox wiring.** The node's `Mailboxes` manager is pointed at exactly one
-  mailbox URL: `http://127.0.0.1:<port>` on the Pis, the cloud mailbox URL on
-  the DO droplet. No iroh internet connectivity is assumed on the Pis (offline
+  mailbox URL: `http://127.0.0.1:<port>` on the Pis (the cloud mailbox URL on
+  the unused droplet). No iroh internet connectivity is assumed on the Pis (offline
   LAN blob sync already works per the mailbox-image repo's README; missions
   are text-only anyway).
 
 ### Configuration (`config.toml`)
 
 ```toml
-character   = "mum"                   # persona selection
-mailbox_url = "http://127.0.0.1:8080"
-identity    = "/boot/firmware/larp-identity.toml"  # flashed bundle (see above)
-cast        = "/etc/larp-bot/cast.toml"            # all characters' public agent ids
-data_dir    = "/var/lib/larp-bot"                  # cache only — safe to wipe
+# The character is NOT configured here: it comes from the identity bundle.
+mailbox_url   = "http://127.0.0.1:3000"
+identity      = "/boot/firmware/larp-identity.toml"  # flashed bundle (see above)
+cast          = "/boot/firmware/larp-cast.toml"      # all characters' public ids
+scenarios_dir = "/nix/store/…-scenarios"             # all packs, baked into the image
+data_dir      = "/var/lib/larp-bot"                  # cache only — safe to wipe
+# Optional: the flashed informant bundle, read for its public half only, to
+# build the deep link in a pack's informant_tip. Absent → no tips.
+anonymous_identity = "/boot/firmware/larp-anonymous.toml"
 
 [timing]
 min_interval_secs = 180
 max_interval_secs = 480
-
-[templates]                            # per-character scenario file
-path = "/etc/larp-bot/mum.toml"
+first_mission_delay_secs = 5
+poll_interval_secs = 3
 ```
 
-Template file: a list of `{ to = "grandpa", text = "…", success = "…" }`
+Scenario pack (`scenarios/<character>.toml`): a list of
+`{ to = "grandpa", text = "…", success = "…" }`
 entries plus `greeting` and `misdelivered` (the "this message is not for me!"
 line, sent verbatim when a player pastes in somebody else's message). Authored
-in Spanish/Catalan/English as needed — pure content, no code. All five
+in Spanish/Catalan/English as needed — pure content, no code. All four
 character packs live in this repo under `scenarios/`, and every bot loads all
 of them (recognition depends on it — see above). A unit test lints the packs:
 `text` and `success` unique across all packs and never nested inside another
@@ -370,9 +403,16 @@ pasteable line, `to` values valid.
 A pack may also carry an optional `[comeback]` (`after_secs` + `text`): after
 that long without any *player* message in a chat, the character answers the
 next player message with `text`, once per quiet spell. Only Mira uses it
-("Hey!! Anything? I'm losing my mind over here.") — a sign of life from the
-city when players resurface. Tracking is in-memory and baselined on the first scan, so
-bot restarts never trigger it.
+("Hey!! Anything? I'm losing my mind over here.") — she is stuck behind a
+desk waiting for names. Tracking is in-memory and baselined on the first
+scan, so bot restarts never trigger it.
+
+A pack may also carry an optional `informant_tip` (a line containing
+`{link}`): after a delivery lands, that character passes the player the
+informant's add-contact deep link, once per player. Only Mira uses this one
+too, and it is the only way into the side plot (§The mayor and the
+informant). The link is built at startup from the flashed
+`larp-anonymous.toml`, so a card without the informant simply never tips.
 
 ## 4. NixOS & deployment changes
 
@@ -381,7 +421,7 @@ bot restarts never trigger it.
 Keep the single-SD-image philosophy. **Implemented:** the bot service
 (`nix/larp-bot.nix`, baked into every image with `services.larp-bot`) is gated
 at runtime with `ConditionPathExists` on files the FAT boot partition may
-carry, next to `wifi-ap.env`:
+carry, next to `wifi.env`:
 
 - `larp-identity.toml` — the character's flashed identity bundle
 - `larp-cast.toml` — the public cast file (flashed too, **not** baked into the
@@ -396,31 +436,52 @@ No file → no bot: the card is a plain mailbox appliance. There is now
 captive portal went away — and the station types are nothing but combinations
 of flashed files:
 
-| Station | mailbox | AP (hostapd) | character bot | mayor | informant |
+| Station | mailbox | Wi-Fi client | character bot | mayor | informant |
 |---|---|---|---|---|---|
 | base | ✓ | ✓ | – | ✓ | ✓ |
-| mum / grandpa / neighbour | ✓ | ✓ | ✓ (identity flashed) | – | ✓ |
+| mum / grandpa / neighbour / sister | ✓ | ✓ | ✓ (identity flashed) | – | ✓ |
 
-`just base-station::flash` writes the base card's `wifi-ap.env` (SSID
-`internet-shutdown-larp` by default) plus the mayor's and the informant's
+`just base-station::flash` writes the base card's `wifi.env` (SSID
+`OfflineWifi`, open, by default) plus the mayor's and the informant's
 identities — and deliberately no character identity and no cast file, so the
 character-bot service stays dormant there.
 
-### Full-range Wi-Fi (no distance reduction)
+### Wi-Fi: every Pi is a client of `OfflineWifi`
 
-The plain mailbox image deliberately shrinks each station's radio footprint
-(1 dBm tx power, a link-quality eviction daemon, hostapd's RSSI join gate /
-client power constraint / rate floor / low-ack kick). The game doesn't want
-tiny bubbles any more, so the station image overrides all of it in
-`flake.nix`:
+No Pi hosts an AP. The mailbox image dropped AP mode entirely — the Pi 5's
+brcmfmac AP was the main source of field failures — and with it went the
+range limiting this repo used to override (tx clamp, rate floor, RSSI gate,
+`dashchat-ap-guard`). What remains upstream is `nix/wifi-client.nix`: a boot
+service that reads `/boot/firmware/wifi.env` and runs wpa_supplicant.
 
-- `dashchat.wifi.apTxPowerDbm = 20` (the ES regulatory max on 2.4 GHz);
-- the `dashchat-ap-guard` eviction service is disabled;
-- an `ExecStartPre` strips the remaining distance limiters from the generated
-  `hostapd.conf` before hostapd starts;
-- an extra `ExecStartPost` keeps `power_save off` applied regardless of the
-  txpower clamp outcome (power save on a brcmfmac AP kills beaconing minutes
-  in — the validated stability fix).
+Both flash recipes write that file, defaulting to the same network everywhere:
+
+```
+WIFI_SSID=OfflineWifi
+WIFI_PASSWORD=
+```
+
+An empty password means an open network (`key_mgmt=NONE`). Pass `ssid` /
+`password` arguments to either recipe to point a card elsewhere; the file is
+read at every boot, so it can also be edited on the card or over SSH with no
+reflash.
+
+What this implies on game day:
+
+- **Each station needs its own AP** next to its Pi — a mAP lite (see the
+  `map-lite` recipes, but read the staleness warning there), a home router, a
+  spare phone. The Pi and the players' phones just have to land on the same
+  L2 segment for mDNS.
+- **Every AP broadcasts the same open SSID `OfflineWifi`**, so a phone that
+  joined once re-joins by itself at every stop. The cost: the SSID no longer
+  tells a facilitator which bubble they are in (it used to be `mum-larp`,
+  `grandpa-larp`, …).
+- **Keep the APs on separate LANs** (each with its own DHCP server, don't
+  bridge them together). Same SSID, separate islands — that is what keeps the
+  sneakernet real. Two stations on one LAN would replicate mailboxes directly
+  and hand players messages they were supposed to carry.
+- **Station range is now the AP's problem**, not a nix option: tune it on the
+  AP if a bubble is too big or too small.
 
 ### No captive portal anywhere
 
@@ -445,20 +506,17 @@ What it costs, and what to watch on game day:
   Dash Chat, scan the mayor's poster.* It is the only instruction that does
   not live in a chat.
 
-*(Currently unused alternative)* If the Pi's brcmfmac AP can't carry the
-30-40 concurrent base-station clients, the mAP-lite variant is kept:
-`nix/base-station.nix` (re-add it to the `base-station` modules in
-`flake.nix`) makes the Pi host no wifi and instead own DHCP + wildcard DNS
-on the cable to a MikroTik mAP lite, provisioned as a plain AP with
-`just base-station::map-lite::provision` (ether1 bridged to the Pi, DHCP
-off). mDNS passes the mAP's L2 bridge, and no RouterOS hotspot is involved.
+*(Unused module)* `nix/base-station.nix` — the Pi owning DHCP + wildcard DNS
+on a cable to a MikroTik mAP lite — stays out of `flake.nix`. It predates
+the client-mode switch and no longer evaluates as-is (it references the
+deleted captive-portal module). The mAP lite itself is still a fine station
+AP; just let it serve its own DHCP.
 
-Also per-station: the AP SSID is the character name plus a game suffix
-(`SSID=mum-larp` etc. via `wifi-ap.env`), so the facilitator can see at a
-glance which bubble they're in — there is no exception any more, every
-in-town character's station carries their own name. Joining any of them
-(the base station included) looks like a dead network: nothing pops, and the
-app finds the mailbox via mDNS on its own port.
+Every station is now the same open `OfflineWifi` network (see §Wi-Fi), and
+joining any of them (the base station included) looks like a dead network:
+nothing pops, and the app finds that station's mailbox via mDNS on its own
+port. The facilitator can no longer tell stations apart by SSID — label the
+hardware instead.
 
 `larp-bot` builds with `rustPlatform.buildRustPackage` from this repo's
 workspace (git deps via `cargoLock.allowBuiltinFetchGit`, so no outputHashes
@@ -476,40 +534,44 @@ Provisioning flow (all offline, on the laptop — implemented as `just` recipes)
    characters are excluded by construction, and an identity left over from a
    retired character is ignored rather than resurrected.
 2. `just characters::posters` — renders the QR wall-poster PNGs for printing.
-   **Seven** of them: the five family posters and the mayor's go on the
-   base-station wall (his is the one players scan *first*), and the
-   informant's is hidden somewhere on the map.
+   **Five** of them: the four family posters and the mayor's, all on the
+   base-station wall (his is the one players scan *first*). The informant is
+   skipped on purpose — he is reached through Mira's link, never off a wall.
 3. `just characters::flash <character> /dev/sdX` — flashes the station image and
-   puts the character's files (`wifi-ap.env` with `SSID=<character><ssid_suffix>`,
-   **open network** unless a password argument is given,
-   `larp-identity.toml`, `larp-cast.toml`, `larp-anonymous.toml` — assembled
-   on the fly from `secrets/`) on the card's boot partition.
+   puts the character's files (`wifi.env` with `WIFI_SSID=OfflineWifi` and an
+   empty `WIFI_PASSWORD=` — an **open network** — unless `ssid` / `password`
+   arguments say otherwise, plus `larp-identity.toml`, `larp-cast.toml`,
+   `larp-anonymous.toml`, assembled on the fly from `secrets/`) on the card's
+   boot partition.
 4. `just base-station::flash /dev/sdX` — the same image, but with
    `larp-mayor.toml` + `larp-anonymous.toml` and no character identity.
 
 **Seed the base mailbox with the cast's profiles** (once, after the bots have
 booted): each character's profile lives on its bot's announcements topic,
-seeded only at its own station (Mira: only in the cloud) — and replication
-never introduces a mailbox to topics it doesn't know. Without seeding,
-contacts added from the wall posters appear *nameless* at the base station,
-right when players are learning which chat belongs to which character.
-The fix uses the client push path: on a phone with internet, add all five
-characters (Mira's profile arrives via the cloud; the others via their
-stations — or plug all the Pis into one ethernet switch, where the mailboxes
-discover and push to each other), then stand on the base station's Wi-Fi for
-a minute. The phone pushes all five announcements topics into the base
-mailbox, permanently. Do NOT seed by running a character bot against the
-base mailbox with a fresh data dir — same identity, second op log, forked
-history.
+seeded only at its own station — and replication never introduces a mailbox
+to topics it doesn't know. Without seeding, contacts added from the wall
+posters appear *nameless* at the base station, right when players are
+learning which chat belongs to which character. The fix uses the client push
+path: on one phone, add all four characters (walk their stations, or plug all
+the Pis into one ethernet switch, where the mailboxes discover and push to
+each other), then stand on the base station's Wi-Fi for a minute. The phone
+pushes all four announcements topics into the base mailbox, permanently. Do
+NOT seed by running a character bot against the base mailbox with a fresh
+data dir — same identity, second op log, forked history.
 
-### The sister: cloud host (or laptop)
+### The cloud host (kept, unused)
 
-Mira is the one character outside the town, and she is just the same
-`larp-bot` service pointed at the cloud mailbox — no new mailbox is deployed
-(chosen design), and the phone hotspot needs zero config: any internet gets
-players to the cloud mailbox, which the app already knows about.
+Mira used to be the one character outside the town, running the same
+`larp-bot` service against the cloud mailbox with a phone hotspot as her
+corner of the map. **She is a Pi station now** (the school shelter desk), so
+nothing below is part of a game day: flash her card with
+`just characters::flash sister` like anybody else's. It is kept — recipes and
+the `sister-droplet` flake config both marked unused — for a future character
+on the far side of a hotspot. Note that whoever plays that role cannot be the
+one who hands out the informant: the droplet carries no informant identity,
+so there is no link for the tip to contain.
 
-*Implemented:* `just sister::deploy` provisions the whole thing with
+*How it worked:* `just sister::deploy` provisions the whole thing with
 doctl — first run creates an Ubuntu droplet whose cloud-init converts it to
 NixOS in place (nixos-infect), then pushes the flake's `sister-droplet`
 config plus the secrets (same `keygen` artifacts, delivered over SSH to
@@ -520,15 +582,16 @@ straight to the push. `sister::logs` follows the bot's journal,
 usage example (see flake.nix) for wiring the bot into an existing NixOS
 host instead — e.g. the droplet already running the cloud mailbox.
 
-For testing without touching the droplet, `just characters::run sister
-[mailbox_url]` runs the bot on the laptop against the cloud mailbox — the
-laptop has internet, which is all she needs. State lives in
-`.run/sister/` (wipe it to simulate a reset; identity survives, it's in
+`just characters::run <character> [mailbox_url]` still runs any bot on the
+laptop against a mailbox, which is the quickest way to try a pack (or Mira's
+informant tip — the recipe passes `secrets/anonymous-identity.toml` along
+when it exists, so the link in her tip is the real one). State lives in
+`.run/<character>/` (wipe it to simulate a reset; identity survives, it's in
 `secrets/`).
 
 **Pick the mailbox URL to match the players' app build**: release builds use
-the production mailbox, dev builds may point at staging. A sister bot synced
-to a different cloud mailbox than the players' apps never sees their chats.
+the production mailbox, dev builds may point at staging. A bot synced to a
+different cloud mailbox than the players' apps never sees their chats.
 
 ## 5. End-to-end message walk-through (sanity check)
 
@@ -554,8 +617,9 @@ Had the player pasted it into Mama's chat instead, she would have answered
 *"Love, this one isn't for me!"* — enough to send the player looking again,
 without telling them where. Grandpa never finds out either way.
 
-For the sister, the deposit step is "join the hotspot": it goes to the
-cloud mailbox, and the DO bot answers usually within seconds.
+Mira's station works exactly the same way — she is a Pi like the rest now.
+The one extra beat there: a delivery *to her* is also answered with the
+informant's contact link, which is what opens the side plot.
 
 ## 6. Risks & open questions
 
@@ -628,8 +692,8 @@ cloud mailbox, and the DO bot answers usually within seconds.
    gets greeted in a direct chat, receives a mission — and at the base, the
    mayor's poster onboards the player and the phone syncs with the base
    mailbox.
-3. **The sister's droplet** — NixOS config on DO against the cloud mailbox;
-   test through a real phone hotspot.
-4. **Scenario content + dress rehearsal** — write the five template packs and
-   the two spec-bot scripts, full field test (5 Pis), print the seven QR wall
+3. ~~**The sister's droplet**~~ — done, then retired: Mira is a Pi station
+   now. The droplet config and recipes are kept but unused (§The cloud host).
+4. **Scenario content + dress rehearsal** — write the four template packs and
+   the two spec-bot scripts, full field test (5 Pis), print the five QR wall
    posters and the base station's paper sign, tune intervals/caps.

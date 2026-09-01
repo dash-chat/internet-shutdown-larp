@@ -35,6 +35,27 @@ pub fn decode_contact_code(code: &str) -> Result<AddContactQrCode> {
     AddContactQrCode::from_str(code).context("decoding contact code")
 }
 
+/// Base URL of the app's verified deep links (dash-chat
+/// `ui/src/lib/deep-links/helpers.ts`).
+const DEEP_LINK_BASE_URL: &str = "https://dashchat.org";
+
+/// The app's add-contact deep link for a contact code — the informant's
+/// contact as a tappable line in a chat message.
+///
+/// `https://…`, not the `dash-chat://` scheme the app also registers: the chat
+/// renderer only turns http(s) into an anchor (dash-chat
+/// `ui/src/lib/components/messages/message-helpers.ts`), so the scheme form
+/// would arrive as dead text. Both forms — and the bare code — are accepted by
+/// the app's "paste a code" field, so a player whose phone fails to route the
+/// tap (an unverified app link with no internet behind it) can still copy the
+/// line into Add contact.
+///
+/// No escaping: a contact code is base64url-nopad, all of which is legal in a
+/// path segment (asserted in the tests).
+pub fn contact_deep_link(code: &str) -> String {
+    format!("{DEEP_LINK_BASE_URL}/add-contact/{code}")
+}
+
 /// Render the QR string to a PNG (for the printed wall posters).
 ///
 /// The background (light modules and the surrounding quiet zone) is left fully
@@ -71,6 +92,27 @@ mod tests {
         assert_eq!(decoded.device_pubkey, bundle.device_id().unwrap());
         assert_eq!(decoded.profile_name, bundle.qr_profile_name());
         assert_eq!(decoded.to_string(), code);
+    }
+
+    /// The deep link must be the exact shape the app parses
+    /// (`/add-contact/{{code}}` under `https://dashchat.org`), and the code
+    /// must survive the trip unescaped — the app looks the path segment up
+    /// verbatim after `decodeURIComponent`.
+    #[test]
+    fn contact_deep_link_carries_the_code_verbatim() {
+        let bundle = IdentityBundle::generate("anonymous");
+        let code = bundle.contact_code().unwrap();
+        assert!(
+            code.chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
+            "contact code {code:?} has characters that would need percent-encoding"
+        );
+        let link = contact_deep_link(&code);
+        assert_eq!(link, format!("https://dashchat.org/add-contact/{code}"));
+        let suffix = link
+            .strip_prefix("https://dashchat.org/add-contact/")
+            .expect("app's deep-link path");
+        assert_eq!(decode_contact_code(suffix).unwrap().to_string(), code);
     }
 
     /// The nonce in the code must reconstruct the inbox topic the bot

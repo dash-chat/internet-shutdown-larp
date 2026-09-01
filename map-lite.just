@@ -60,9 +60,17 @@ cli admin_password="" router_ip="192.168.88.1":
     ip={{ quote(router_ip) }}
     sshpass -p "$pass" ssh {{ ssh_opts }} "admin@$ip"
 
+# !! STALE for the current topology, kept as-is: this recipe was written when
+# the base-station Pi owned DHCP/DNS on the cable (nix/base-station.nix, now
+# unused). Today no Pi hosts wifi at all — the stations JOIN an AP as plain
+# clients (wifi.env, SSID OfflineWifi) — so the AP must keep serving DHCP,
+# and the range clamp below fights the full-range bubbles the game wants.
+# Before using this on a station AP, re-enable /ip dhcp-server and raise
+# tx_power/min_signal (or just configure the device in WebFig).
+#
 # Turns a stock mAP lite into the base-station AP: ether1 joins the LAN
 # bridge (the cable to the Pi), the built-in DHCP server is disabled (the Pi
-# behind it serves DHCP/DNS),
+# behind it served DHCP/DNS),
 # and the wifi range is clamped, mirroring the Pi stations' range-limited
 # APs: fixed tx power (dBm; the radio clamps at its own floor) and the
 # weakest client signal (dBm, at the AP) allowed to join — and to stay:
