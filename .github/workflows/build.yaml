@@ -14,7 +14,7 @@ env:
     extra-trusted-public-keys = dash-chat.cachix.org-1:oAsoaEZ7e4UJlveRXF45MJ1P+Tf3OKFN5QkB8BuPaiM= nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI=
 
 jobs:
-  # The bot package, as consumed by the journalist's cloud host (x86_64).
+  # The bot package, as consumed by the sister's cloud host (x86_64).
   larp-bot:
     runs-on: ubuntu-latest
     steps:

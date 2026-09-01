@@ -34,3 +34,8 @@ success = """✅ 👴 Two blisters. Ten days, more or less. Tell her not to make
 to = "neighbour"
 text = """❓ 👩 We left in such a rush I'm certain the back window is still open. The keys are under the flowerpot. Copy this into Nadia's chat, she'll know what to do."""
 success = """✅ 👵 Window's shut and I've got your keys here. Don't think about the house, just look after yourselves."""
+
+[[missions]]
+to = "cousin"
+text = """❓ 👩 We'll be at the hall before dark, all of us, plus a cat we are not supposed to have. Ask him to put our names down — copy this into Rafa's chat."""
+success = """✅ 🙋‍♂️ Names are down, and I have seen no cat and heard no cat. Come to the blue door and ask for me."""

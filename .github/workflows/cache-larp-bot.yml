@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         include:
-          # Both systems the flake exposes: x86_64 for the cloud journalist
+          # Both systems the flake exposes: x86_64 for the sister's cloud
           # host / dev machines, aarch64 for the Pi station image.
           - runner: ubuntu-latest
           - runner: ubuntu-24.04-arm

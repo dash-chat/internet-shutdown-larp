@@ -31,3 +31,8 @@ success = """✅ 👩 Nobody is losing the photos and nobody is losing you. Blue
 to = "neighbour"
 text = """❓ 👴 There's smoke coming up behind the orchard, right over her roof, and she can't see it from her door. Copy this into Nadia's chat, quickly."""
 success = """✅ 👵 I see it now. Thank you. I'm getting everyone off that side of the street."""
+
+[[missions]]
+to = "cousin"
+text = """❓ 👴 The boy with the clipboard at the sports hall is holding a bed for me. Tell him to give it to somebody who will actually sleep in it. Copy this into Rafa's chat."""
+success = """✅ 🙋‍♂️ Stubborn old goat. The bed keeps his name on it until midnight, and you can tell him I said so."""

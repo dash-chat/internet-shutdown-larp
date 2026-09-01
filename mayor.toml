@@ -16,7 +16,7 @@ name = "The Mayor"
 greeting = [
   """🏛️ Citizens. This is the mayor, from the town hall. If you are reading this, you are one of the few still out on the streets.""",
   """🔥 Fires are burning on every side of us. The phones are dead, the internet is dead, and the relief stations cannot reach each other any more. Nothing moves through this town now except what people carry.""",
-  """📋 First: scan the four other posters around you. That is your family and your neighbour, and each poster opens a private chat with one of them.""",
+  """📋 First: scan the five other posters around you. That is your family and your neighbour, and each poster opens a private chat with one of them.""",
   """📋 Then: when one of them asks you to pass something on, COPY their message, PASTE it into the chat of the person it is meant for, and walk to that person's station so your phone can hand it over. That is the whole job.""",
   """📵 Keep your mobile data OFF and forget every other wifi network. There is nothing out there to connect to any more.""",
   """🏛️ Go. The town is counting on you. I will be right here, watching over all of you.""",

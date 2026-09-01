@@ -326,7 +326,8 @@ mod tests {
     }
 
     /// The shipped cast: the family and the neighbour (docs/design.md).
-    const CAST: [&str; 4] = ["grandpa", "mum", "neighbour", "sister"];
+    /// Sorted, because `Scenarios` keys are a `BTreeMap`.
+    const CAST: [&str; 5] = ["cousin", "grandpa", "mum", "neighbour", "sister"];
 
     #[test]
     fn shipped_packs_lint() {
@@ -340,7 +341,7 @@ mod tests {
                 "pack {character} has no avatar (scenarios/{character}.png missing?)"
             );
         }
-        // Laia, stuck outside town, answers the first player message after a
+        // Mira, stuck outside town, answers the first player message after a
         // quiet spell.
         assert!(s.pack("sister").unwrap().comeback.is_some());
         // Every character can turn away a message meant for somebody else —

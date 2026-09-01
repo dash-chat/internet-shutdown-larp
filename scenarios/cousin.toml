@@ -1,0 +1,34 @@
+# Rafa's mission pack. Texts are sent VERBATIM (see mum.toml). He is at the
+# sports hall — the evacuation point everyone else in the game is trying to
+# reach — with the clipboard and the list of who has arrived.
+
+name = "Rafa (your cousin)"
+
+greeting = """🙋‍♂️ Rafa here, your cousin, down at the sports hall. They've handed me the clipboard, so I'm the one who knows who's arrived and who still hasn't. Nothing gets through to me from out there any more, so when I ask you to pass something on: copy it, paste it into that person's chat, and walk it over to them. Go on, cousin."""
+
+misdelivered = """🙋‍♂️ Not mine, this one!"""
+
+[[missions]]
+to = "mum"
+text = """❓ 🙋‍♂️ I've kept mattresses for your lot by the blue door, but I need to know how many of you are coming and whether anybody can't manage the stairs. Copy this into Mama's chat."""
+success = """✅ 👩 Four of us, and my father if I have to carry him myself. Nobody needs the ground floor yet."""
+
+[[missions]]
+to = "grandpa"
+text = """❓ 🙋‍♂️ The nurse here can make up his heart prescription, but she needs the name printed on the box, not “the little white ones”. Copy this into Grandpa Amir's chat."""
+success = """✅ 👴 Tell him it says Bisoprolol, and tell him I can still read perfectly well."""
+
+[[missions]]
+to = "neighbour"
+text = """❓ 🙋‍♂️ They still won't let the animals through the door here and there are three families crying about it in the car park. Ask her how many more she can take. Copy this into Nadia's chat."""
+success = """✅ 👵 Two more dogs, and I'll find room for a third. Nothing that hisses, tell them."""
+
+[[missions]]
+to = "sister"
+text = """❓ 🙋‍♂️ We're being told we may have to move everybody again if the wind turns tonight. She's the one with the internet — ask her where that fire actually is. Copy this into her chat."""
+success = """✅ 👩‍🎓 The wind turns north around nine, so you have until then. I'll keep watching and send word."""
+
+[[missions]]
+to = "mum"
+text = """❓ 🙋‍♂️ Our grandfather isn't on my board and people here keep asking me whether he's dead. Somebody has to tell me what is happening up on that hill. Copy this into Mama's chat."""
+success = """✅ 👩 He's alive, he's stubborn, and he is still on that hill. Write him down as coming and I'll make it true."""

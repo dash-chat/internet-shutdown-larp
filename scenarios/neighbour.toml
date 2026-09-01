@@ -32,3 +32,8 @@ success = """✅ 👩 Blankets and two torches in the car. Trust you to be think
 to = "grandpa"
 text = """❓ 👵 I walked up and closed all his shutters, so tell him not to come down that hill for nothing. Copy this into Grandpa Amir's chat."""
 success = """✅ 👴 She climbed all that way for my shutters. Tell her thank you. Tell her I saw her."""
+
+[[missions]]
+to = "cousin"
+text = """❓ 👵 Somebody at that shelter needs to write down that this street is not empty — there are still people living on it. Copy this into Rafa's chat."""
+success = """✅ 🙋‍♂️ It's on my board now, and there's a van going up your way at first light. Nobody's writing you off."""

@@ -56,11 +56,11 @@ cast:
     [ "${#args[@]}" -gt 0 ] || { echo "no scenario packs in scenarios/"; exit 1; }
     nix run .#larp-bot --accept-flake-config -- cast "${args[@]}" --out secrets/larp-cast.toml
 
-# Render the QR wall posters (PNG per character) into secrets/. Six of them:
-# the four family posters and the mayor's go on the base-station wall (his is
+# Render the QR wall posters (PNG per character) into secrets/. Seven of them:
+# the five family posters and the mayor's go on the base-station wall (his is
 # the one players scan FIRST — his greeting is the onboarding), and the
 # informant's is hidden somewhere on the map instead.
-[doc("Render the QR wall posters (PNG per character) into secrets/ — four family, the mayor, the hidden informant")]
+[doc("Render the QR wall posters (PNG per character) into secrets/ — five family, the mayor, the hidden informant")]
 posters:
     #!/usr/bin/env bash
     set -euo pipefail

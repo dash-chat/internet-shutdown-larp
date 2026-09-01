@@ -40,3 +40,8 @@ success = """✅ 👩 Don't you dare come into this. And if you do anyway — th
 to = "grandpa"
 text = """❓ 👩‍🎓 There's a pharmacy still open by the market square, for his heart pills. Copy this into Grandpa Amir's chat so he knows where to send you."""
 success = """✅ 👴 By the market square. Good. I'll give this messenger of ours my prescription."""
+
+[[missions]]
+to = "cousin"
+text = """❓ 👩‍🎓 The news out here says the sports hall is full and turning families away. Is that true? I need to know before I send Mama driving there. Copy this into Rafa's chat."""
+success = """✅ 🙋‍♂️ Not full, not close to full. Whoever wrote that has never set foot in here. Send them straight to me."""

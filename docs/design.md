@@ -22,7 +22,7 @@ stations can't talk to each other any more — their messages must travel in
 the players' pockets.
 
 The cast is **the player's own family and the woman next door**: everyone the
-player would actually be frantic about in a fire. Four of them live at the
+player would actually be frantic about in a fire. Five of them live at the
 stations, and each talks to the player in a **private one-to-one chat** —
 there is no group chat in the game. Every character keeps producing urgent
 messages with a clear recipient ("The hens are still shut in and my knee
@@ -50,7 +50,7 @@ message on a timer.
         │                BASE STATION             │
         │      (Pi 5 hosting its own Wi-Fi AP,    │
         │       the mayor's bot and the mailbox;  │
-        │       all five QR posters on the wall)  │
+        │       all six QR posters on the wall)   │
         │                                         │
         └─────────────────────────────────────────┘
    NADIA (next door)                    SIGNAL to the CITY
@@ -58,6 +58,9 @@ message on a timer.
                                          sister is OUTSIDE the town — her
                                          bot runs on Digital Ocean via the
                                          existing cloud mailbox)
+
+                  RAFA (the sports hall / shelter)
+                  (Pi: AP + mailbox + bot)
 ```
 
 Corner assignment is arbitrary — the only requirement is that the stations
@@ -70,10 +73,11 @@ are far enough apart that carrying a message means actually walking.
 | **mum** | **Mama**, at the family house, packing for the shelter and holding everyone together | Pi 5: Wi-Fi AP + mailbox + bot |
 | **grandpa** | **Grandpa Amir**, alone at the top of the hill, refusing to be evacuated | Pi 5: Wi-Fi AP + mailbox + bot |
 | **neighbour** | **Nadia the neighbour**, next door, who stayed behind with everyone's pets and keys | Pi 5: Wi-Fi AP + mailbox + bot |
+| **cousin** | **Rafa, the player's cousin**, at the sports hall with the clipboard — he is *at* the evacuation point the rest of the cast is trying to reach, and holds the list of who has arrived | Pi 5: Wi-Fi AP + mailbox + bot |
 | **sister** | **Mira, the player's sister** — studying in the city, **outside the town** and the only one who still has internet: she sees the news, looks things up, and can do nothing with her own hands. The hotspot corner is the family's only line to her | Phone hotspot (internet); bot on a Digital Ocean droplet syncing through the **existing cloud mailbox** |
 | **mayor** *(base station)* | **The Mayor** — a chat contact like everyone else, but with no scenario pack: his greeting *is* the game's onboarding, and one trigger phrase is the endgame (§The mayor and the informant) | Pi 5 running the same station image, flashed with his identity and no character identity: Wi-Fi AP + mailbox + his bot. *(The mAP-lite-as-AP variant — a MikroTik mAP lite broadcasting the wifi with the Pi wired behind it, `nix/base-station.nix` — is kept but currently unused, in case the Pi's radio can't carry the 30-40 concurrent base-station clients)* |
 
-Total hardware: **4 × Pi 5** (base, mum, grandpa, neighbour) + **1
+Total hardware: **5 × Pi 5** (base, mum, grandpa, neighbour, cousin) + **1
 phone** (the hotspot that reaches the sister) + **1 DO droplet** (already
 running the cloud mailbox; gains the sister's bot).
 
@@ -89,7 +93,7 @@ instruction that has to exist on paper. He accepts immediately (his bot is on
 that same Pi, on that same Wi-Fi) and his greeting is the briefing: the fires,
 the dead network, and then the three rules —
 
-1. Scan the other four **QR posters on the wall**. Each becomes a private chat
+1. Scan the other five **QR posters on the wall**. Each becomes a private chat
    with one of the player's family or their neighbour.
 2. When one of them asks for a message to be passed on, **copy it and paste it
    into the recipient's chat**.
@@ -97,7 +101,7 @@ the dead network, and then the three rules —
 
 (Plus: mobile data off, forget other networks.)
 
-The base Pi's mailbox is on that same Wi-Fi, so the four contact requests are
+The base Pi's mailbox is on that same Wi-Fi, so the five contact requests are
 seeded into the base mailbox immediately.
 
 The contact requests only *reach* each bot when a player first syncs at that
@@ -135,8 +139,8 @@ Nothing gates a character on delivery: the walk is one-way, so a character
 never learns whether its last message arrived. What bounds the flow is the
 pack — **each template is handed to a given player at most once**, and once a
 character has given out everything it has, it goes quiet (bar acks and Mira's
-comeback line). Five templates per character × four characters ≈ 20 deliveries
-for a solo courier.
+comeback line). Six templates each for the four original characters, plus
+five for the cousin, ≈ 29 deliveries for a solo courier.
 
 Ending: the facilitator calls time; the chats themselves are the score sheet
 (count success replies). No formal end state in software.
@@ -309,7 +313,7 @@ The bundle sits plaintext on the FAT partition; for a game prop that's fine.
   in-character prose; the machine layer rides on the text itself, since we
   author every pack:
 
-  - All bots ship with **all four template packs** (they live in this repo).
+  - All bots ship with **all five template packs** (they live in this repo).
   - *Recipient side:* a message a **player** wrote is a delivery for me iff it
     **contains** a template with `to = <my character>`. Matching normalizes
     whitespace and case and tolerates text around the paste (a quote header, a
@@ -357,7 +361,7 @@ path = "/etc/larp-bot/mum.toml"
 Template file: a list of `{ to = "grandpa", text = "…", success = "…" }`
 entries plus `greeting` and `misdelivered` (the "this message is not for me!"
 line, sent verbatim when a player pastes in somebody else's message). Authored
-in Spanish/Catalan/English as needed — pure content, no code. All four
+in Spanish/Catalan/English as needed — pure content, no code. All five
 character packs live in this repo under `scenarios/`, and every bot loads all
 of them (recognition depends on it — see above). A unit test lints the packs:
 `text` and `success` unique across all packs and never nested inside another
@@ -472,7 +476,7 @@ Provisioning flow (all offline, on the laptop — implemented as `just` recipes)
    characters are excluded by construction, and an identity left over from a
    retired character is ignored rather than resurrected.
 2. `just characters::posters` — renders the QR wall-poster PNGs for printing.
-   **Six** of them: the four family posters and the mayor's go on the
+   **Seven** of them: the five family posters and the mayor's go on the
    base-station wall (his is the one players scan *first*), and the
    informant's is hidden somewhere on the map.
 3. `just characters::flash <character> /dev/sdX` — flashes the station image and
@@ -489,11 +493,11 @@ seeded only at its own station (Mira: only in the cloud) — and replication
 never introduces a mailbox to topics it doesn't know. Without seeding,
 contacts added from the wall posters appear *nameless* at the base station,
 right when players are learning which chat belongs to which character.
-The fix uses the client push path: on a phone with internet, add all four
+The fix uses the client push path: on a phone with internet, add all five
 characters (Mira's profile arrives via the cloud; the others via their
 stations — or plug all the Pis into one ethernet switch, where the mailboxes
 discover and push to each other), then stand on the base station's Wi-Fi for
-a minute. The phone pushes all four announcements topics into the base
+a minute. The phone pushes all five announcements topics into the base
 mailbox, permanently. Do NOT seed by running a character bot against the
 base mailbox with a fresh data dir — same identity, second op log, forked
 history.
@@ -626,6 +630,6 @@ cloud mailbox, and the DO bot answers usually within seconds.
    mailbox.
 3. **The sister's droplet** — NixOS config on DO against the cloud mailbox;
    test through a real phone hotspot.
-4. **Scenario content + dress rehearsal** — write the four template packs and
-   the two spec-bot scripts, full field test (4 Pis), print the six QR wall
+4. **Scenario content + dress rehearsal** — write the five template packs and
+   the two spec-bot scripts, full field test (5 Pis), print the seven QR wall
    posters and the base station's paper sign, tune intervals/caps.
