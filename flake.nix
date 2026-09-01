@@ -88,6 +88,7 @@
           find-pi
           ethernet-ssh
           ethernet-set-time
+          ethernet-deploy
           ;
       };
 
@@ -101,6 +102,7 @@
           find-pi
           ethernet-ssh
           ethernet-set-time
+          ethernet-deploy
           ;
       };
 
