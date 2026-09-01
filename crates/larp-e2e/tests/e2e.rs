@@ -50,7 +50,9 @@ fn test_scenarios() -> Scenarios {
             // No tip here: mum only ever gets the mission pasted back at her
             // (a misdelivery), which must never earn the informant.
             informant_tip: None,
+            mayor_fallen: None,
             missions: vec![Mission {
+                first: false,
                 to: "grandpa".into(),
                 text: MUM_MISSION.into(),
                 success: MUM_SUCCESS.into(),
@@ -66,7 +68,9 @@ fn test_scenarios() -> Scenarios {
             comeback: None,
             misdelivered: None,
             informant_tip: Some(GP_TIP.into()),
+            mayor_fallen: None,
             missions: vec![Mission {
+                first: false,
                 to: "mum".into(),
                 text: GP_MISSION.into(),
                 success: GP_SUCCESS.into(),
@@ -173,6 +177,7 @@ async fn start_bot(
         test_scenarios(),
         fast_timing(),
         informant,
+        None,
         data_dir.join("state.json"),
     )
     .expect("bot constructs");
@@ -215,9 +220,9 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
     // --- Stations come up.
     let mum_dir = tempfile::tempdir().unwrap();
     let gp_dir = tempfile::tempdir().unwrap();
-    // Grandpa's card also carries the informant's identity, like every station
-    // card does. In the shipped game it is Mira who tips; here it is grandpa,
-    // because he is the one who receives the delivery in this test.
+    // The tipping character's card carries the informant's identity (in the
+    // shipped game that is Mira, and only her). Here it is grandpa, because
+    // he is the one who receives the delivery in this test.
     let informant_bundle = IdentityBundle::generate("anonymous");
     let informant_link = qr::contact_deep_link(&informant_bundle.contact_code().unwrap());
     let informant = InformantTip {

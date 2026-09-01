@@ -18,6 +18,13 @@ pub struct Mission {
     pub text: String,
     /// The recipient's in-character success reply, sent verbatim.
     pub success: String,
+    /// The pack's designated opener: fired before any random draw, so it
+    /// reaches each player right after the greeting. One per pack at most
+    /// (linted). Nadia's network announcement uses this — her greeting
+    /// promises "your first one is coming now", and this is what makes that
+    /// promise deterministic instead of a lucky draw.
+    #[serde(default)]
+    pub first: bool,
 }
 
 /// One character's scenario pack (`scenarios/<character>.toml`).
@@ -51,6 +58,13 @@ pub struct Pack {
     /// No line, or no informant identity on the card — no tip.
     #[serde(default)]
     pub informant_tip: Option<String>,
+    /// Sent unprompted, once per chat, when the mayor falls — the character
+    /// bot polls the flag his spec bot writes (`BotConfig::mayor_fallen_flag`)
+    /// and erupts the moment it appears. Only Nadia carries this line: her
+    /// bot shares the base-station Pi with the mayor's, so she is the one
+    /// character who can actually see it happen.
+    #[serde(default)]
+    pub mayor_fallen: Option<String>,
     #[serde(default)]
     pub missions: Vec<Mission>,
     /// The character's chat avatar as a `data:image/png;base64,…` URI (the
@@ -125,6 +139,8 @@ impl Scenarios {
 
     /// The pack invariants recognition depends on:
     /// - every `to` names a known character (and not the pack's own),
+    /// - at most one mission per pack is marked `first` (the deterministic
+    ///   opener),
     /// - mission texts are unique across ALL packs (a text identifies exactly
     ///   one mission),
     /// - success lines are unique across ALL packs and never collide with a
@@ -143,6 +159,9 @@ impl Scenarios {
         for (character, pack) in &self.packs {
             if pack.greeting.trim().is_empty() {
                 bail!("pack {character}: empty greeting");
+            }
+            if pack.missions.iter().filter(|m| m.first).count() > 1 {
+                bail!("pack {character}: more than one mission marked first");
             }
             for (i, mission) in pack.missions.iter().enumerate() {
                 if mission.to == *character {
@@ -216,6 +235,14 @@ impl Scenarios {
                     );
                 }
             }
+            if let Some(fallen) = &pack.mayor_fallen {
+                if fallen.trim().is_empty() {
+                    bail!("pack {character}: empty mayor_fallen text");
+                }
+                if texts.contains(fallen.as_str()) || successes.contains(fallen.as_str()) {
+                    bail!("pack {character}: mayor_fallen collides with a mission");
+                }
+            }
         }
 
         // Containment matching (a player's paste may carry extra text around
@@ -240,7 +267,8 @@ impl Scenarios {
                     .iter()
                     .map(|c| c.text.as_str())
                     .chain(pack.misdelivered.iter().map(|m| m.as_str()))
-                    .chain(pack.informant_tip.iter().map(|t| t.as_str()));
+                    .chain(pack.informant_tip.iter().map(|t| t.as_str()))
+                    .chain(pack.mayor_fallen.iter().map(|t| t.as_str()));
                 successes
                     .chain(extras)
                     .map(move |line| (character.as_str(), line))
@@ -355,6 +383,7 @@ mod tests {
             comeback: None,
             misdelivered: None,
             informant_tip: None,
+            mayor_fallen: None,
             missions,
             avatar: None,
         }
@@ -362,6 +391,7 @@ mod tests {
 
     fn mission(to: &str, text: &str, success: &str) -> Mission {
         Mission {
+            first: false,
             to: to.into(),
             text: text.into(),
             success: success.into(),
@@ -391,7 +421,7 @@ mod tests {
 
     /// The shipped cast: the family and the neighbour (docs/design.md).
     /// Sorted, because `Scenarios` keys are a `BTreeMap`.
-    const CAST: [&str; 4] = ["grandpa", "mum", "neighbour", "sister"];
+    const CAST: [&str; 5] = ["cousin", "grandpa", "mum", "neighbour", "sister"];
 
     #[test]
     fn shipped_packs_lint() {
@@ -405,9 +435,47 @@ mod tests {
                 "pack {character} has no avatar (scenarios/{character}.png missing?)"
             );
         }
-        // Mira, stuck outside town, answers the first player message after a
-        // quiet spell.
+        // Mira, stuck behind the shelter desk, answers the first player
+        // message after a quiet spell.
         assert!(s.pack("sister").unwrap().comeback.is_some());
+        // Only Nadia erupts when the mayor falls: the flag his bot writes
+        // exists only on the base-station Pi they share, so a mayor_fallen
+        // line anywhere else would be dead content.
+        for character in CAST {
+            assert_eq!(
+                s.pack(character).unwrap().mayor_fallen.is_some(),
+                character == "neighbour",
+                "pack {character}: only Nadia can see the mayor fall"
+            );
+        }
+        // Only Nadia's greeting teaches the courier job. Everyone else just
+        // says hello in character — the tutorial has exactly one voice, and
+        // repeating it five times would drown it.
+        for character in CAST {
+            let greeting = &s.pack(character).unwrap().greeting;
+            assert_eq!(
+                normalize(greeting).contains("copy"),
+                character == "neighbour",
+                "pack {character}: only Nadia's greeting explains what to do"
+            );
+        }
+        // Exactly one opener in the whole game, and it is Nadia's: her
+        // greeting is the tutorial and promises the first message, so her
+        // pack must actually deliver it deterministically.
+        for character in CAST {
+            let firsts = s
+                .pack(character)
+                .unwrap()
+                .missions
+                .iter()
+                .filter(|m| m.first)
+                .count();
+            assert_eq!(
+                firsts,
+                usize::from(character == "neighbour"),
+                "pack {character}: only Nadia opens the game, with exactly one first mission"
+            );
+        }
         // The informant has no poster any more, and exactly one character
         // hands him out: Mira, at the desk he wrote to. More than one door
         // would make the side plot a lottery; none would make it unreachable.
@@ -513,6 +581,21 @@ mod tests {
         let mut p = pack(vec![]);
         p.informant_tip = Some("talk to the informant, somehow".into());
         assert!(scenarios(&[("a", p)]).lint().is_err());
+    }
+
+    #[test]
+    fn lint_rejects_two_first_missions_in_one_pack() {
+        let mut m1 = mission("b", "t1", "s1");
+        let mut m2 = mission("b", "t2", "s2");
+        m1.first = true;
+        m2.first = true;
+        let s = scenarios(&[("a", pack(vec![m1.clone(), m2])), ("b", pack(vec![]))]);
+        assert!(s.lint().is_err());
+        let s = scenarios(&[
+            ("a", pack(vec![m1, mission("b", "t2", "s2")])),
+            ("b", pack(vec![])),
+        ]);
+        s.lint().unwrap();
     }
 
     #[test]

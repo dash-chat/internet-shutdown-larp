@@ -16,15 +16,13 @@
 //! Neither appears in `larp-cast.toml`. Only Mira knows the informant exists,
 //! and all she has of him is the contact link she passes on.
 //!
-//! The informant's identity bundle runs on every station at once. That is safe
-//! enough because p2panda logs are per (device, topic): the instances only
-//! ever collide on the announcements topic (all branches carry the same
-//! "Anonymous" profile — whichever arrives first wins, the other is dropped
-//! per-op) and on a direct chat when several stations accept the *same*
-//! player (the player keeps the first station's chat; every station tells
-//! the full story, so it doesn't matter which one they keep). The mayor is
-//! the opposite: one identity on the base station only, so his downfall
-//! happens once, where the game began.
+//! Both spec bots run in exactly one place: the mayor on the base-station Pi
+//! (his identity is only flashed there), the informant on the sister's Pi
+//! (same mechanism — see characters.just). One identity, one card, one op
+//! log each; there is no multi-instance identity anywhere any more. The
+//! practical consequence for the informant: his contact link is only
+//! answered inside Mira's station wifi, which is why her tip says to tap it
+//! there.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -421,8 +419,22 @@ impl SpecBot {
             }
             self.state.answered.insert(op_hash);
             self.state.save(&self.state_path)?;
+            // Signal the fall to the outside: touch `triggered` next to
+            // state.json. Nadia's character bot shares this Pi and polls the
+            // path (BotConfig::mayor_fallen_flag) to erupt in every chat the
+            // moment the mayor comes apart. Same dir as the state, so a
+            // game-day reset (wiping /var/lib) clears both together.
+            let flag = self.triggered_flag_path();
+            if let Err(err) = std::fs::write(&flag, b"") {
+                warn!(path = %flag.display(), ?err, "could not write the triggered flag");
+            }
         }
         Ok(())
+    }
+
+    /// Where this bot records that one of its triggers has fired.
+    pub fn triggered_flag_path(&self) -> PathBuf {
+        self.state_path.with_file_name("triggered")
     }
 }
 
@@ -518,6 +530,20 @@ mod tests {
     fn shipped_specs_lint() {
         Spec::load(INFORMANT).unwrap();
         Spec::load(MAYOR).unwrap();
+    }
+
+    /// The mayor never encourages the communications he secretly cut: his
+    /// greeting must not name Nadia or teach the courier job — the printed
+    /// sign and Nadia's own greeting carry the onboarding instead.
+    #[test]
+    fn the_mayor_keeps_out_of_the_comms() {
+        let mayor = Spec::load(MAYOR).unwrap();
+        for line in &mayor.greeting {
+            assert!(
+                !line.contains("Nadia") && !normalize(line).contains("copy"),
+                "the mayor's greeting promotes the comms: {line:?}"
+            );
+        }
     }
 
     /// The whole side plot in one assertion: what the informant hands out has

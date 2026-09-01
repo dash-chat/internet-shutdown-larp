@@ -1,38 +1,38 @@
 # Grandpa Amir's mission pack. Texts are sent VERBATIM (see mum.toml).
-# He lives alone at the top of the hill and refuses to be evacuated.
+# He lives alone at the top of the hill and refuses to be evacuated — which
+# makes him the one person who can SEE the whole fire.
 #
 # Voice: an old man who types slowly and says the least he can get away with.
-# Short sentences. No fuss. The instruction still names the recipient.
 
 name = "Grandpa Amir"
 
-greeting = """👴 Amir here. The house at the top of the hill. I'm not leaving, so don't start. But nothing up here reaches anybody any more. So if I ask you to take a word to someone: copy it, paste it in their chat, carry it down to them. You're a good one."""
+greeting = """Amir here. Top of the hill. Good to know this thing still reaches somebody down there."""
 
-misdelivered = """👴 Not for me, this one!"""
+misdelivered = """Not for me, this one!"""
 
 # No informant_tip: only Mira hands out the informant (see mum.toml).
 
 [[missions]]
-to = "mum"
-text = """❓ 👴 Tell my daughter to stop imagining things. Wind's going the other way up here and I have water. Copy this into Mama's chat, before she sends the whole town up after me."""
-success = """✅ 👩 The wind changes every hour, Dad. But fine. I'll breathe for a minute."""
-
-[[missions]]
 to = "neighbour"
-text = """❓ 👴 The hens are still shut in and my knee won't do that path. Somebody has to open the coop. Copy this into Nadia's chat."""
-success = """✅ 👵 Coop's open, water changed, all six accounted for. Furious, but alive."""
+text = """The hens are still shut in and my knee won't do the path. Someone has to open the coop. Copy this into Nadia's chat."""
+success = """Coop's open, all six accounted for. Furious, but alive."""
 
 [[missions]]
 to = "sister"
-text = """❓ 👴 Your sister will be imagining horrors up here, stuck on that desk. Tell her: grandfather's fine, house is standing, stay where she is and keep her list. Copy it into Mira's chat."""
-success = """✅ 👩‍🎓 I actually cried reading this. Tell him to keep his phone by the window."""
+text = """Tell your sister I'm fine and the house is standing. She's to stay at that desk of hers. Copy this into Mira's chat."""
+success = """I actually cried. Tell him to keep his phone by the window."""
 
 [[missions]]
 to = "mum"
-text = """❓ 👴 If this goes badly: the photo albums are in the blue trunk under the stairs. Somebody besides me should know. Copy this into Mama's chat."""
-success = """✅ 👩 Nobody's losing the photos and nobody's losing you. Blue trunk. Noted."""
+text = """If this goes badly: the photo albums are in the blue trunk under the stairs. Someone besides me should know. Copy this into your mum's chat."""
+success = """Nobody's losing the photos and nobody's losing you. Noted."""
 
 [[missions]]
 to = "neighbour"
-text = """❓ 👴 Smoke coming up behind the orchard, right over her roof. She can't see it from her door. Copy this into Nadia's chat. Quickly."""
-success = """✅ 👵 I see it now. Thank you. Getting everyone off that side of the street."""
+text = """There's smoke coming up behind the orchard, right over Nadia's roof — and she's down at the town hall, she can't see it. Copy this into Nadia's chat and hurry."""
+success = """Over my roof?? Thank you. I'm sending the water crew to my own street, imagine that."""
+
+[[missions]]
+to = "cousin"
+text = """The wind's turning east tonight, I can feel it in my knee. The boys at the fire line should know. Copy this into Rafa's chat."""
+success = """East?? That changes everything. Tell him thanks — we're moving now."""

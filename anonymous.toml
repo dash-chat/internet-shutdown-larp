@@ -1,27 +1,34 @@
 # The anonymous informant (docs/design.md). A spec bot, not a scenario pack:
 # this file must stay out of scenarios/ (every character bot parses that whole
 # directory as mission packs, and this schema is different). Texts are sent
-# VERBATIM into the direct chat, in order. Every station runs the informant,
-# and every one tells the whole story.
+# VERBATIM into the direct chat, in order.
 #
-# He has no QR poster any more. The only way to meet him is Mira's tip: she
-# works the shelter desk, the insider wrote to HER, and she passes his contact
-# on as a deep link once the player has carried something to her
-# (scenarios/sister.toml, informant_tip).
+# He has no QR poster, and he runs on MIRA'S CARD ALONE. The only way to meet
+# him is her tip: a deep link she hands out after a player carries something
+# to her (scenarios/sister.toml, informant_tip).
 #
-# What he hands out is not a password: it is one line copied VERBATIM out of
-# the mayor's own written order. The mayor listens for that exact line
-# (mayor.toml) — a unit test in crates/larp-bot/src/spec.rs fails if the two
-# drift apart, because a line nobody hands out makes the endgame unreachable.
-# Keep it quotable and keep it his voice: the player pastes it into his chat
-# and it has to read as evidence, not as a magic word.
+# The chat, in order, for a player who arrives knowing nothing: who he is →
+# it's about THE MAYOR, the man on the poster → the MOTIVE, stated plainly:
+# he made this emergency to rule the town through fear — frightened, cut-off
+# people don't ask questions, they obey → the evidence, one line copied
+# VERBATIM from the mayor's own order → the MISSION: walk to the town hall,
+# paste the line into the mayor's own chat, watch him read it.
+#
+# The mayor listens for that exact line (mayor.toml); a unit test in
+# crates/larp-bot/src/spec.rs fails if the two drift.
+#
+# Voice: typing fast with the door watched. Short. No speeches.
 
 name = "Anonymous"
 
 greeting = [
-  """🕵️ So Mira gave you this. She's braver than she looks. You don't know me — I work inside the town hall, and I'm going to be quick.""",
-  """🔥 The fires were no accident. He ordered them lit, and he ordered the phones and the internet cut. A town that is frightened and cannot talk to itself is a town that does exactly as it's told.""",
-  """🗝️ It's all in writing. I stood in his office tonight with his own order in my hands, and I copied one line out of it, word for word.""",
-  """📄 Here it is, exactly as he wrote it: Let the north side burn until they stop asking questions.""",
-  """📮 You know what to do with a message by now. Copy that line, paste it into the mayor's own chat, and put it in front of him. He knows what he wrote. Watch what he does when he sees it come back.""",
+  """Hey. I can't tell you my name. I work in the town hall, three doors from the mayor's office. Mira trusts you, so I will.""",
+  """It's about the mayor. The man who welcomed you.""",
+  """The fires were no accident. He ordered them lit, and shut down the internet.""",
+  """He's been manipulating this place for years, and this is the next step: keep everyone frightened and alone. A scared town doesn't ask questions — it does what it's told.""",
+  """Fear is how he holds this town. We need to bring him down.""",
+  """I was in his office an hour ago, there is a ton of incriminating evidence that would mean several years in prison. I couldn't take any paper, so I copied this one line, word for word:""",
+  """Let the north side burn until they stop asking questions.""",
+  """Walk to the town hall and paste this one line into the mayor's own chat. Then stay and watch him read it.""",
+  """Face him with his own words.""",
 ]

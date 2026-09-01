@@ -22,8 +22,9 @@ stations can't talk to each other any more — their messages must travel in
 the players' pockets.
 
 The cast is **the player's own family and the woman next door**: everyone the
-player would actually be frantic about in a fire. Four of them live at the
-stations, and each talks to the player in a **private one-to-one chat** —
+player would actually be frantic about in a fire. Five of them live at the
+stations (Nadia at the base station itself), and each talks to the player in
+a **private one-to-one chat** —
 there is no group chat in the game. Every character keeps producing urgent
 messages with a clear recipient ("The hens are still shut in and my knee
 won't get me down that path. Copy this into Nadia's chat."). The
@@ -49,12 +50,15 @@ message on a timer.
         │                                         │
         │                BASE STATION             │
         │      (an AP broadcasting OfflineWifi    │
-        │       + a Pi 5 with the mayor's bot     │
-        │       and the mailbox; all five QR      │
-        │       posters on the wall)              │
+        │       + a Pi 5 with the mailbox and     │
+        │       TWO bots: the mayor, and NADIA    │
+        │       the tinkerer — her greeting is    │
+        │       the tutorial and her first        │
+        │       mission opens the game; all six   │
+        │       QR posters on the wall)           │
         │                                         │
         └─────────────────────────────────────────┘
-   NADIA (next door)                    MIRA (the school shelter)
+   RAFA (the fire line, east)           MIRA (the school shelter)
    (AP + Pi: mailbox + bot)             (AP + Pi: mailbox + bot; the desk
                                          with the list of who has arrived —
                                          and the only door to the informant)
@@ -69,13 +73,14 @@ are far enough apart that carrying a message means actually walking.
 |---|---|---|
 | **mum** | **Mama**, at the family house, packing for the shelter and holding everyone together | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
 | **grandpa** | **Grandpa Amir**, alone at the top of the hill, refusing to be evacuated | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
-| **neighbour** | **Nadia the neighbour**, next door, who stayed behind with everyone's pets and keys | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
+| **neighbour** *(base station)* | **Nadia the neighbour**, the town's tinkerer: the offline boxes that keep these chats alive are hers, up on the lampposts for years before the blackout. Her greeting is the game's real tutorial — the courier job, the phone rules — and her `first` mission is the opening delivery. She minds the street's pets and keys too | Rides the base-station Pi (no card of her own — `characters::flash neighbour` refuses) |
+| **cousin** | **Rafa, the player's cousin**, digging firebreaks with the volunteers at the east edge — he can't leave the line, so everything he needs travels by courier | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
 | **sister** | **Mira, the player's sister**, on the desk at the school shelter: she holds the list of who has arrived, so everyone's names pass through her. She is also **the only door to the side plot** — the informant wrote to her desk, and she is the one character who hands his contact on (§The mayor and the informant) | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
-| **mayor** *(base station)* | **The Mayor** — a chat contact like everyone else, but with no scenario pack: his greeting *is* the game's onboarding, and one trigger phrase is the endgame (§The mayor and the informant) | own AP (`OfflineWifi`) + a Pi 5 running the same station image, flashed with his identity and no character identity: mailbox + his bot. *(This AP carries the 30-40 concurrent base-station clients, so it wants to be the best one available — a MikroTik mAP lite, say, not a spare phone)* |
+| **mayor** *(base station)* | **The Mayor** — a chat contact like everyone else, but with no scenario pack: his greeting is the emergency notice players read first (situation only — he never encourages the comms he secretly cut), and one trigger phrase is the endgame (§The mayor and the informant) | Shares the base-station Pi with Nadia's bot: same station image, flashed with his identity plus her character files. *(The base AP carries the 30-40 concurrent clients, so it wants to be the best one available — a MikroTik mAP lite, say, not a spare phone)* |
 
-Total hardware: **5 × Pi 5** (base, mum, grandpa, neighbour, sister) + **an AP
-per station** (§Wi-Fi). Nothing runs off-map any more: no hotspot corner, no
-droplet, no cloud mailbox in the game loop.
+Total hardware: **5 × Pi 5** (base [mayor + Nadia], mum, grandpa, cousin,
+sister) + **an AP per station** (§Wi-Fi). Nothing runs off-map any more: no
+hotspot corner, no droplet, no cloud mailbox in the game loop.
 
 ### Game setup (at the base station)
 
@@ -83,22 +88,32 @@ The game begins at the base station — the town hall. There is **no captive
 portal** anywhere on the map: the mayor is a chat contact, so onboarding
 happens in Dash Chat like everything else.
 
-Players join the base station's Wi-Fi and scan **the mayor's QR poster
-first** — a printed sign at the base station says so, and it is the only
-instruction that has to exist on paper. He accepts immediately (his bot is on
-that same Pi, on that same Wi-Fi) and his greeting is the briefing: the fires,
-the dead network, and then the three rules —
+Players join the base station's Wi-Fi and scan **all six QR posters,
+the mayor's first** — a printed sign at the base station says so, and it is
+the only instruction that has to exist on paper. Onboarding is then a
+two-voice scene, both bots living on that same Pi:
 
-1. Scan the other four **QR posters on the wall**. Each becomes a private chat
-   with one of the player's family or their neighbour.
-2. When one of them asks for a message to be passed on, **copy it and paste it
-   into the recipient's chat**.
-3. Walk to that recipient's station so the phone can deliver it.
+1. **The mayor** answers with the emergency notice: fires everywhere,
+   phones and internet down, be careful. Situation only — he never mentions
+   the chats still working, and he never teaches the courier job.
+   Encouraging communications is the last thing he wants (§The mayor and
+   the informant); replayed after the endgame, his blandness reads very
+   differently.
+2. **Nadia** answers with the real tutorial: the boxes on the lampposts are
+   hers — up for years, from long before the blackout — which is why the
+   chats still work; the boxes can't reach each other, so the player is the
+   wire (**copy, paste into the right chat, walk to that station**); phone
+   rules (mobile data off, forget other wifi); and "never mind what the
+   mayor told you".
+3. Seconds later her bot fires the **opening delivery** (`first = true` on
+   the mission — deterministic, not a lucky draw): tell your mum the chats
+   still work. The first thing the player carries is the news that carrying
+   works, and it kills the cold start — no standing around waiting for a
+   mission timer somewhere else.
 
-(Plus: mobile data off, forget other networks.)
-
-The base Pi's mailbox is on that same Wi-Fi, so the four contact requests are
-seeded into the base mailbox immediately.
+The base Pi's mailbox is on that same Wi-Fi, so all the contact requests are
+seeded into the base mailbox immediately — and the mayor's and Nadia's bots
+answer on the spot, since they live there.
 
 The contact requests only *reach* each bot when a player first syncs at that
 bot's station — that's fine and thematic: each character "comes online" when
@@ -135,8 +150,9 @@ Nothing gates a character on delivery: the walk is one-way, so a character
 never learns whether its last message arrived. What bounds the flow is the
 pack — **each template is handed to a given player at most once**, and once a
 character has given out everything it has, it goes quiet (bar acks, Mira's
-comeback line and her informant tip). Five templates each for the four
-characters, ≈ 20 deliveries for a solo courier.
+comeback line and her informant tip). Five or six templates per character
+(28 across the five packs, Nadia's opener included) — ≈ 28 deliveries for a
+solo courier.
 
 Ending: the facilitator calls time; the chats themselves are the score sheet
 (count success replies). No formal end state in software.
@@ -144,8 +160,9 @@ Ending: the facilitator calls time; the chats themselves are the score sheet
 ### The mayor and the informant (side plot)
 
 Two characters have an identity but **no scenario pack and no cast entry**:
-the **mayor** and **Anonymous**. They trade no missions, and
-`characters.just` keeps both out of `larp-cast.toml` — the family doesn't
+the **mayor** and **Anonymous**. They trade no missions — nothing is ever
+addressed to either of them (a spec bot never acks a delivery) — and
+`characters.just` keeps both out of `larp-cast.toml`: the family doesn't
 know the informant exists. Both are driven by the same **spec bot**
 (`larp-bot spec`, `crates/larp-bot/src/spec.rs`): a small script of
 `name` + `greeting` (sent in order when a contact request is accepted) +
@@ -153,8 +170,12 @@ optional `triggers` (a phrase to listen for in player messages, and what to
 answer). The whole side plot is those two files, `mayor.toml` and
 `anonymous.toml`.
 
-**The mayor** runs on the base-station Pi only. His greeting is the
-onboarding (above). He listens for one phrase.
+**The mayor** runs on the base-station Pi only, next to Nadia's bot. His
+greeting is the emergency notice (above) — deliberately empty of anything
+that would help messages move: he cut the networks himself, so he never
+mentions the chats still working and never teaches the courier job (a unit
+test pins that: no "Nadia", no "copy" in his greeting). He listens for one
+phrase.
 
 **Anonymous has no QR poster at all.** The only way to meet him is **Mira**:
 he wrote to the shelter desk, because that is the desk every name in town
@@ -178,14 +199,17 @@ the rounds hits one early. Strip them all and the informant would be
 unreachable — the pack linter fails for exactly that: a character with an
 `informant_tip` that nobody is ever sent to.
 
-**Every** station runs the informant, and every station card carries his
-identity (every flash recipe copies it) — which is also where the character
-bot on that card reads the public half to build the link. So the contact
-request is answered by whichever station the player is standing in. The bot
-accepts and whispers into the direct chat: the mayor is lying — he lit the
-fires, he shut down the internet, and he is using the emergency to control
-the town. And then the evidence: one line the informant copied **word for
-word** out of the mayor's own written order —
+The informant runs on **Mira's card alone** (`characters.just`
+`informant_character`), where his identity does double duty: it arms his
+service, and her character bot reads its public half to build the link in
+her tip. One identity, one card — like the mayor. The consequence: his
+contact link is only answered **inside Mira's station wifi**, which is why
+her tip says to tap it right there before walking off (a link tapped
+elsewhere just sits in the player's pocket until they're back). When the
+request lands, the bot accepts and whispers into the direct chat: the mayor
+is lying — he lit the fires, he cut the phones, and he is using the
+emergency to control the town. And then the evidence: one line the informant
+copied **word for word** out of the mayor's own written order —
 
 > Let the north side burn until they stop asking questions.
 
@@ -197,28 +221,40 @@ mayor's bot matches it the same forgiving way a delivery is matched
 (whitespace, case and surrounding prose forgiven, so pasting the informant's
 whole message works), and answers with the collapse: those are his words,
 that is his handwriting, the orders to light the fires and cut the network
-are all in the file, and **the mayor flees town** — ending with the
-congratulations line. Answered once per message (the op hash is persisted),
-so a re-sync never replays it.
+are all in the file, and **the mayor flees town**. His last message — *"I'm
+leaving this town tonight and I'm never coming back."* — closes his chat.
+Answered once per message (the op hash is persisted), so a re-sync never
+replays it.
+
+Then the win actually *lands*: seconds later **Nadia erupts, unprompted**, in
+her own chat. The player is standing at the base station — her bot shares
+that Pi with the mayor's, which is exactly what makes this possible. When his
+trigger fires, his bot touches a `triggered` flag next to its state
+(`/var/lib/larp-bot-mayor/triggered`); her bot polls the path
+(`BotConfig::mayor_fallen_flag`, wired in `nix/larp-bot.nix`) and, the tick
+it appears, sends her `mayor_fallen` line to every chat, once per player:
+he's gone, the fires are going out, the internet is coming back, you can
+relax now — thank you. The resolution comes from the character the player
+has been working with all game, not from the villain, and it arrives without
+the player having to do anything but stand there. Only Nadia has the line
+(linted): everywhere else the flag never appears, so a `mayor_fallen` in any
+other pack would be dead content. The game still closes entirely
+in-fiction — no out-of-character congratulations.
+
+(Resetting for a new game day = wiping `/var/lib` on the base Pi: the flag
+lives next to the mayor's state, so both clear together.)
 
 Because the mayor's bot sits on the base station, the last delivery of the
 game is a walk back to where it started. A single player can finish the whole
 plot. A unit test asserts that what the informant hands out is exactly what
 the mayor listens for — a drifted line would make the endgame unreachable.
 
-The informant's stations all run the **same** identity (one contact code).
-p2panda logs are per `(device, topic)`, and a failed op ingest is dropped
-per-op, so the instances only ever collide on the announcements topic (all
-branches carry the same "Anonymous" profile — first one in wins) and on a
-direct chat when several stations accept the *same* player (that player keeps
-the first station's chat — and every station tells the full story, so it
-doesn't matter which one they keep). Degradation, not breakage. The mayor has
-no such caveat: one identity, one card.
-
-A consequence worth knowing on game day: because the link is tapped rather
-than scanned, the player meets the informant **wherever they happen to be
-standing** when they tap it — usually still at Mira's station. Nothing has to
-be hidden on the map any more, and nothing has to be found by accident.
+Nothing has to be hidden on the map any more, and nothing is found by
+accident: the side plot's shape is walk to Mira → get the link → meet the
+informant on the spot → walk his evidence back to the town hall. (There is no
+multi-instance identity anywhere now — informant and mayor are both one
+identity on one card, so the old same-identity-on-every-station collision
+caveats are gone with the poster.)
 
 ---
 
@@ -427,7 +463,9 @@ carry, next to `wifi.env`:
 - `larp-cast.toml` — the public cast file (flashed too, **not** baked into the
   image: it changes per game, the image doesn't)
 - `larp-anonymous.toml` — the anonymous informant's identity (gates the
-  informant service the same way; every flash recipe copies it)
+  informant service the same way; **only** the sister's card gets it —
+  `characters.just` `informant_character` — since Mira is the one who hands
+  out his contact)
 - `larp-mayor.toml` — the mayor's identity (gates his service; **only**
   `base-station::flash` writes it, so he exists on exactly one card)
 
@@ -438,13 +476,16 @@ of flashed files:
 
 | Station | mailbox | Wi-Fi client | character bot | mayor | informant |
 |---|---|---|---|---|---|
-| base | ✓ | ✓ | – | ✓ | ✓ |
-| mum / grandpa / neighbour / sister | ✓ | ✓ | ✓ (identity flashed) | – | ✓ |
+| base | ✓ | ✓ | ✓ (neighbour) | ✓ | – |
+| mum / grandpa / cousin | ✓ | ✓ | ✓ (identity flashed) | – | – |
+| sister | ✓ | ✓ | ✓ (identity flashed) | – | ✓ |
 
 `just base-station::flash` writes the base card's `wifi.env` (SSID
-`OfflineWifi`, open, by default) plus the mayor's and the informant's
-identities — and deliberately no character identity and no cast file, so the
-character-bot service stays dormant there.
+`OfflineWifi`, open, by default) plus the mayor's identity AND the
+neighbour's character files (her identity + the cast): the base Pi runs two
+bots, the mayor and Nadia. `characters::flash neighbour` refuses to run — a
+second card with her identity would be a duplicate instance of her. No
+informant here: he is Mira's alone.
 
 ### Wi-Fi: every Pi is a client of `OfflineWifi`
 
@@ -503,7 +544,7 @@ What it costs, and what to watch on game day:
   live everywhere — test with the actual target phones (§6).
 - **Nothing on the network greets a player who has not installed the app.**
   A printed sign at the base station has to carry that first step: *install
-  Dash Chat, scan the mayor's poster.* It is the only instruction that does
+  Dash Chat, scan all six posters, the mayor's first.* It is the only instruction that does
   not live in a chat.
 
 *(Unused module)* `nix/base-station.nix` — the Pi owning DHCP + wildcard DNS
@@ -534,17 +575,20 @@ Provisioning flow (all offline, on the laptop — implemented as `just` recipes)
    characters are excluded by construction, and an identity left over from a
    retired character is ignored rather than resurrected.
 2. `just characters::posters` — renders the QR wall-poster PNGs for printing.
-   **Five** of them: the four family posters and the mayor's, all on the
+   **Six** of them: the five characters and the mayor, all on the
    base-station wall (his is the one players scan *first*). The informant is
    skipped on purpose — he is reached through Mira's link, never off a wall.
 3. `just characters::flash <character> /dev/sdX` — flashes the station image and
    puts the character's files (`wifi.env` with `WIFI_SSID=OfflineWifi` and an
    empty `WIFI_PASSWORD=` — an **open network** — unless `ssid` / `password`
-   arguments say otherwise, plus `larp-identity.toml`, `larp-cast.toml`,
-   `larp-anonymous.toml`, assembled on the fly from `secrets/`) on the card's
-   boot partition.
-4. `just base-station::flash /dev/sdX` — the same image, but with
-   `larp-mayor.toml` + `larp-anonymous.toml` and no character identity.
+   arguments say otherwise, plus `larp-identity.toml` and `larp-cast.toml`,
+   assembled on the fly from `secrets/`) on the card's boot partition. The
+   sister's card additionally gets `larp-anonymous.toml` — the informant runs
+   there and nowhere else. The neighbour is refused: her bot lives on the
+   base card.
+4. `just base-station::flash /dev/sdX` — the same image, with
+   `larp-mayor.toml` plus the neighbour's `larp-identity.toml` and
+   `larp-cast.toml`: two bots on one Pi. No informant.
 
 **Seed the base mailbox with the cast's profiles** (once, after the bots have
 booted): each character's profile lives on its bot's announcements topic,
@@ -552,10 +596,11 @@ seeded only at its own station — and replication never introduces a mailbox
 to topics it doesn't know. Without seeding, contacts added from the wall
 posters appear *nameless* at the base station, right when players are
 learning which chat belongs to which character. The fix uses the client push
-path: on one phone, add all four characters (walk their stations, or plug all
-the Pis into one ethernet switch, where the mailboxes discover and push to
-each other), then stand on the base station's Wi-Fi for a minute. The phone
-pushes all four announcements topics into the base mailbox, permanently. Do
+path: on one phone, add all five characters (walk their stations — Nadia's
+profile is already at the base — or plug all the Pis into one ethernet
+switch, where the mailboxes discover and push to each other), then stand on
+the base station's Wi-Fi for a minute. The phone pushes the announcements
+topics into the base mailbox, permanently. Do
 NOT seed by running a character bot against the base mailbox with a fresh
 data dir — same identity, second op log, forked history.
 
@@ -668,7 +713,7 @@ informant's contact link, which is what opens the side plot.
   `nix/captive-portal.nix` is in git history).
 - **Nothing greets a player who hasn't installed the app** *(same cause)* —
   with no portal, the network says nothing to a fresh phone. A printed sign
-  at the base station must carry "install Dash Chat, scan the mayor's poster
+  at the base station must carry "install Dash Chat, scan all six posters
   first".
 - **Base station hotspot plumbing** — the mailbox Pi must be reachable by
   phones through the RouterOS hotspot (MAC bypass via ip-binding) and mDNS

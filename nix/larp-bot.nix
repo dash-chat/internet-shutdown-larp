@@ -27,6 +27,11 @@ let
     # Only its public half is read: the contact code that goes into Mira's
     # informant tip. A card without the file just never tips.
     anonymous_identity = "${cfg.anonymousIdentityFile}"
+    # The mayor's spec bot touches this when his trigger fires. Only the base
+    # card ever has both bots, so only Nadia ever sees it appear — her
+    # mayor_fallen eruption rides on it. StateDirectory is 0755 and the flag
+    # 0644, so reading across the two DynamicUser services just works.
+    mayor_fallen_flag = "/var/lib/larp-bot-mayor/triggered"
 
     [timing]
     min_interval_secs = ${toString cfg.timing.minIntervalSecs}
@@ -132,8 +137,9 @@ in
         The anonymous informant's script (anonymous.toml, baked into the
         image). When set, a second service runs the informant next to the
         character bot — gated, like the bot, on its own flashed identity.
-        Every flash recipe copies that identity, so every station card runs
-        the informant.
+        Only the sister's card is flashed with that identity
+        (characters.just informant_character): she is the one who hands out
+        his contact, so he runs where her tip is tapped and nowhere else.
       '';
     };
 
@@ -167,7 +173,9 @@ in
         is the game's onboarding, and his trigger phrase is the endgame.
         When set, a third service runs him — gated, like the others, on his
         own flashed identity. Only the base station card gets that identity
-        (base-station.just), so he exists once, where the game begins.
+        (base-station.just), so he exists once, where the game begins —
+        sharing the Pi with the neighbour's character bot, whose greeting
+        carries the actual onboarding.
       '';
     };
 
@@ -243,8 +251,8 @@ in
     };
 
     # The anonymous informant (docs/design.md): dormant unless the card was
-    # flashed with the anonymous identity — every flash recipe copies it, so
-    # every station runs him and a player finds him wherever they are.
+    # flashed with the anonymous identity. Only the sister's card is
+    # (characters.just), so he runs exactly where Mira hands his link out.
     systemd.services.larp-bot-anonymous =
       specService "larp-bot-anonymous" "LARP anonymous informant bot (Dash Chat node)"
         {

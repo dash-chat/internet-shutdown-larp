@@ -248,6 +248,13 @@ async fn mayor_falls_when_a_player_sends_him_his_own_words() {
         );
     }
 
+    // The fall is signalled outside the chat too: the flag Nadia's bot polls
+    // (same Pi, BotConfig::mayor_fallen_flag) exists once the trigger fired.
+    assert!(
+        dir.path().join("triggered").exists(),
+        "the collapse must touch the triggered flag for Nadia's eruption"
+    );
+
     // Exactly once: the op hash is remembered, so the bot's repeated scans of
     // the same chat never replay the collapse.
     tokio::time::sleep(Duration::from_secs(5)).await;

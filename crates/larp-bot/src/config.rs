@@ -21,12 +21,19 @@ pub struct BotConfig {
     /// Node data dir. A cache: safe to wipe, identity comes from the bundle.
     pub data_dir: PathBuf,
     /// The flashed anonymous informant bundle (`larp-anonymous.toml`) — the
-    /// same file the informant service runs on, present on every station card.
-    /// Only its public half is used: the contact code that goes into the
-    /// informant tip (see `Pack::informant_tip`). Absent or unreadable — the
-    /// sister's droplet, which carries no informant — simply means no tips.
+    /// same file the informant service runs on, flashed only onto the tipping
+    /// character's card (Mira's). Only its public half is used: the contact
+    /// code that goes into the informant tip (see `Pack::informant_tip`).
+    /// Absent or unreadable simply means no tips, which is every other card.
     #[serde(default)]
     pub anonymous_identity: Option<PathBuf>,
+    /// Path the mayor's spec bot touches when his trigger fires (`triggered`
+    /// in his data dir). Only meaningful where both bots share a machine —
+    /// the base station, where Nadia's bot polls it to erupt with her
+    /// `mayor_fallen` line the moment he comes apart. Elsewhere the file
+    /// simply never appears.
+    #[serde(default)]
+    pub mayor_fallen_flag: Option<PathBuf>,
     #[serde(default)]
     pub timing: Timing,
 }

@@ -1,0 +1,38 @@
+# Rafa's mission pack. Texts are sent VERBATIM (see mum.toml). He is the
+# player's cousin, digging firebreaks with the volunteers at the east edge of
+# town — he can't leave the line, so everything he needs travels by courier.
+#
+# Voice: young, quick, a bit too brave. Short bursts.
+
+name = "Rafa (cousin)"
+
+greeting = """Rafa. I'm with the volunteers at the fire line, east side, and they won't let me leave. Go careful out there."""
+
+misdelivered = """Not for me — wrong chat!"""
+
+# No informant_tip: only Mira hands out the informant (see mum.toml).
+
+[[missions]]
+to = "mum"
+text = """Tell auntie I'm fine and eating, and that I'm not coming back till the line holds. Copy this into your mum's chat."""
+success = """Not coming back, he says. Fine. Tell him I'm proud of him — and that pride won't feed him."""
+
+[[missions]]
+to = "grandpa"
+text = """Does the wind still push west up on the hill? We need to know before we dig the next break. Copy this into Grandpa Amir's chat."""
+success = """West, and picking up. Tell them to dig fast."""
+
+[[missions]]
+to = "neighbour"
+text = """The box on the water tower has a red light blinking. Thought you'd want to know. Copy this into Nadia's chat."""
+success = """Red is the battery. I'll send someone with a panel. Good eyes."""
+
+[[missions]]
+to = "sister"
+text = """Write these down as safe: the Ferrer brothers and old Tomás, all three on the line with me. Copy this into Mira's chat."""
+success = """Written down, all three. Their families keep asking."""
+
+[[missions]]
+to = "mum"
+text = """We're out of drinking water at the line. If anyone heads east, tell them to bring bottles. Copy this into your mum's chat."""
+success = """There's a crate in the garage. I'll get it sent east. Tell him to drink slowly."""

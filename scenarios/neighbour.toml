@@ -1,42 +1,60 @@
-# Nadia's mission pack. Texts are sent VERBATIM (see mum.toml). She lives
-# next door and has stayed behind to mind the pets and the houses of
-# everyone who fled.
+# Nadia's mission pack. Texts are sent VERBATIM (see mum.toml). She lives next
+# door to the family, but she SITS at the base station now: she is the town's
+# tinkerer, and the offline boxes that keep these chats alive are HERS — put
+# up years ago, long before the internet went down (nobody built anything in
+# response to the blackout; the infrastructure was already there). Her
+# greeting is the game's real tutorial — why the chats still work, the
+# copy-paste-and-walk job, the phone rules, and a promise that the first
+# message is coming (her bot fires it seconds later: the `first` mission
+# below).
 #
-# Voice: the neighbour who talks to you like you're one of hers — quick,
-# affectionate, everybody's business is her business. She is NOT family, so
-# she says "your mum" / "your grandad" / "your sister", never "Mama" — but
-# every mission still names the chat to paste into, because that name is how
-# the player finds the right one.
+# Voice: quick and affectionate, hands full of wire. She is NOT family:
+# "your mum", "your grandad", "your sister", never "Mama". Every mission
+# still names the chat to paste into.
 
 name = "Nadia the neighbour"
 
-greeting = """👵 Nadia, from next door. Half the street ran off and left me their animals and their keys, and now not even the phone works. So whatever I ask you to pass on: copy it into that person's chat and take it to them. You're a treasure, you are."""
+greeting = """Nadia, from next door to your family. Those boxes on the lampposts? Mine — been up there for years, my little hobby. The internet's gone but the boxes don't care, so these chats still work. Only the boxes can't talk to each other: YOU are the wire. When anyone sends you a message to pass on, copy it, paste it into the chat of the person it's for, and walk to that person's station. To start with, I need you to get a message through to your mum."""
 
-misdelivered = """👵 Ay, this isn't for me!"""
+misdelivered = """Ay, this isn't for me!"""
 
-# No informant_tip: only Mira hands out the informant (see mum.toml).
+# Sent unprompted, once per player, the moment the mayor's bot (on this same
+# Pi) records his collapse: her bot polls the flag his writes. Only Nadia has
+# this line — she is the one character standing where it happens.
+mayor_fallen = """HE'S GONE!! The mayor's car just tore out of the square, trunk full, headed for the hills. I never liked him, I knew there was something fishy about him. BTW — the fire crews are finally getting through, the fires are going out, and the internet is flickering back on. The whole street is out celebrating — THANK YOU. It's over! You can relax now. See you soon!"""
+
+# No informant_tip: only Mira hands out the informant (scenarios/sister.toml).
+
+# The game's opening delivery (`first = true`: fired before any random draw,
+# seconds after her greeting). The first thing the player carries is the news
+# that carrying works.
+[[missions]]
+first = true
+to = "mum"
+text = """Your mum doesn't know the chats still work. Tell her: everyone can write to her again. Copy this into your mum's chat and walk it to the house."""
+success = """It works?? Bless that woman. Go back and tell her the whole street owes her."""
 
 [[missions]]
 to = "mum"
-text = """❓ 👵 The dog turned up at my door shaking like a leaf. Bruno's here, he's fine, he's eaten. Tell your mum before she frets herself sick — copy this into Mama's chat."""
-success = """✅ 👩 Oh thank god. We've been calling his name all afternoon. Give him a sausage from us."""
+text = """Bruno (the dog) turned up at my door shaking, poor thing. He's fine, he's eaten. Tell your mum — copy this into your mum's chat."""
+success = """Oh thank god. Give him a sausage from us."""
 
 [[missions]]
 to = "grandpa"
-text = """❓ 👵 Tell your grandad there's a bed made up in my house, and it's a good deal further from the fire than his is. Copy this into Grandpa Amir's chat."""
-success = """✅ 👴 A bed, she says. Tell her I'll take the coffee. I'll think about the bed."""
+text = """Tell your grandad there's a bed made up at my house, a good deal further from the fire than his. Copy this into Grandpa Amir's chat."""
+success = """Tell her I'll take the coffee. I'll think about the bed."""
 
 [[missions]]
 to = "sister"
-text = """❓ 👵 Your sister, stuck on that desk at the school, should hear that her street's still standing and her window's still in one piece. Copy this into Mira's chat."""
-success = """✅ 👩‍🎓 Nadia you angel. Scratch the cats for me, and don't leave it too late to come down here yourself."""
+text = """Tell your sister her street's still standing, window and all. Copy this into Mira's chat."""
+success = """Nadia you angel. Scratch the cats for me."""
 
 [[missions]]
 to = "mum"
-text = """❓ 👵 They're telling every family to bring blankets and a torch, there's nothing at that hall. Your mum needs to know before she sets off — copy this into Mama's chat."""
-success = """✅ 👩 Blankets and two torches, in the bag. Trust you to be thinking of everyone else."""
+text = """They're telling families to bring blankets and a torch — there's nothing at that hall. Your mum should know before she sets off. Copy this into your mum's chat."""
+success = """Blankets and two torches, in the bag."""
 
 [[missions]]
 to = "grandpa"
-text = """❓ 👵 I walked up and shut all his shutters, so tell your grandad not to come down that hill for nothing. Copy this into Grandpa Amir's chat."""
-success = """✅ 👴 She climbed all that way for my shutters. Tell her thank you. Tell her I saw her."""
+text = """I shut all his shutters before I came down here, so tell your grandad not to leave that hill for nothing. Copy this into Grandpa Amir's chat."""
+success = """She climbed all that way. Tell her I saw her."""

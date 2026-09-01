@@ -1,13 +1,19 @@
 # Character provisioning (docs/design.md). Identities are private keys:
 # secrets/ is gitignored. Public halves go into larp-cast.toml.
 
+# The one character whose card carries the informant: the character who hands
+# him out (`informant_tip` in scenarios/<character>.toml — a linted pairing).
+# His bot runs there and nowhere else, so change both together.
+informant_character := "sister"
+
 # Generate everything: one identity bundle per scenario pack (existing
 # bundles are kept — re-generating one would invalidate its printed poster)
 # plus the public cast file assembled from all of them. Idempotent; the cast
 # is complete by construction, since the character list IS scenarios/*.toml —
 # plus the two spec-bot characters, "mayor" and "anonymous", who have no
 # scenario pack and stay OUT of the cast (the family doesn't know the
-# informant exists, and the mayor trades no missions).
+# informant exists, and nothing is ever addressed to the mayor — his opening
+# notice is a sender-only mission in mayor.toml).
 [doc("Generate all missing character identities + the cast file (idempotent)")]
 generate: && cast
     #!/usr/bin/env bash
@@ -56,15 +62,16 @@ cast:
     [ "${#args[@]}" -gt 0 ] || { echo "no scenario packs in scenarios/"; exit 1; }
     nix run .#larp-bot --accept-flake-config -- cast "${args[@]}" --out secrets/larp-cast.toml
 
-# Render the QR wall posters (PNG per character) into secrets/. Five of them:
-# the four family posters and the mayor's, all on the base-station wall (his
-# is the one players scan FIRST — his greeting is the onboarding).
+# Render the QR wall posters (PNG per character) into secrets/. Six of them,
+# all on the base-station wall: the five characters (family + Nadia) and the
+# mayor (his is the one players scan FIRST — the situation; Nadia's greeting
+# is the tutorial that follows).
 #
 # The informant deliberately gets NO poster: he is met only through the deep
 # link Mira hands out after a player carries something to her
 # (scenarios/sister.toml). Printing one would put the side plot on the wall
 # next to everything else and cost it its whole secrecy.
-[doc("Render the QR wall posters (PNG per character) into secrets/ — four family + the mayor; the informant has none on purpose")]
+[doc("Render the QR wall posters (PNG per character) into secrets/ — five characters + the mayor; the informant has none on purpose")]
 posters:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -95,6 +102,9 @@ run character mailbox_url="https://mailbox.production.darksoil.studio":
       printf 'cast = "%s/secrets/larp-cast.toml"\n' "$PWD"
       printf 'scenarios_dir = "%s/scenarios"\n' "$PWD"
       printf 'data_dir = "%s/.run/{{ character }}/data"\n' "$PWD"
+      # Where a locally-run mayor (just characters::run-spec mayor) drops his
+      # collapse flag — lets Nadia's eruption be tested on a laptop.
+      printf 'mayor_fallen_flag = "%s/.run/mayor/data/triggered"\n' "$PWD"
       # No informant identity in secrets/ is fine: the bot logs it and never
       # tips. An `if` (not `&&`) so the group still exits 0 when it's absent.
       if [ -f secrets/anonymous-identity.toml ]; then
@@ -143,22 +153,35 @@ run-spec character mailbox_url="https://mailbox.production.darksoil.studio":
 # at the school shelter, not on the cloud droplet (sister.just is kept but
 # unused — see its header).
 #
-# The anonymous informant rides along on EVERY station: each card gets the
-# shared anonymous identity, which arms the dormant larp-bot-anonymous
-# service, and lets that station's character bot build his add-contact deep
-# link. He has no poster — Mira hands him out — so whichever station a
-# player's tapped link reaches first answers with the whole story
+# The anonymous informant rides on MIRA'S CARD ALONE (informant_character,
+# top of this file). Hers is the card that needs his identity twice over: it arms the
+# dormant larp-bot-anonymous service, and it is what her bot reads to build
+# the add-contact deep link in her informant_tip. He has no poster, and she
+# is the only one who hands him out, so no other station has any use for him
+# — and like the mayor he now exists exactly once, where the side plot opens
 # (see anonymous.toml).
-[doc("Flash a character's station card; the Pi joins wifi <ssid> (open unless a password is given); auto-detects the SD card; every card also runs the anonymous informant")]
+#
+# The catch to know: a tapped link is only answered where he runs. A player
+# who taps it at Mira's station gets him within seconds; one who taps it and
+# walks off carries the contact request in their pocket until they are back
+# in her bubble. Her tip line says to do it there.
+[doc("Flash a character's station card; the Pi joins wifi <ssid> (open unless a password is given); auto-detects the SD card; the sister's card also runs the anonymous informant")]
 flash character device="" ssid="OfflineWifi" password="":
     #!/usr/bin/env bash
     set -euo pipefail
     just={{ quote(just_executable()) }}
     ssid={{ quote(ssid) }}
     password={{ quote(password) }}
+    # Nadia's bot lives on the base-station card, next to the mayor. A second
+    # card with her identity would be a duplicate instance of her.
+    if [ "{{ character }}" = "neighbour" ]; then
+      echo "the neighbour lives on the base-station card — use 'just base-station::flash'"; exit 1
+    fi
     [ -f "secrets/{{ character }}-identity.toml" ] || { echo "no secrets/{{ character }}-identity.toml — run 'just characters::generate' first"; exit 1; }
     [ -f secrets/larp-cast.toml ] || { echo "no secrets/larp-cast.toml — run 'just characters::generate' first"; exit 1; }
-    [ -f secrets/anonymous-identity.toml ] || { echo "no secrets/anonymous-identity.toml — run 'just characters::generate' first"; exit 1; }
+    if [ "{{ character }}" = "{{ informant_character }}" ]; then
+      [ -f secrets/anonymous-identity.toml ] || { echo "no secrets/anonymous-identity.toml — run 'just characters::generate' first"; exit 1; }
+    fi
     if [ -n "$password" ] && { [ "${#password}" -lt 8 ] || [ "${#password}" -gt 63 ]; }; then
       echo "wifi password must be 8-63 characters (WPA2), got ${#password}"; exit 1
     fi
@@ -172,6 +195,10 @@ flash character device="" ssid="OfflineWifi" password="":
     printf 'WIFI_SSID=%s\nWIFI_PASSWORD=%s\n' "$ssid" "$password" > "$envdir/wifi.env"
     cp "secrets/{{ character }}-identity.toml" "$envdir/larp-identity.toml"
     cp secrets/larp-cast.toml "$envdir/larp-cast.toml"
-    cp secrets/anonymous-identity.toml "$envdir/larp-anonymous.toml"
+    informant=""
+    if [ "{{ character }}" = "{{ informant_character }}" ]; then
+      cp secrets/anonymous-identity.toml "$envdir/larp-anonymous.toml"
+      informant=" + the anonymous informant"
+    fi
     "$just" image::flash {{ quote(device) }} "$envdir"
-    echo ">> card is ready: joins wifi '$ssid'$([ -z "$password" ] && echo ' (open network)' || true) on boot, runs {{ character }} + the anonymous informant"
+    echo ">> card is ready: joins wifi '$ssid'$([ -z "$password" ] && echo ' (open network)' || true) on boot, runs {{ character }}$informant"

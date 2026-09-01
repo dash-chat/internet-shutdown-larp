@@ -12,18 +12,22 @@ layout, message mechanics, identity bundles, and the milestone plan.
 
 ## The cast
 
-Four family characters trade missions (`scenarios/`), each on their own Pi:
-**Mama** at home, **Grandpa Amir** up the hill, **Nadia the neighbour** next
-door, and **Mira**, the sister on the desk at the school shelter with the list
-of who has arrived.
+Five characters trade missions (`scenarios/`): **Mama** at home, **Grandpa
+Amir** up the hill, **Rafa** the cousin at the fire line, **Mira**, the
+sister on the desk at the school shelter with the list of who has arrived —
+each on their own Pi — and **Nadia the neighbour**, the town's tinkerer,
+whose bot rides the base-station Pi. The offline boxes that keep the chats
+alive are hers (up for years before the blackout), her greeting is the real
+tutorial, and her first mission opens the game.
 
 Two more have no missions and no cast entry, and between them they are the
 side plot (`mayor.toml`, `anonymous.toml`): **the Mayor**, whose QR poster
-players scan first and whose greeting *is* the tutorial, and **Anonymous**,
-who has no poster at all — Mira hands out his contact as a deep link once a
-player has carried something to her. What he gives them is one line copied
-word for word out of the mayor's own written order. Pasting that line into
-the mayor's chat, like every other message in this game, ends it.
+players scan first — an emergency notice that deliberately never encourages
+the comms he secretly cut — and **Anonymous**, who has no poster at all:
+Mira hands out his contact as a deep link once a player has carried
+something to her. What he gives them is one line copied word for word out of
+the mayor's own written order. Pasting that line into the mayor's chat, like
+every other message in this game, ends it.
 
 ## What's here
 
@@ -54,8 +58,8 @@ nix develop                 # rust toolchain + just
 just test                   # unit + e2e tests
 
 just characters::generate              # all identities + cast file → secrets/
-just characters::posters               # printable QR posters (five: family + mayor)
+just characters::posters               # printable QR posters (six: five characters + mayor)
 just image::build                      # the station SD image (one for every card)
 just characters::flash mum             # flash + station files (auto-detects the SD card)
-just base-station::flash               # the base card: mayor + informant, no character
+just base-station::flash               # the base card: the mayor + Nadia's bot
 ```

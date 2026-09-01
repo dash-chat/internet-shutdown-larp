@@ -2,42 +2,46 @@
 # delivery by the text a player pastes into their chat (whitespace and case
 # are forgiven, nothing else), so edit them here, never live.
 #
-# Voice: how a mother actually texts — short lines, half of it worry, the
-# instruction tacked on at the end like an afterthought. Every mission still
-# has to NAME who it goes to, though: that name is the whole puzzle.
+# Voice: how a mother actually texts — short, half worry, the instruction at
+# the end. Every mission NAMES the chat to paste into ("copy this into X's
+# chat"): that name is the whole puzzle, never drop it.
 
 name = "Mama"
 
-greeting = """👩 It's Mama. Phones are dead, internet's dead, and you're the only one of us out on the street. So you're the postman now, love. When I ask you to pass something on: copy my message, paste it in that person's chat, and walk it to them. And stay out of the smoke. I mean it."""
+greeting = """It's Mama, love. Thank god this thing works — the phone's been dead all morning and we're packing for the shelter. You're the only one of us out on the street. Stay where I can reach you, and stay out of the smoke."""
 
 # Sent when a player pastes in a message meant for somebody else. Just says
 # no: working out where it belongs is the players' job.
-misdelivered = """👩 Love, this one isn't for me!"""
+misdelivered = """Love, this one isn't for me!"""
 
 # No informant_tip: only Mira hands out the informant (scenarios/sister.toml).
-# The insider wrote to her desk, and nobody else in the family knows he exists.
 
 [[missions]]
 to = "grandpa"
-text = """❓ 👩 Your grandfather isn't picking up and the fire's on his side of the hill now. Take him this, please: Dad, come down tonight. Tonight, not tomorrow. Copy it into Grandpa Amir's chat."""
-success = """✅ 👴 Tell your mother I'm still here and still standing. All right. All right! I'll pack a bag."""
+text = """Grandpa's not picking up and the fire's on his side of the hill. Tell him: come down tonight, Dad, no arguing. Copy this into Grandpa Amir's chat and take it up to him."""
+success = """Tell your mother I'm still standing. All right, all right. I'll pack a bag."""
 
 [[missions]]
 to = "neighbour"
-text = """❓ 👩 They won't let the cat in the shelter and I'm not leaving Luna shut in that house on her own. Ask Nadia if she'll take her — copy this into Nadia's chat."""
-success = """✅ 👵 Course I will, bring her over. She can sleep in the kitchen with the rest of the zoo."""
+text = """They won't let Luna (the cat) into the shelter. Ask Nadia if she'll take her — copy this into Nadia's chat."""
+success = """Course, bring her over. She can sleep with the rest of the zoo."""
 
 [[missions]]
 to = "sister"
-text = """❓ 👩 Your sister's sat on that desk at the school thinking the worst about all of us. Tell her: we're fine, every one of us, and we'll be there tonight. Copy it into Mira's chat."""
-success = """✅ 👩‍🎓 I've been watching that door since six this morning. Ok. Ok, I can breathe. Tell Mama I love her."""
+text = """Your sister's at the school desk imagining the worst. Tell her we're all fine and coming tonight — copy this into Mira's chat."""
+success = """Ok. Ok, I can breathe. Tell Mama I love her."""
 
 [[missions]]
 to = "grandpa"
-text = """❓ 👩 I need to know how many heart pills your grandfather has left, so I can ask for more here. Copy this into Grandpa Amir's chat — and don't let him fob you off, he will try."""
-success = """✅ 👴 Two blisters. Ten days, give or take. Tell her not to make a drama of it."""
+text = """Ask Grandpa how many heart pills he has left — I'll ask for more here. Copy this into Grandpa Amir's chat. Don't let him fob you off."""
+success = """Two blisters. Ten days. Tell her not to make a drama of it."""
 
 [[missions]]
 to = "neighbour"
-text = """❓ 👩 We left in such a rush, I'm sure the back window is still open. Keys are under the flowerpot. Copy this into Nadia's chat, she'll know."""
-success = """✅ 👵 Window's shut and I've got your keys here. Don't think about the house. Look after each other."""
+text = """I think we left the back window open. The keys are under the flowerpot. Copy this into Nadia's chat, she'll know what to do."""
+success = """Window's shut, keys are here. Look after yourselves."""
+
+[[missions]]
+to = "cousin"
+text = """Someone tell Rafa he's not fireproof. He'll listen to you sooner than to me. Copy this into Rafa's chat."""
+success = """Ha. Tell auntie I'm wearing the gloves and everything."""

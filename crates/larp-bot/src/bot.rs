@@ -58,6 +58,10 @@ pub struct BotState {
     /// At most one tip per player: after it, repeats are noise.
     #[serde(default)]
     pub tipped: std::collections::BTreeSet<String>,
+    /// Direct chats already told the mayor has fallen (hex chat ids) — the
+    /// eruption happens once per player.
+    #[serde(default)]
+    pub fallen_announced: std::collections::BTreeSet<String>,
 }
 
 impl BotState {
@@ -294,10 +298,11 @@ pub(crate) async fn chat_messages(
 /// How a character hands out the informant's contact, once a delivery lands.
 ///
 /// The informant has no QR poster: this is the only way a player meets him.
-/// Every station card carries his identity (the informant service runs on all
-/// of them), so the character bot can build his add-contact deep link from the
-/// same file — and a player who taps it reaches whichever informant process is
-/// on the station they are standing in.
+/// His identity is flashed onto the tipping character's card alone (Mira's —
+/// characters.just), where it does double duty: it arms the informant
+/// service, and this bot reads its public half to build the add-contact deep
+/// link. Tapping the link only gets an answer inside that station's wifi,
+/// which is why her tip says to do it there.
 #[derive(Clone, Debug)]
 pub struct InformantTip {
     /// `https://dashchat.org/add-contact/<code>`.
@@ -328,6 +333,10 @@ pub struct Bot {
     timing: Timing,
     /// `None` on a card without the informant, or for a pack with no tip line.
     informant: Option<InformantTip>,
+    /// The flag the mayor's spec bot touches when his trigger fires
+    /// (`triggered` in his data dir). Polled each tick; only ever exists on
+    /// the base station, where his bot and this one share the Pi.
+    mayor_fallen_flag: Option<PathBuf>,
     state: BotState,
     state_path: PathBuf,
     /// Per-chat next mission fire time (in-memory; reseeded on restart).
@@ -370,6 +379,7 @@ pub async fn run(config: BotConfig) -> Result<()> {
         scenarios,
         config.timing,
         informant,
+        config.mayor_fallen_flag.clone(),
         state_path,
     )?
     .run_loop(notification_rx)
@@ -384,6 +394,7 @@ impl Bot {
         scenarios: Scenarios,
         timing: Timing,
         informant: Option<InformantTip>,
+        mayor_fallen_flag: Option<PathBuf>,
         state_path: PathBuf,
     ) -> Result<Self> {
         anyhow::ensure!(
@@ -398,6 +409,7 @@ impl Bot {
             scenarios,
             timing,
             informant,
+            mayor_fallen_flag,
             state: BotState::load(&state_path),
             state_path,
             next_fire: BTreeMap::new(),
@@ -495,6 +507,14 @@ impl Bot {
     }
 
     async fn tick(&mut self) -> Result<()> {
+        // Has the mayor come apart? Checked once per tick: his spec bot
+        // shares this Pi on the base station and touches the flag the moment
+        // a trigger fires. Everywhere else the file simply never appears.
+        let mayor_fallen = self
+            .mayor_fallen_flag
+            .as_deref()
+            .is_some_and(|flag| flag.exists());
+
         let me = self.bundle.device_id()?;
         for (device, chat) in direct_chats(&self.node, me, &self.state.accepted_contacts).await? {
             let key = chat.to_string();
@@ -518,9 +538,36 @@ impl Bot {
                 );
             }
 
+            if mayor_fallen {
+                self.maybe_announce_fallen(chat, &key).await?;
+            }
             self.process_chat_messages(chat, &key).await?;
             self.maybe_fire_mission(chat, &key).await?;
         }
+        Ok(())
+    }
+
+    /// Erupt: the mayor has fallen and this character saw it happen. Sent
+    /// unprompted, once per chat, the tick the flag appears — the payoff for
+    /// the player standing right there when he came apart. Silent for packs
+    /// with no `mayor_fallen` line (everyone but Nadia, who shares his Pi).
+    async fn maybe_announce_fallen(&mut self, chat: ChatId, key: &str) -> Result<()> {
+        if self.state.fallen_announced.contains(key) {
+            return Ok(());
+        }
+        let Some(line) = self
+            .scenarios
+            .pack(&self.bundle.character)
+            .expect("checked at startup")
+            .mayor_fallen
+            .clone()
+        else {
+            return Ok(());
+        };
+        info!(chat = %key, "the mayor has fallen — announcing");
+        self.node.send_message(chat, line, None, None).await?;
+        self.state.fallen_announced.insert(key.to_string());
+        self.state.save(&self.state_path)?;
         Ok(())
     }
 
@@ -749,9 +796,11 @@ impl Bot {
         Ok(())
     }
 
-    /// A template this player has not been given yet, at random. `None` once
-    /// the pack is exhausted — templates never repeat in a chat, so a pasted
-    /// delivery always maps to exactly one mission.
+    /// A template this player has not been given yet: the pack's `first`
+    /// mission before anything else (the deterministic opener — Nadia's
+    /// network announcement), then random draws. `None` once the pack is
+    /// exhausted — templates never repeat in a chat, so a pasted delivery
+    /// always maps to exactly one mission.
     fn pick_mission(&self, chat: &str) -> Option<crate::scenario::Mission> {
         let pack = self.scenarios.pack(&self.bundle.character)?;
         let fired_texts: Vec<&str> = self
@@ -766,6 +815,9 @@ impl Bot {
             .iter()
             .filter(|m| !fired_texts.contains(&m.text.as_str()))
             .collect();
+        if let Some(opener) = unused.iter().find(|m| m.first) {
+            return Some((*opener).clone());
+        }
         if unused.is_empty() {
             return None;
         }
