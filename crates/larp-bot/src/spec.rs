@@ -216,6 +216,18 @@ pub struct SpecBot {
 pub async fn run(config: SpecConfig) -> Result<()> {
     let bundle = IdentityBundle::load(&config.identity)?;
     let spec = Spec::load(&config.spec)?;
+    // Same agreement the character bot enforces: the name a QR or deep link
+    // embeds (bundle) must match the profile the bot publishes (spec) —
+    // the informant's deep link is minted from his bundle alone.
+    anyhow::ensure!(
+        bundle.qr_profile_name() == spec.name,
+        "identity bundle name {:?} != spec profile name {:?} for {:?} — \
+         set profile_name in secrets/{}-identity.toml",
+        bundle.qr_profile_name(),
+        spec.name,
+        bundle.character,
+        bundle.character,
+    );
 
     let (node, notification_rx) =
         crate::bot::build_node(&config.data_dir, &bundle, crate::bot::bot_node_config()).await?;

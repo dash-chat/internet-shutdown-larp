@@ -15,12 +15,12 @@ misdelivered = """Not for me — wrong chat!"""
 [[missions]]
 to = "mum"
 text = """Tell auntie I'm fine and eating, and that I'm not coming back till the line holds. Copy this into your mum's chat."""
-success = """Not coming back, he says. Fine. Tell him I'm proud of him — and that pride won't feed him."""
+success = """Not coming back, he says. Fine. I'm proud of him — even if pride won't feed him."""
 
 [[missions]]
 to = "grandpa"
 text = """Does the wind still push west up on the hill? We need to know before we dig the next break. Copy this into Grandpa Amir's chat."""
-success = """West, and picking up. Tell them to dig fast."""
+success = """West, and picking up. They'd best dig fast."""
 
 [[missions]]
 to = "neighbour"
@@ -35,4 +35,4 @@ success = """Written down, all three. Their families keep asking."""
 [[missions]]
 to = "mum"
 text = """We're out of drinking water at the line. If anyone heads east, tell them to bring bottles. Copy this into your mum's chat."""
-success = """There's a crate in the garage. I'll get it sent east. Tell him to drink slowly."""
+success = """There's a crate in the garage. I'll get it sent east. He's to drink it slowly, mind."""

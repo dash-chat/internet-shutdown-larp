@@ -402,6 +402,19 @@ impl Bot {
             "no scenario pack for character {:?}",
             bundle.character
         );
+        // The printed QR posters embed the bundle's name; the profile the app
+        // shows comes from the pack. They must agree, or the poster greets the
+        // player with a different name than the chat that follows.
+        let pack_name = &scenarios.pack(&bundle.character).unwrap().name;
+        anyhow::ensure!(
+            bundle.qr_profile_name() == *pack_name,
+            "identity bundle name {:?} != scenario profile name {:?} for {:?} — \
+             set profile_name in secrets/{}-identity.toml and reprint the QR poster",
+            bundle.qr_profile_name(),
+            pack_name,
+            bundle.character,
+            bundle.character,
+        );
         Ok(Self {
             node,
             bundle,

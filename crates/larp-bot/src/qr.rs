@@ -40,7 +40,9 @@ pub fn decode_contact_code(code: &str) -> Result<AddContactQrCode> {
 const DEEP_LINK_BASE_URL: &str = "https://dashchat.org";
 
 /// The app's add-contact deep link for a contact code — the informant's
-/// contact as a tappable line in a chat message.
+/// contact as a tappable line in a chat message, and the string the wall-
+/// poster QRs encode (the app's scanner accepts only this form, and it is
+/// what the app's own QR card displays).
 ///
 /// `https://…`, not the `dash-chat://` scheme the app also registers: the chat
 /// renderer only turns http(s) into an anchor (dash-chat

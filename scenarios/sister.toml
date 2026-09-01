@@ -37,7 +37,7 @@ success = """The school. You've saved us an hour in the smoke."""
 [[missions]]
 to = "grandpa"
 text = """Everyone coming through this door says the fire's two streets from Grandpa's gate. Two!! Copy this into Grandpa Amir's chat and stand there while he reads it."""
-success = """Two streets, is it. Tell her my shoes are by the door."""
+success = """Two streets, is it. My shoes are by the door, then."""
 
 [[missions]]
 to = "neighbour"

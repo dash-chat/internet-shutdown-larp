@@ -205,8 +205,10 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
     let mailbox = MemMailbox::<MailboxOperation>::new();
 
     // --- The cast: two characters, generated offline like `larp-bot keygen`.
-    let mum_bundle = IdentityBundle::generate("mum");
-    let gp_bundle = IdentityBundle::generate("grandpa");
+    let mut mum_bundle = IdentityBundle::generate("mum");
+    mum_bundle.profile_name = Some("Firefighters".into());
+    let mut gp_bundle = IdentityBundle::generate("grandpa");
+    gp_bundle.profile_name = Some("Grandpa".into());
     let mut cast = Cast::default();
     cast.characters
         .insert("mum".into(), mum_bundle.cast_entry().unwrap());

@@ -96,10 +96,15 @@ async fn main() -> Result<()> {
                 decoded.device_pubkey == bundle.device_id()? && decoded.to_string() == code,
                 "QR round-trip mismatch — the contact-code format has drifted"
             );
-            qr::render_png(&code, &out, module_px)?;
+            // The QR carries the add-contact deep link, not the bare code:
+            // since dash-chat 08dc85a3 the scan path only accepts the
+            // https://dashchat.org/add-contact/{code} form (a bare code gets
+            // the "invalid contact link" toast).
+            let link = qr::contact_deep_link(&code);
+            qr::render_png(&link, &out, module_px)?;
             println!("wrote {} ({})", out.display(), bundle.character);
             if print_string {
-                println!("{code}");
+                println!("{link}");
             }
         }
         Command::Cast { identity, out } => {

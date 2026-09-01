@@ -20,7 +20,7 @@ success = """Coop's open, all six accounted for. Furious, but alive."""
 [[missions]]
 to = "sister"
 text = """Tell your sister I'm fine and the house is standing. She's to stay at that desk of hers. Copy this into Mira's chat."""
-success = """I actually cried. Tell him to keep his phone by the window."""
+success = """I actually cried. He'd better keep that phone by the window."""
 
 [[missions]]
 to = "mum"
@@ -35,4 +35,4 @@ success = """Over my roof?? Thank you. I'm sending the water crew to my own stre
 [[missions]]
 to = "cousin"
 text = """The wind's turning east tonight, I can feel it in my knee. The boys at the fire line should know. Copy this into Rafa's chat."""
-success = """East?? That changes everything. Tell him thanks — we're moving now."""
+success = """East?? That changes everything. We're moving now — bless that knee of his."""

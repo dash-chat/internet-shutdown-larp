@@ -19,7 +19,7 @@ misdelivered = """Love, this one isn't for me!"""
 [[missions]]
 to = "grandpa"
 text = """Grandpa's not picking up and the fire's on his side of the hill. Tell him: come down tonight, Dad, no arguing. Copy this into Grandpa Amir's chat and take it up to him."""
-success = """Tell your mother I'm still standing. All right, all right. I'll pack a bag."""
+success = """Still standing, aren't I. All right, all right. I'll pack a bag."""
 
 [[missions]]
 to = "neighbour"
@@ -29,12 +29,12 @@ success = """Course, bring her over. She can sleep with the rest of the zoo."""
 [[missions]]
 to = "sister"
 text = """Your sister's at the school desk imagining the worst. Tell her we're all fine and coming tonight — copy this into Mira's chat."""
-success = """Ok. Ok, I can breathe. Tell Mama I love her."""
+success = """Ok. Ok, I can breathe. Love you all so much."""
 
 [[missions]]
 to = "grandpa"
 text = """Ask Grandpa how many heart pills he has left — I'll ask for more here. Copy this into Grandpa Amir's chat. Don't let him fob you off."""
-success = """Two blisters. Ten days. Tell her not to make a drama of it."""
+success = """Two blisters. Ten days. It's not a drama."""
 
 [[missions]]
 to = "neighbour"
@@ -44,4 +44,4 @@ success = """Window's shut, keys are here. Look after yourselves."""
 [[missions]]
 to = "cousin"
 text = """Someone tell Rafa he's not fireproof. He'll listen to you sooner than to me. Copy this into Rafa's chat."""
-success = """Ha. Tell auntie I'm wearing the gloves and everything."""
+success = """Ha. I'm wearing the gloves and everything, promise."""
