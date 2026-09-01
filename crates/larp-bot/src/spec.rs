@@ -330,6 +330,10 @@ impl SpecBot {
     /// to derive the direct chat, so that is what gets recorded.
     async fn handle_notification(&mut self, n: dashchat_node::Notification) -> Result<()> {
         let Some(op) = n.op() else { return Ok(()) };
+        // Same as Bot::handle_notification: the player's contact request
+        // precedes the greeting, so stepping the clock here (crate::clock)
+        // stamps even the first bot message with the phone's real time.
+        crate::clock::step_clock_forward(u64::from(op.header.timestamp));
         let Some(Payload::Inbox(InboxPayload::ContactRequest {
             agent_id, profile, ..
         })) = &op.payload

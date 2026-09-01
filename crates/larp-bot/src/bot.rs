@@ -504,6 +504,11 @@ impl Bot {
     /// chat from.
     async fn handle_notification(&mut self, n: dashchat_node::Notification) -> Result<()> {
         let Some(op) = n.op() else { return Ok(()) };
+        // The very first thing a player ever sends is the contact request
+        // their QR scan fires, and it arrives before the bot says a word —
+        // stepping the clock HERE (see crate::clock) means even the greeting,
+        // the first message the player reads, is stamped with real time.
+        crate::clock::step_clock_forward(u64::from(op.header.timestamp));
         let Some(Payload::Inbox(InboxPayload::ContactRequest {
             agent_id, profile, ..
         })) = &op.payload
