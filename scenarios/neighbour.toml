@@ -19,9 +19,18 @@ greeting = """Nadia, from next door to your family. Those boxes on the lampposts
 misdelivered = """Ay, this isn't for me!"""
 
 # Sent unprompted, once per player, the moment the mayor's bot (on this same
-# Pi) records his collapse: her bot polls the flag his writes. Only Nadia has
-# this line — she is the one character standing where it happens.
-mayor_fallen = """HE'S GONE!! The mayor's car just tore out of the square, trunk full, headed for the hills. I never liked him, I knew there was something fishy about him. BTW — the fire crews are finally getting through, the fires are going out, and the internet is flickering back on. The whole street is out celebrating — THANK YOU. It's over! You can relax now. See you soon!"""
+# Pi) records his collapse: her bot polls the flag his writes, and it erupts
+# only in the chat of the player who felled him. Only Nadia has this line —
+# she is the one character standing where it happens. Blank lines split it
+# into separate messages, typed one after another: the "HE'S GONE!!" lands
+# within a second, the rest follows in bursts.
+mayor_fallen = """HE'S GONE!!
+
+The mayor's car just tore out of the square, trunk full, headed for the hills. I never liked him, I knew there was something fishy about him.
+
+BTW — the fire crews are finally getting through, the fires are going out, and the internet is flickering back on.
+
+The whole street is out celebrating — THANK YOU. It's over! You can relax now. See you soon!"""
 
 # No informant_tip: only Mira hands out the informant (scenarios/sister.toml).
 

@@ -61,9 +61,12 @@ pub struct Pack {
     /// Sent unprompted when the mayor falls — the character bot polls the
     /// flag his spec bot writes (`BotConfig::mayor_fallen_flag`) and erupts
     /// the moment it appears, into the chat of the player who felled him
-    /// (the flag names them; once per chat). Only Nadia carries this line:
-    /// her bot shares the base-station Pi with the mayor's, so she is the
-    /// one character who can actually see it happen.
+    /// (the flag names them; once per chat). Blank lines split it into
+    /// separate messages (see [`Pack::mayor_fallen_messages`]): each gets
+    /// its own typing pause, so the first burst lands fast instead of the
+    /// whole eruption arriving as one long-typed block. Only Nadia carries
+    /// this line: her bot shares the base-station Pi with the mayor's, so
+    /// she is the one character who can actually see it happen.
     #[serde(default)]
     pub mayor_fallen: Option<String>,
     #[serde(default)]
@@ -115,6 +118,25 @@ impl Pack {
         let idx = rand::thread_rng().gen_range(0..pool.len());
         Some(pool[idx])
     }
+    /// The eruption as it goes into the chat: `mayor_fallen` split on blank
+    /// lines, one message per paragraph. A person yelling news types in
+    /// bursts, and with the typing pause charged per message, the first
+    /// burst reaches the player in about a second. Empty when the pack has
+    /// no line. (The nested-text lint stays sound: a mission text hiding in
+    /// a paragraph is contained in the whole line, which is what it checks.)
+    pub fn mayor_fallen_messages(&self) -> Vec<String> {
+        self.mayor_fallen
+            .as_deref()
+            .map(|raw| {
+                raw.split("\n\n")
+                    .map(str::trim)
+                    .filter(|p| !p.is_empty())
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// The tip as it goes into the chat: the pack's line with the placeholder
     /// replaced by `link`. `None` when the pack has no tip.
     pub fn informant_tip_message(&self, link: &str) -> Option<String> {
@@ -650,6 +672,17 @@ mod tests {
         p.informant_tip = Some("psst, fire on main street, and {link}".into());
         let s = scenarios(&[("a", p), ("b", pack(vec![]))]);
         assert!(s.lint().is_err());
+    }
+
+    #[test]
+    fn mayor_fallen_splits_into_messages_on_blank_lines() {
+        let mut p = pack(vec![]);
+        p.mayor_fallen = Some("HE'S GONE!!\n\nThe car tore out.\n\n\n  Relax now.  ".into());
+        assert_eq!(
+            p.mayor_fallen_messages(),
+            vec!["HE'S GONE!!", "The car tore out.", "Relax now."]
+        );
+        assert!(pack(vec![]).mayor_fallen_messages().is_empty());
     }
 
     #[test]

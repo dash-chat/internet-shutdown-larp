@@ -607,18 +607,19 @@ impl Bot {
         if self.state.fallen_announced.contains(key) {
             return Ok(());
         }
-        let Some(line) = self
+        let messages = self
             .scenarios
             .pack(&self.bundle.character)
             .expect("checked at startup")
-            .mayor_fallen
-            .clone()
-        else {
+            .mayor_fallen_messages();
+        if messages.is_empty() {
             return Ok(());
-        };
+        }
         info!(chat = %key, "the mayor has fallen — announcing");
-        typing_pause(&line).await;
-        self.node.send_message(chat, line, None, None).await?;
+        for message in messages {
+            typing_pause(&message).await;
+            self.node.send_message(chat, message, None, None).await?;
+        }
         self.state.fallen_announced.insert(key.to_string());
         self.state.save(&self.state_path)?;
         Ok(())
