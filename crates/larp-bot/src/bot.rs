@@ -23,8 +23,8 @@ use anyhow::{Context, Result};
 #[allow(deprecated)]
 use dashchat_node::FakeAgentId;
 use dashchat_node::{
-    AsBody as _, ChatId, ChatPayload, DeviceId, InboxPayload, Node, NodeConfig, Payload, Profile,
-    TopicId, stores::LocalStore,
+    stores::LocalStore, AsBody as _, ChatId, ChatMessageContent, ChatPayload, DeviceId,
+    InboxPayload, MediaMetadata, Node, NodeConfig, Payload, Profile, TopicId,
 };
 use rand::Rng as _;
 use serde::{Deserialize, Serialize};
@@ -67,6 +67,13 @@ pub struct BotState {
     /// eruption happens once per player.
     #[serde(default)]
     pub fallen_announced: std::collections::BTreeSet<String>,
+    /// The armed town map: the media metadata of the last photo message
+    /// captioned with the pack's map trigger (see `Pack::map`). The photo
+    /// bytes themselves live in the node's blob store — this is what
+    /// `load_media` needs to re-send them after each greeting. `None` until
+    /// the organizer arms one, and greetings go mapless.
+    #[serde(default)]
+    pub map_media: Option<Vec<MediaMetadata>>,
 }
 
 impl BotState {
@@ -143,7 +150,10 @@ pub async fn seed_identity(data_dir: &Path, bundle: &IdentityBundle) -> Result<(
         && keys.agent_id == bundle.agent_id()?;
     store.close().await;
     pool.close().await;
-    anyhow::ensure!(ok, "identity seeding failed: store keys don't match the bundle");
+    anyhow::ensure!(
+        ok,
+        "identity seeding failed: store keys don't match the bundle"
+    );
     Ok(())
 }
 
@@ -157,13 +167,7 @@ pub async fn build_node(
 ) -> Result<(Node, mpsc::Receiver<dashchat_node::Notification>)> {
     seed_identity(data_dir, bundle).await?;
     let (notification_tx, notification_rx) = mpsc::channel(1024);
-    let node = Node::new(
-        data_dir.to_path_buf(),
-        config,
-        Some(notification_tx),
-        None,
-    )
-    .await?;
+    let node = Node::new(data_dir.to_path_buf(), config, Some(notification_tx), None).await?;
     Ok((node, notification_rx))
 }
 
@@ -205,15 +209,14 @@ pub(crate) async fn register_mailbox(node: &Node, url: &str) {
     if let Err(err) = node.insert_peer_addr(health.endpoint_addr.clone()).await {
         warn!(%url, ?err, "could not add the mailbox to the address book");
     }
-    let client = mailbox_client::toy::ToyMailboxClient::<
-        dashchat_node::mailbox::MailboxOperation,
-    >::new(
-        health.mailbox_id,
-        url.to_string(),
-        node.endpoint_id(),
-        node.unfetched_blob_tracker(),
-    )
-    .with_blob_reader(node.blob_reader());
+    let client =
+        mailbox_client::toy::ToyMailboxClient::<dashchat_node::mailbox::MailboxOperation>::new(
+            health.mailbox_id,
+            url.to_string(),
+            node.endpoint_id(),
+            node.unfetched_blob_tracker(),
+        )
+        .with_blob_reader(node.blob_reader());
     node.mailboxes.register(client).await;
 
     // Best-effort: lets the mailbox dial us back when fetching blobs we
@@ -280,7 +283,7 @@ pub(crate) async fn direct_chats(
 pub(crate) async fn chat_messages(
     node: &Node,
     chat: ChatId,
-) -> Result<Vec<(DeviceId, String, String)>> {
+) -> Result<Vec<(DeviceId, String, ChatMessageContent)>> {
     let log_id = chat.into();
     let mut ops = Vec::new();
     for author in node.op_store.get_authors(log_id).await? {
@@ -311,7 +314,7 @@ pub(crate) async fn chat_messages(
             Some((
                 DeviceId::from(header.verifying_key),
                 hex::encode(header.hash().as_bytes()),
-                content.message().to_string(),
+                content,
             ))
         })
         .collect())
@@ -378,8 +381,7 @@ pub async fn run(config: BotConfig) -> Result<()> {
     let cast = crate::cast::Cast::load(&config.cast)?.resolve()?;
     let scenarios = Scenarios::load_dir(&config.scenarios_dir)?;
 
-    let (node, notification_rx) =
-        build_node(&config.data_dir, &bundle, bot_node_config()).await?;
+    let (node, notification_rx) = build_node(&config.data_dir, &bundle, bot_node_config()).await?;
     info!(
         character = %bundle.character,
         device_id = %hex::encode(bundle.device_id()?.as_bytes()),
@@ -478,7 +480,10 @@ impl Bot {
         Ok(())
     }
 
-    pub async fn run_loop(mut self, mut notifications: mpsc::Receiver<dashchat_node::Notification>) -> Result<()> {
+    pub async fn run_loop(
+        mut self,
+        mut notifications: mpsc::Receiver<dashchat_node::Notification>,
+    ) -> Result<()> {
         self.ensure_profile().await?;
         let poll = Duration::from_secs(self.timing.poll_interval_secs.max(1));
         let mut tick = tokio::time::interval(poll);
@@ -531,8 +536,7 @@ impl Bot {
         };
         let device = DeviceId::from(op.header.verifying_key);
         let requester = device.to_string();
-        if *agent_id == self.bundle.agent_id()?
-            || self.state.accepted_contacts.contains(&requester)
+        if *agent_id == self.bundle.agent_id()? || self.state.accepted_contacts.contains(&requester)
         {
             return Ok(());
         }
@@ -566,15 +570,39 @@ impl Bot {
 
             // Greet a player the first time we see their chat.
             if !self.state.greeted.contains(&key) {
-                let greeting = self
+                let pack = self
                     .scenarios
                     .pack(&self.bundle.character)
-                    .expect("checked at startup")
-                    .greeting
-                    .clone();
+                    .expect("checked at startup");
+                let greeting = pack.greeting.clone();
+                let map = pack.map.clone();
                 info!(player = %device, "greeting a new player");
                 typing_pause(&greeting).await;
                 self.node.send_message(chat, greeting, None, None).await?;
+                // The town map follows as its own message, photo attached —
+                // where the other stations physically are. Only Nadia's pack
+                // carries a [map], and it only fires once the organizer has
+                // armed one at runtime (a photo captioned with the trigger —
+                // see process_chat_messages). Unarmed, the greeting stands
+                // alone: a bare "here is a map" with no map would be worse.
+                if let Some(map) = map {
+                    if let Some(meta) = self.state.map_media.clone() {
+                        match self.node.load_media(meta).await {
+                            Ok(media) => {
+                                typing_pause(&map.text).await;
+                                self.node
+                                    .send_message(chat, map.text, Some(media), None)
+                                    .await?;
+                            }
+                            // Arming proved the blobs were local, so this is
+                            // exceptional — but a bad map must never block
+                            // greetings.
+                            Err(err) => {
+                                warn!(?err, "armed town map unavailable — greeting without it")
+                            }
+                        }
+                    }
+                }
                 self.state.greeted.insert(key.clone());
                 self.state.save(&self.state_path)?;
                 // The player's first mission follows the welcome closely.
@@ -633,20 +661,16 @@ impl Bot {
     /// text-based (forgiving — see [`Scenarios::mission_in_pasted_text`])
     /// rather than author-based. Dedup is by operation hash, so re-scans and
     /// restarts are harmless.
-    async fn process_chat_messages(
-        &mut self,
-        chat: ChatId,
-        key: &str,
-    ) -> Result<()> {
+    async fn process_chat_messages(&mut self, chat: ChatId, key: &str) -> Result<()> {
         let my_device = self.bundle.device_id()?;
         let messages = chat_messages(&self.node, chat).await?;
 
-        let comeback = self
+        let pack = self
             .scenarios
             .pack(&self.bundle.character)
-            .expect("checked at startup")
-            .comeback
-            .clone();
+            .expect("checked at startup");
+        let comeback = pack.comeback.clone();
+        let map = pack.map.clone();
         let baseline_scan = comeback.is_some() && !self.seen_player_ops.contains_key(key);
         if comeback.is_some() {
             self.seen_player_ops.entry(key.to_string()).or_default();
@@ -668,7 +692,8 @@ impl Bot {
         // follow, and the trigger for the follow-up mission (which prefers
         // destinations outside this set).
         let mut delivered_from: BTreeSet<String> = BTreeSet::new();
-        for (author, op_hash, text) in messages {
+        for (author, op_hash, content) in messages {
+            let text = content.message().to_string();
             if author == my_device {
                 continue;
             }
@@ -677,6 +702,56 @@ impl Bot {
             // — however it got here — is never mistaken for a delivery.
             if self.cast.character_of_device(&author).is_some() {
                 continue;
+            }
+
+            // A photo captioned with the map trigger (re)arms the town map:
+            // the organizer's runtime knob, no reflash needed — from now on
+            // every greeting is followed by this photo (`Pack::map`). The
+            // blobs sync separately from the message and may lag it, so a
+            // failed load leaves the op unanswered and the next tick retries.
+            // The ack echoes the map back, threaded onto the trigger, so the
+            // sender sees exactly what new players will get.
+            if let Some(map) = &map {
+                if crate::scenario::normalize(&text)
+                    .contains(&crate::scenario::normalize(&map.update_trigger))
+                    && !self.state.answered.contains(&op_hash)
+                {
+                    let photos: Vec<MediaMetadata> = content
+                        .media()
+                        .map(|bundle| {
+                            bundle
+                                .iter()
+                                .filter(|m| matches!(m, MediaMetadata::Photo { .. }))
+                                .cloned()
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    if photos.is_empty() {
+                        // The trigger with nothing to arm: answer it once (so
+                        // it isn't reconsidered every tick) and move on.
+                        warn!(chat = %key, "map trigger without a photo, ignoring");
+                        self.state.answered.insert(op_hash.clone());
+                        self.state.save(&self.state_path)?;
+                        continue;
+                    }
+                    match self.node.load_media(photos.clone()).await {
+                        Ok(media) => {
+                            info!(photos = photos.len(), "town map armed");
+                            self.state.map_media = Some(photos);
+                            self.state.answered.insert(op_hash.clone());
+                            self.state.save(&self.state_path)?;
+                            let target = op_hash.parse().ok();
+                            typing_pause(&map.text).await;
+                            self.node
+                                .send_message(chat, map.text.clone(), Some(media), target)
+                                .await?;
+                        }
+                        Err(err) => {
+                            info!(?err, "map trigger seen, photo blobs not synced yet — will retry");
+                        }
+                    }
+                    continue;
+                }
             }
 
             // The player wrote something. If this character has a comeback
@@ -747,7 +822,10 @@ impl Bot {
                 {
                     Ok(_) => true,
                     Err(err) => {
-                        warn!(?err, "could not thread the answer as a reply, sending plain");
+                        warn!(
+                            ?err,
+                            "could not thread the answer as a reply, sending plain"
+                        );
                         false
                     }
                 }
@@ -774,7 +852,8 @@ impl Bot {
         // mission on top would bury it. Only Mira ever tips, once per player —
         // her later deliveries earn ordinary follow-ups again.
         if !delivered_from.is_empty() && !tipped_now {
-            self.fire_followup_mission(chat, key, &delivered_from).await?;
+            self.fire_followup_mission(chat, key, &delivered_from)
+                .await?;
         }
         Ok(())
     }
@@ -851,25 +930,18 @@ impl Bot {
     /// destination. What bounds the flow instead is the pack — each template
     /// is used at most once per player, and the character falls silent (bar
     /// acks and comebacks) once it has handed out everything it has.
-    async fn maybe_fire_mission(
-        &mut self,
-        chat: ChatId,
-        key: &str,
-    ) -> Result<()> {
+    async fn maybe_fire_mission(&mut self, chat: ChatId, key: &str) -> Result<()> {
         let fired_before = self.state.fired.get(key).is_some_and(|v| !v.is_empty());
-        let due = self
-            .next_fire
-            .entry(key.to_string())
-            .or_insert_with(|| {
-                // Restart: a player who never got a mission keeps the short
-                // post-welcome delay; otherwise draw a fresh interval rather
-                // than firing instantly.
-                if fired_before {
-                    Instant::now() + rand_interval(&self.timing)
-                } else {
-                    Instant::now() + Duration::from_secs(self.timing.first_mission_delay_secs)
-                }
-            });
+        let due = self.next_fire.entry(key.to_string()).or_insert_with(|| {
+            // Restart: a player who never got a mission keeps the short
+            // post-welcome delay; otherwise draw a fresh interval rather
+            // than firing instantly.
+            if fired_before {
+                Instant::now() + rand_interval(&self.timing)
+            } else {
+                Instant::now() + Duration::from_secs(self.timing.first_mission_delay_secs)
+            }
+        });
         if Instant::now() < *due {
             return Ok(());
         }
@@ -920,7 +992,8 @@ impl Bot {
 }
 
 fn rand_interval(timing: &Timing) -> Duration {
-    let secs =
-        rand::thread_rng().gen_range(timing.min_interval_secs..=timing.max_interval_secs.max(timing.min_interval_secs));
+    let secs = rand::thread_rng().gen_range(
+        timing.min_interval_secs..=timing.max_interval_secs.max(timing.min_interval_secs),
+    );
     Duration::from_secs(secs)
 }

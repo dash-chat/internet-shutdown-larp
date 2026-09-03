@@ -438,7 +438,8 @@ impl SpecBot {
             self.fresh_start && !self.baselined_chats.contains(&chat.to_string());
         let mut replies: Vec<(String, String, Vec<String>)> = Vec::new();
         let mut swallowed = 0usize;
-        for (author, op_hash, text) in crate::bot::chat_messages(&self.node, chat).await? {
+        for (author, op_hash, content) in crate::bot::chat_messages(&self.node, chat).await? {
+            let text = content.message();
             if author == self.me || self.state.answered.contains(&op_hash) {
                 continue;
             }
@@ -447,7 +448,7 @@ impl SpecBot {
                 swallowed += 1;
                 continue;
             }
-            if let Some(trigger) = self.spec.triggered_by(&text) {
+            if let Some(trigger) = self.spec.triggered_by(text) {
                 info!(phrase = %trigger.phrase, "trigger phrase received");
                 replies.push((op_hash, author.to_string(), trigger.reply.clone()));
             }

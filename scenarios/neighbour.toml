@@ -34,6 +34,16 @@ The whole street is out celebrating — THANK YOU. It's over! You can relax now.
 
 # No informant_tip: only Mira hands out the informant (scenarios/sister.toml).
 
+# Sent as its own message right after the greeting, with the town map photo
+# attached — where everyone is holed up. The photo is NOT in the repo: the
+# organizer draws it (assets/town-map-base.png is the blank venue) and arms
+# her bot at runtime by sending it as a photo captioned with update_trigger
+# in their own chat with her. Each new trigger photo replaces the map on the
+# spot; until the first one arrives, greetings go out with no map at all.
+[map]
+text = "Here is a map of the town in case it's helpful"
+update_trigger = "thisisthenewmap"
+
 # The game's opening delivery (`first = true`: fired before any random draw,
 # seconds after her greeting). The first thing the player carries is the news
 # that carrying works.

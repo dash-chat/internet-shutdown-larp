@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
 /// One mission template: prose fired by the owning character into its direct
@@ -69,6 +69,14 @@ pub struct Pack {
     /// she is the one character who can actually see it happen.
     #[serde(default)]
     pub mayor_fallen: Option<String>,
+    /// The town map, sent as its own message right after the greeting: a
+    /// short line plus a photo attachment, so a new player knows where the
+    /// other stations physically are. Only Nadia carries one — she is the
+    /// character whose greeting is the tutorial. The photo is armed at
+    /// RUNTIME (see [`MapMessage`]): until someone sends her one captioned
+    /// with the trigger, greetings go out with no map message at all.
+    #[serde(default)]
+    pub map: Option<MapMessage>,
     #[serde(default)]
     pub missions: Vec<Mission>,
     /// The character's chat avatar as a `data:image/png;base64,…` URI (the
@@ -111,7 +119,11 @@ impl Pack {
             .copied()
             .filter(|m| !avoid.contains(&m.to))
             .collect();
-        let pool = if preferred.is_empty() { &unused } else { &preferred };
+        let pool = if preferred.is_empty() {
+            &unused
+        } else {
+            &preferred
+        };
         if pool.is_empty() {
             return None;
         }
@@ -146,6 +158,21 @@ impl Pack {
                 .replace(INFORMANT_LINK_PLACEHOLDER, link),
         )
     }
+}
+
+/// The map message: `text` is the line the photo goes out with. The photo
+/// itself is NOT in the repo — the organizer draws it (assets/
+/// town-map-base.png is the blank canvas) and arms the bot at runtime by
+/// sending it a photo captioned `update_trigger` in any direct chat. The bot
+/// keeps the latest such photo and attaches it after every greeting from
+/// then on; a fresh trigger message replaces it on the spot.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MapMessage {
+    /// The line sent with the photo, verbatim.
+    pub text: String,
+    /// The caption that arms/replaces the map (matched like a mission:
+    /// normalized containment, so surrounding prose is fine).
+    pub update_trigger: String,
 }
 
 /// After `after_secs` without any player message in a direct chat, the
@@ -208,9 +235,13 @@ impl Scenarios {
     ///   side plot is sealed off),
     /// - no mission text is *contained* in any other line a player might
     ///   paste (another mission, a success line, a comeback, a misdelivery
-    ///   notice, an informant tip) — matching is containment-based (see
+    ///   notice, an informant tip, a mayor_fallen burst, the map line or its
+    ///   trigger) — matching is containment-based (see
     ///   [`Scenarios::mission_in_pasted_text`]), so a nested text would make
-    ///   the paste ambiguous.
+    ///   the paste ambiguous,
+    /// - the map trigger is not contained in any mission text (the bot checks
+    ///   the trigger first, so such a paste would arm the map instead of
+    ///   landing the delivery).
     pub fn lint(&self) -> Result<()> {
         let mut texts: BTreeSet<&str> = BTreeSet::new();
         let mut successes: BTreeSet<&str> = BTreeSet::new();
@@ -301,6 +332,39 @@ impl Scenarios {
                     bail!("pack {character}: mayor_fallen collides with a mission");
                 }
             }
+            if let Some(map) = &pack.map {
+                if map.text.trim().is_empty() {
+                    bail!("pack {character}: empty map text");
+                }
+                if texts.contains(map.text.as_str()) || successes.contains(map.text.as_str()) {
+                    bail!("pack {character}: map text collides with a mission");
+                }
+                // The trigger is matched by normalized containment against
+                // everything players (or the organizer) type, exactly like a
+                // mission text — so it must not hide inside one, or carry one
+                // inside itself. The containment sweep below covers the
+                // mission-inside-trigger direction; the reverse would need
+                // the trigger to be a mission, which uniqueness rules out.
+                if map.update_trigger.trim().is_empty() {
+                    bail!("pack {character}: empty map update_trigger");
+                }
+                if texts.contains(map.update_trigger.as_str())
+                    || successes.contains(map.update_trigger.as_str())
+                {
+                    bail!("pack {character}: map update_trigger collides with a mission");
+                }
+                // The bot checks the trigger BEFORE mission recognition, so a
+                // mission text carrying the trigger would arm the map instead
+                // of acking the delivery.
+                if let Some(t) = texts
+                    .iter()
+                    .find(|t| normalize(t).contains(&normalize(&map.update_trigger)))
+                {
+                    bail!(
+                        "pack {character}: map update_trigger is contained in mission text {t:?}"
+                    );
+                }
+            }
         }
 
         // Containment matching (a player's paste may carry extra text around
@@ -326,7 +390,9 @@ impl Scenarios {
                     .map(|c| c.text.as_str())
                     .chain(pack.misdelivered.iter().map(|m| m.as_str()))
                     .chain(pack.informant_tip.iter().map(|t| t.as_str()))
-                    .chain(pack.mayor_fallen.iter().map(|t| t.as_str()));
+                    .chain(pack.mayor_fallen.iter().map(|t| t.as_str()))
+                    .chain(pack.map.iter().map(|m| m.text.as_str()))
+                    .chain(pack.map.iter().map(|m| m.update_trigger.as_str()));
                 successes
                     .chain(extras)
                     .map(move |line| (character.as_str(), line))
@@ -370,9 +436,7 @@ impl Scenarios {
         self.packs
             .iter()
             .flat_map(|(character, pack)| {
-                pack.missions
-                    .iter()
-                    .map(move |m| (character.as_str(), m))
+                pack.missions.iter().map(move |m| (character.as_str(), m))
             })
             .filter(|(_, mission)| haystack.contains(&normalize(&mission.text)))
             .max_by_key(|(_, mission)| mission.text.len())
@@ -441,6 +505,7 @@ mod tests {
             comeback: None,
             misdelivered: None,
             informant_tip: None,
+            map: None,
             mayor_fallen: None,
             missions,
             avatar: None,
@@ -462,6 +527,30 @@ mod tests {
             ("a", pack(vec![mission("b", "t1", "s1")])),
             ("b", pack(vec![mission("a", "t2", "s2")])),
         ]);
+        s.lint().unwrap();
+    }
+
+    #[test]
+    fn lint_rejects_a_map_trigger_hiding_in_a_mission_text() {
+        // The bot checks the trigger before mission recognition: a mission
+        // text carrying it would arm the map instead of acking the delivery.
+        let mut a = pack(vec![mission("b", "carry THISISTHENEWMAP to town", "ok")]);
+        a.map = Some(MapMessage {
+            text: "here is the map".into(),
+            update_trigger: "thisisthenewmap".into(),
+        });
+        let s = scenarios(&[("a", a), ("b", pack(vec![]))]);
+        assert!(s.lint().is_err());
+    }
+
+    #[test]
+    fn lint_accepts_a_distinct_map_trigger() {
+        let mut a = pack(vec![mission("b", "t1", "s1")]);
+        a.map = Some(MapMessage {
+            text: "here is the map".into(),
+            update_trigger: "thisisthenewmap".into(),
+        });
+        let s = scenarios(&[("a", a), ("b", pack(vec![]))]);
         s.lint().unwrap();
     }
 
@@ -489,7 +578,9 @@ mod tests {
         for character in CAST {
             let pack = s.pack(character).expect("missing pack");
             assert!(
-                pack.avatar.as_deref().is_some_and(|a| a.starts_with("data:image/png;base64,")),
+                pack.avatar
+                    .as_deref()
+                    .is_some_and(|a| a.starts_with("data:image/png;base64,")),
                 "pack {character} has no avatar (scenarios/{character}.png missing?)"
             );
         }
@@ -568,7 +659,10 @@ mod tests {
     #[test]
     fn pasted_text_is_matched_through_whitespace_case_and_extra_prose() {
         let s = scenarios(&[
-            ("a", pack(vec![mission("b", "Carry this to B please", "B got it")])),
+            (
+                "a",
+                pack(vec![mission("b", "Carry this to B please", "B got it")]),
+            ),
             ("b", pack(vec![])),
         ]);
         let (owner, mission) = s
@@ -617,7 +711,10 @@ mod tests {
     #[test]
     fn lint_rejects_comeback_colliding_with_a_mission() {
         let mut p = pack(vec![mission("b", "t1", "s1")]);
-        p.comeback = Some(Comeback { after_secs: 60, text: "s1".into() });
+        p.comeback = Some(Comeback {
+            after_secs: 60,
+            text: "s1".into(),
+        });
         let s = scenarios(&[("a", p), ("b", pack(vec![]))]);
         assert!(s.lint().is_err());
     }
@@ -661,7 +758,9 @@ mod tests {
         let mut a = pack(vec![mission("b", "t1", "s1")]);
         a.informant_tip = Some("psst: {link}".into());
         // Nothing is addressed to "a", so the tip could never fire.
-        assert!(scenarios(&[("a", a.clone()), ("b", pack(vec![]))]).lint().is_err());
+        assert!(scenarios(&[("a", a.clone()), ("b", pack(vec![]))])
+            .lint()
+            .is_err());
         let b = pack(vec![mission("a", "t2", "s2")]);
         scenarios(&[("a", a), ("b", b)]).lint().unwrap();
     }

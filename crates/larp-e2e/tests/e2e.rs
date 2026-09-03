@@ -60,6 +60,7 @@ fn test_scenarios() -> Scenarios {
             // (a misdelivery), which must never earn the informant.
             informant_tip: None,
             mayor_fallen: None,
+            map: None,
             // The opener is what mum hands out in the test; the second
             // template exists so the player can retype it by hand (matching
             // is text-based) for a second delivery at grandpa — the one that
@@ -90,6 +91,7 @@ fn test_scenarios() -> Scenarios {
             misdelivered: None,
             informant_tip: Some(GP_TIP.into()),
             mayor_fallen: None,
+            map: None,
             // The opener goes out on the first-mission delay; the other two
             // sit behind the (test-long) timer, so only the delivery-triggered
             // follow-up can surface one of them — and it must prefer the one
@@ -128,6 +130,7 @@ fn test_scenarios() -> Scenarios {
             misdelivered: None,
             informant_tip: None,
             mayor_fallen: None,
+            map: None,
             missions: vec![],
             avatar: None,
         },

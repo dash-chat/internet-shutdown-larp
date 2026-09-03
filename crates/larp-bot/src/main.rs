@@ -6,7 +6,10 @@ use clap::{Parser, Subcommand};
 use larp_bot::{cast, config::BotConfig, identity::IdentityBundle, qr};
 
 #[derive(Parser)]
-#[command(name = "larp-bot", about = "Dash Chat character bot for the town-fire LARP")]
+#[command(
+    name = "larp-bot",
+    about = "Dash Chat character bot for the town-fire LARP"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -68,14 +71,21 @@ enum Command {
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
 
     match Cli::parse().command {
-        Command::Keygen { character, out, profile_name } => {
-            anyhow::ensure!(!out.exists(), "{} already exists — refusing to overwrite an identity", out.display());
+        Command::Keygen {
+            character,
+            out,
+            profile_name,
+        } => {
+            anyhow::ensure!(
+                !out.exists(),
+                "{} already exists — refusing to overwrite an identity",
+                out.display()
+            );
             let mut bundle = IdentityBundle::generate(&character);
             bundle.profile_name = profile_name;
             bundle.save(&out)?;
@@ -85,7 +95,12 @@ async fn main() -> Result<()> {
             println!("[characters.{character}]");
             print!("{}", toml::to_string_pretty(&entry)?);
         }
-        Command::Qr { identity, out, module_px, print_string } => {
+        Command::Qr {
+            identity,
+            out,
+            module_px,
+            print_string,
+        } => {
             let bundle = IdentityBundle::load(&identity)?;
             let code = bundle.contact_code()?;
             // Always verify against dashchat-node's own parser before the code
@@ -112,12 +127,20 @@ async fn main() -> Result<()> {
             for path in identity {
                 let bundle = IdentityBundle::load(&path)?;
                 let entry = bundle.cast_entry()?;
-                if cast.characters.insert(bundle.character.clone(), entry).is_some() {
+                if cast
+                    .characters
+                    .insert(bundle.character.clone(), entry)
+                    .is_some()
+                {
                     anyhow::bail!("duplicate character {:?}", bundle.character);
                 }
             }
             cast.save(&out)?;
-            println!("wrote {} ({} characters)", out.display(), cast.characters.len());
+            println!(
+                "wrote {} ({} characters)",
+                out.display(),
+                cast.characters.len()
+            );
         }
         Command::Run { config } => {
             let config = BotConfig::load(&config)?;
