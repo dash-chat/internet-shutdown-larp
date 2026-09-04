@@ -58,9 +58,7 @@ enum Command {
         config: PathBuf,
     },
     /// Run a spec-bot daemon: a scripted character with no scenario pack —
-    /// the mayor (onboarding + the endgame trigger) or the anonymous
-    /// informant. `anonymous` is kept as an alias for the old invocation.
-    #[command(alias = "anonymous")]
+    /// the mayor (onboarding + the endgame trigger).
     Spec {
         #[arg(long, default_value = "/etc/larp-bot/spec.toml")]
         config: PathBuf,

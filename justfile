@@ -50,8 +50,8 @@ ssh *cmd:
 #   2. the CARD FILES (identity, cast, extra bots) — refreshed on
 #      /boot/firmware from secrets/ and the bots restarted. WHICH files is
 #      read off the card itself: larp-identity.toml names the character, and
-#      the presence of larp-mayor.toml / larp-anonymous.toml marks the base
-#      station / Mira's card. wifi.env is left alone.
+#      the presence of larp-mayor.toml marks the base station. wifi.env is
+#      left alone.
 # Reflash only for partition-layout or boot-breaking changes.
 [doc("Deploy code + character files to the running Pi on the ethernet cable (no reflash)")]
 deploy:
@@ -194,10 +194,6 @@ _deploy-to pi toplevel:
     if on_pi "test -f /boot/firmware/larp-mayor.toml"; then
       on_pi "sudo tee /boot/firmware/larp-mayor.toml >/dev/null" < secrets/mayor-identity.toml
       units+=(larp-bot-mayor)
-    fi
-    if on_pi "test -f /boot/firmware/larp-anonymous.toml"; then
-      on_pi "sudo tee /boot/firmware/larp-anonymous.toml >/dev/null" < secrets/anonymous-identity.toml
-      units+=(larp-bot-anonymous)
     fi
     # nix's ssh:// URLs need IPv6 addresses bracketed, with a link-local
     # zone separator URL-escaped (fe80::x%eth0 -> [fe80::x%25eth0]).

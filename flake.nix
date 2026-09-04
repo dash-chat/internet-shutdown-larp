@@ -176,7 +176,6 @@
       # docs/design.md):
       #
       #   larp-identity.toml + larp-cast.toml → the character bot
-      #   larp-anonymous.toml                 → the informant (sister's card only)
       #   larp-mayor.toml                     → the mayor (base station only)
       #
       # No captive portal anywhere: the mayor moved into Dash Chat, so the
@@ -193,14 +192,10 @@
                 enable = true;
                 package = self.packages.aarch64-linux.larp-bot;
                 scenariosDir = ./scenarios;
-                # Arms the informant service on every station card; it only
-                # starts where a flash recipe wrote the anonymous identity —
-                # the sister's card alone (characters.just), since Mira is
-                # the one who hands out his contact link.
-                anonymousSpec = ./anonymous.toml;
-                anonymousAvatar = ./anonymous.png;
-                # Arms the mayor the same way. Only base-station.just writes
-                # his identity, so he runs on exactly one card.
+                # Arms the mayor service on every station card; it only
+                # starts where a flash recipe wrote his identity — the base
+                # station's card alone (base-station.just), so he runs on
+                # exactly one card.
                 mayorSpec = ./mayor.toml;
                 mayorAvatar = ./mayor.png;
               };

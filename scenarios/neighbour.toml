@@ -14,7 +14,16 @@
 
 name = "Nadia"
 
-greeting = """Nadia, from next door to your family. Those boxes on the lampposts? Mine — been up there for years, my little hobby. The internet's gone but the boxes don't care, so these chats still work. Only the boxes can't talk to each other: YOU are the wire. When anyone sends you a message to pass on, copy it, paste it into the chat of the person it's for, and walk to that person's station. To start with, I need you to get a message through to your mum."""
+# Blank lines split the greeting into separate messages, typed one after
+# another (like mayor_fallen below) — the tutorial reads as chat bursts, not
+# one wall of text.
+greeting = """Nadia, from next door to your family. Those boxes on the lampposts? Mine — been up there for years, my little hobby.
+
+The internet's gone but the boxes don't care, so these chats still work. Only the boxes can't talk to each other: YOU are the wire.
+
+When anyone sends you a message to pass on, copy it, paste it into the chat of the person it's for, and walk to that person's station.
+
+To start with, I need you to get a message through to your mum."""
 
 misdelivered = """Ay, this isn't for me!"""
 
@@ -26,13 +35,33 @@ misdelivered = """Ay, this isn't for me!"""
 # within a second, the rest follows in bursts.
 mayor_fallen = """HE'S GONE!!
 
-The mayor's car just tore out of the square, trunk full, headed for the hills. I never liked him, I knew there was something fishy about him.
+The mayor's car just tore out of the square, trunk full, headed for the hills. You faced him with his own words and he RAN.
 
 BTW — the fire crews are finally getting through, the fires are going out, and the internet is flickering back on.
 
 The whole street is out celebrating — THANK YOU. It's over! You can relax now. See you soon!"""
 
-# No informant_tip: only Mira hands out the informant (scenarios/sister.toml).
+# The side plot's ONLY door. The first time a player carries a delivery to
+# Nadia, she tells them what she saw in the town hall — ending with the one
+# line the mayor's bot listens for (mayor.toml; a unit test in
+# crates/larp-bot/src/spec.rs fails if the two drift). Blank lines split it
+# into separate messages, typed one after another. Once per player, and it
+# replaces that delivery's follow-up mission — the secret IS the job.
+#
+# The geography does the last step for us: her bot lives on the base-station
+# Pi, so the player hearing this is standing in the one wifi where the
+# mayor's chat answers — his poster is on the wall right there.
+secret_tip = """Wait. Before you run off again — come here. You've been carrying everyone's words all day. You've earned some truth back.
+
+Two days ago they called me into the town hall. "The network's down, Nadia, come fix it." There was nothing to fix — the line into the mayor's office was cut clean. From the INSIDE.
+
+And on his desk, half under a folder, an order with his signature on it. I only got to read one line before someone came in. I haven't stopped reading it in my head since. Word for word it said:
+
+Let the north side burn until they stop asking questions.
+
+The fires are his. The blackout is his. He wants this town scared, cut off, and doing what it's told.
+
+His poster is on the wall right here. Copy that line — his own words, exactly as I sent it — paste it into his chat, and stay to watch him read it."""
 
 # Sent as its own message right after the greeting, with the town map photo
 # attached — where everyone is holed up. The photo is NOT in the repo: the

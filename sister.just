@@ -2,9 +2,7 @@
 # school shelter — no character lives off-map any more, so nothing here is
 # part of a game day. Flash her card with `just characters::flash sister`
 # instead. Kept (with nixosConfigurations.sister-droplet in flake.nix) in case
-# a character is ever put back on the far side of a hotspot; if that happens,
-# note that her pack now carries the informant tip, and the droplet has no
-# informant identity to build the link from.
+# a character is ever put back on the far side of a hotspot.
 #
 # The sister's cloud host (docs/design.md §The cloud host): a Digital Ocean
 # droplet running only the bot against the cloud mailbox. One-time setup:

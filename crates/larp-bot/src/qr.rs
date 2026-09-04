@@ -39,8 +39,7 @@ pub fn decode_contact_code(code: &str) -> Result<AddContactQrCode> {
 /// `ui/src/lib/deep-links/helpers.ts`).
 const DEEP_LINK_BASE_URL: &str = "https://dashchat.org";
 
-/// The app's add-contact deep link for a contact code — the informant's
-/// contact as a tappable line in a chat message, and the string the wall-
+/// The app's add-contact deep link for a contact code — the string the wall-
 /// poster QRs encode (the app's scanner accepts only this form, and it is
 /// what the app's own QR card displays).
 ///
@@ -102,7 +101,7 @@ mod tests {
     /// verbatim after `decodeURIComponent`.
     #[test]
     fn contact_deep_link_carries_the_code_verbatim() {
-        let bundle = IdentityBundle::generate("anonymous");
+        let bundle = IdentityBundle::generate("mum");
         let code = bundle.contact_code().unwrap();
         assert!(
             code.chars()

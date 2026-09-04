@@ -1,11 +1,8 @@
-//! Spec-bot end-to-end tests — the side plot, from both ends.
+//! Spec-bot end-to-end test — the side plot's endgame.
 //!
-//! 1. The informant: a player follows the contact link Mira handed them (he
-//!    has no poster), the bot accepts the contact request and sends its
-//!    greeting — the whole secret — into the direct chat.
-//! 2. The mayor: a player sends him the line the informant leaked out of his
-//!    own written order, in his own chat, and he answers with the collapse —
-//!    exactly once, however often the chat is re-scanned.
+//! The mayor: a player sends him the line Nadia saw in his own written order
+//! (her `secret_tip` hands it out), in his own chat, and he answers with the
+//! collapse — exactly once, however often the chat is re-scanned.
 
 use std::time::Duration;
 
@@ -19,23 +16,7 @@ use larp_bot::identity::IdentityBundle;
 use larp_bot::qr;
 use larp_bot::spec::{Spec, SpecBot};
 
-const LEAKED_LINE: &str = "ANON-LINE: let the north side burn";
-
-fn informant_spec() -> Spec {
-    let spec: Spec = toml::from_str(&format!(
-        r#"
-        name = "Anonymous"
-        greeting = [
-            "ANON-REVEAL: the mayor lit the fires himself.",
-            "ANON-LEAK: I copied one line out of his order: {LEAKED_LINE}.",
-            "ANON-SEND: paste it into the mayor's own chat.",
-        ]
-        "#
-    ))
-    .unwrap();
-    spec.lint().unwrap();
-    spec
-}
+const LEAKED_LINE: &str = "LEAKED-LINE: let the north side burn";
 
 fn mayor_spec() -> Spec {
     let spec: Spec = toml::from_str(&format!(
@@ -82,79 +63,7 @@ async fn messages_of(node: &TestNode, chat: dashchat_node::ChatId) -> Vec<String
         .unwrap_or_default()
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn informant_whispers_after_contact_request() {
-    dashchat_node::testing::setup_tracing(&["info"], false);
-    let mailbox = MemMailbox::<MailboxOperation>::new();
-
-    // The informant, generated offline; his contact code is never printed —
-    // Mira hands it out as a deep link.
-    let bundle = IdentityBundle::generate("anonymous");
-    let contact_code = bundle.contact_code().unwrap();
-    let spec = informant_spec();
-    let script = spec.greeting.clone();
-
-    // The informant's station comes up.
-    let dir = tempfile::tempdir().unwrap();
-    let (node, rx) = build_node(dir.path(), &bundle, NodeConfig::testing())
-        .await
-        .expect("informant node builds");
-    node.mailboxes.register(mailbox.client()).await;
-    let bot = SpecBot::new(
-        node.clone(),
-        bundle.device_id().unwrap(),
-        spec,
-        None,
-        Duration::from_secs(1),
-        dir.path().join("state.json"),
-        None,
-    );
-    let _task = tokio::spawn(bot.run_loop(rx));
-
-    // A player follows the link: this queues a contact request into the
-    // informant's inbox topic through the shared mailbox.
-    let p1 = TestNode::new(NodeConfig::testing(), "p1").await;
-    p1.add_mailbox_client(mailbox.client()).await;
-    p1.set_profile(dashchat_node::Profile {
-        name: "Player One".into(),
-        surname: None,
-        avatar: None,
-        about: None,
-    })
-    .await
-    .unwrap();
-    p1.add_contact(qr::decode_contact_code(&contact_code).unwrap())
-        .await
-        .expect("p1 adds the informant");
-
-    // The informant accepts and whispers; the whole script reaches the
-    // player's side of the direct chat.
-    let anon_agent = bundle.agent_id().unwrap();
-    // The direct-chat topic is derived from device ids, not agent ids.
-    #[allow(deprecated)]
-    let chat = p1.direct_chat_topic(dashchat_node::FakeAgentId::from(
-        bundle.device_id().unwrap(),
-    ));
-    wait_until("the script reaches the player", Duration::from_secs(90), || async {
-        let texts = messages_of(&p1, chat).await;
-        script.iter().all(|line| texts.contains(line))
-    })
-    .await;
-
-    // The informant's profile made it across too (the player sees a name,
-    // not a bare key).
-    wait_until("the informant's profile reaches p1", Duration::from_secs(60), || async {
-        p1.projection
-            .get_profile(anon_agent)
-            .await
-            .ok()
-            .flatten()
-            .is_some_and(|p| p.name == "Anonymous")
-    })
-    .await;
-}
-
-/// The endgame: the line the informant leaked is delivered to the
+/// The endgame: the line Nadia's secret hands out is delivered to the
 /// mayor the same way every mission is — pasted into his chat, sloppily —
 /// and he answers once and only once.
 #[tokio::test(flavor = "multi_thread")]
@@ -215,7 +124,7 @@ async fn mayor_falls_when_a_player_sends_him_his_own_words() {
     // makes it: a prefix, mangled case, trailing prose.
     p1.send_message(
         chat,
-        format!("anonymous said to send you this:\n  {}\n", LEAKED_LINE.to_lowercase()),
+        format!("nadia said to send you this:\n  {}\n", LEAKED_LINE.to_lowercase()),
         None,
         None,
     )

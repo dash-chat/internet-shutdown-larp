@@ -44,20 +44,22 @@ pub struct Pack {
     /// silent on misdeliveries.
     #[serde(default)]
     pub misdelivered: Option<String>,
-    /// The informant tip: every time a delivery lands here, this character
-    /// passes the player the anonymous informant's contact (there is no
-    /// informant poster to find — this is the only way to meet him). Not a
-    /// chance: carrying something to her earns it, once per player.
+    /// The mayor's secret: the first time a delivery lands here, this
+    /// character tells the player what they know — ending with the one line
+    /// the mayor's bot listens for, and where to paste it. Not a chance:
+    /// carrying something to them earns it, once per player.
     ///
-    /// Exactly one character carries this line: Mira, at the shelter desk the
-    /// insider wrote to. The side plot has one door, and it is behind an
-    /// actual delivery.
+    /// Exactly one character carries this: Nadia, who saw the order on the
+    /// mayor's own desk. The side plot has one door, and it is behind an
+    /// actual delivery — which conveniently lands the player at the base
+    /// station, the wifi the mayor's chat answers in.
     ///
-    /// Must contain the literal `{link}`, which is replaced with the
-    /// informant's add-contact deep link (see [`Pack::informant_tip_message`]).
-    /// No line, or no informant identity on the card — no tip.
+    /// Blank lines split it into separate messages, one per paragraph (see
+    /// [`Pack::secret_tip_messages`]), like `mayor_fallen`. One paragraph
+    /// must carry the mayor's trigger phrase verbatim — a unit test in
+    /// `crate::spec` fails if the two drift.
     #[serde(default)]
-    pub informant_tip: Option<String>,
+    pub secret_tip: Option<String>,
     /// Sent unprompted when the mayor falls — the character bot polls the
     /// flag his spec bot writes (`BotConfig::mayor_fallen_flag`) and erupts
     /// the moment it appears, into the chat of the player who felled him
@@ -85,10 +87,6 @@ pub struct Pack {
     #[serde(skip)]
     pub avatar: Option<String>,
 }
-
-/// The placeholder a pack's `informant_tip` must carry, replaced with the
-/// informant's add-contact deep link.
-pub const INFORMANT_LINK_PLACEHOLDER: &str = "{link}";
 
 impl Pack {
     /// A mission this player has not been given yet: the pack's `first`
@@ -139,25 +137,37 @@ impl Pack {
     pub fn mayor_fallen_messages(&self) -> Vec<String> {
         self.mayor_fallen
             .as_deref()
-            .map(|raw| {
-                raw.split("\n\n")
-                    .map(str::trim)
-                    .filter(|p| !p.is_empty())
-                    .map(str::to_string)
-                    .collect()
-            })
+            .map(split_paragraphs)
             .unwrap_or_default()
     }
 
-    /// The tip as it goes into the chat: the pack's line with the placeholder
-    /// replaced by `link`. `None` when the pack has no tip.
-    pub fn informant_tip_message(&self, link: &str) -> Option<String> {
-        Some(
-            self.informant_tip
-                .as_ref()?
-                .replace(INFORMANT_LINK_PLACEHOLDER, link),
-        )
+    /// The greeting as it goes into the chat: split on blank lines like
+    /// [`Pack::mayor_fallen_messages`], so a long welcome (Nadia's is the
+    /// game's tutorial) reads as chat bursts rather than one wall of text.
+    /// A greeting without blank lines stays a single message.
+    pub fn greeting_messages(&self) -> Vec<String> {
+        split_paragraphs(&self.greeting)
     }
+
+    /// The secret as it goes into the chat: `secret_tip` split on blank
+    /// lines, one message per paragraph — a confession typed in bursts, the
+    /// same shape as [`Pack::mayor_fallen_messages`]. Empty when the pack
+    /// carries none.
+    pub fn secret_tip_messages(&self) -> Vec<String> {
+        self.secret_tip
+            .as_deref()
+            .map(split_paragraphs)
+            .unwrap_or_default()
+    }
+}
+
+/// Blank-line paragraphs of a pack line, one chat message each.
+fn split_paragraphs(raw: &str) -> Vec<String> {
+    raw.split("\n\n")
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .map(str::to_string)
+        .collect()
 }
 
 /// The map message: `text` is the line the photo goes out with. The photo
@@ -230,12 +240,12 @@ impl Scenarios {
     ///   one mission),
     /// - success lines are unique across ALL packs and never collide with a
     ///   mission text,
-    /// - a character with an `informant_tip` is the recipient of at least one
+    /// - a character with a `secret_tip` is the recipient of at least one
     ///   mission (the tip only fires on a delivery *to* them, so otherwise the
     ///   side plot is sealed off),
     /// - no mission text is *contained* in any other line a player might
     ///   paste (another mission, a success line, a comeback, a misdelivery
-    ///   notice, an informant tip, a mayor_fallen burst, the map line or its
+    ///   notice, a secret tip, a mayor_fallen burst, the map line or its
     ///   trigger) — matching is containment-based (see
     ///   [`Scenarios::mission_in_pasted_text`]), so a nested text would make
     ///   the paste ambiguous,
@@ -295,20 +305,12 @@ impl Scenarios {
                     bail!("pack {character}: empty misdelivered text");
                 }
             }
-            if let Some(tip) = &pack.informant_tip {
+            if let Some(tip) = &pack.secret_tip {
                 if tip.trim().is_empty() {
-                    bail!("pack {character}: empty informant_tip text");
-                }
-                // Without the placeholder the tip names no way to reach the
-                // informant — and there is no poster to fall back on.
-                if !tip.contains(INFORMANT_LINK_PLACEHOLDER) {
-                    bail!(
-                        "pack {character}: informant_tip has no {INFORMANT_LINK_PLACEHOLDER} \
-                         placeholder — the player would get no contact link"
-                    );
+                    bail!("pack {character}: empty secret_tip text");
                 }
                 if texts.contains(tip.as_str()) || successes.contains(tip.as_str()) {
-                    bail!("pack {character}: informant_tip collides with a mission");
+                    bail!("pack {character}: secret_tip collides with a mission");
                 }
                 // The tip only ever fires on a delivery *to* this character,
                 // so a tipping character nobody is sent to seals off the side
@@ -319,7 +321,7 @@ impl Scenarios {
                     .any(|p| p.missions.iter().any(|m| m.to == *character))
                 {
                     bail!(
-                        "pack {character} hands out the informant, but no mission is addressed \
+                        "pack {character} carries the secret, but no mission is addressed \
                          to {character} — the tip could never fire"
                     );
                 }
@@ -389,7 +391,7 @@ impl Scenarios {
                     .iter()
                     .map(|c| c.text.as_str())
                     .chain(pack.misdelivered.iter().map(|m| m.as_str()))
-                    .chain(pack.informant_tip.iter().map(|t| t.as_str()))
+                    .chain(pack.secret_tip.iter().map(|t| t.as_str()))
                     .chain(pack.mayor_fallen.iter().map(|t| t.as_str()))
                     .chain(pack.map.iter().map(|m| m.text.as_str()))
                     .chain(pack.map.iter().map(|m| m.update_trigger.as_str()));
@@ -504,7 +506,7 @@ mod tests {
             greeting: "hello".into(),
             comeback: None,
             misdelivered: None,
-            informant_tip: None,
+            secret_tip: None,
             map: None,
             mayor_fallen: None,
             missions,
@@ -625,18 +627,17 @@ mod tests {
                 "pack {character}: only Nadia opens the game, with exactly one first mission"
             );
         }
-        // The informant has no poster any more, and exactly one character
-        // hands him out: Mira, at the desk he wrote to. More than one door
-        // would make the side plot a lottery; none would make it unreachable.
+        // Exactly one character carries the mayor's secret: Nadia, who saw
+        // the order on his desk. More than one door would make the side plot
+        // a lottery; none would make it unreachable.
         for character in CAST {
-            let tip = s.pack(character).unwrap().informant_tip.as_deref();
-            if character == "sister" {
-                let tip = tip.expect("Mira is the only way to the informant");
-                assert!(tip.contains(INFORMANT_LINK_PLACEHOLDER));
+            let tip = s.pack(character).unwrap().secret_tip.as_deref();
+            if character == "neighbour" {
+                tip.expect("Nadia is the only way into the side plot");
             } else {
                 assert!(
                     tip.is_none(),
-                    "pack {character} hands out the informant — only Mira may"
+                    "pack {character} carries the secret — only Nadia may"
                 );
             }
         }
@@ -720,22 +721,15 @@ mod tests {
     }
 
     #[test]
-    fn informant_tip_renders_the_link_in_place_of_the_placeholder() {
+    fn greeting_splits_on_blank_lines_into_separate_messages() {
         let mut p = pack(vec![]);
-        p.informant_tip = Some("someone knows: {link} — go".into());
+        p.greeting = "hello there\n\n  \n\nyou are the wire\n\nget going".into();
         assert_eq!(
-            p.informant_tip_message("https://dashchat.org/add-contact/CODE")
-                .unwrap(),
-            "someone knows: https://dashchat.org/add-contact/CODE — go"
+            p.greeting_messages(),
+            vec!["hello there", "you are the wire", "get going"]
         );
-        assert_eq!(pack(vec![]).informant_tip_message("x"), None);
-    }
-
-    #[test]
-    fn lint_rejects_an_informant_tip_without_the_link_placeholder() {
-        let mut p = pack(vec![]);
-        p.informant_tip = Some("talk to the informant, somehow".into());
-        assert!(scenarios(&[("a", p)]).lint().is_err());
+        // No blank lines — the greeting stays one message.
+        assert_eq!(pack(vec![]).greeting_messages(), vec!["hello"]);
     }
 
     #[test]
@@ -756,7 +750,7 @@ mod tests {
     #[test]
     fn lint_rejects_a_tipping_character_nobody_delivers_to() {
         let mut a = pack(vec![mission("b", "t1", "s1")]);
-        a.informant_tip = Some("psst: {link}".into());
+        a.secret_tip = Some("psst, someone wants to talk to you".into());
         // Nothing is addressed to "a", so the tip could never fire.
         assert!(scenarios(&[("a", a.clone()), ("b", pack(vec![]))])
             .lint()
@@ -766,9 +760,9 @@ mod tests {
     }
 
     #[test]
-    fn lint_rejects_a_mission_text_nested_in_an_informant_tip() {
+    fn lint_rejects_a_mission_text_nested_in_an_secret_tip() {
         let mut p = pack(vec![mission("b", "fire on main street", "ok")]);
-        p.informant_tip = Some("psst, fire on main street, and {link}".into());
+        p.secret_tip = Some("psst, fire on main street, and more".into());
         let s = scenarios(&[("a", p), ("b", pack(vec![]))]);
         assert!(s.lint().is_err());
     }

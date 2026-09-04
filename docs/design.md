@@ -60,8 +60,7 @@ message on a timer.
         └─────────────────────────────────────────┘
    RAFA (the fire line, east)           MIRA (the school shelter)
    (AP + Pi: mailbox + bot)             (AP + Pi: mailbox + bot; the desk
-                                         with the list of who has arrived —
-                                         and the only door to the informant)
+                                         with the list of who has arrived)
 ```
 
 Corner assignment is arbitrary — the only requirement is that the stations
@@ -75,8 +74,8 @@ are far enough apart that carrying a message means actually walking.
 | **grandpa** | **Grandpa Amir**, alone at the top of the hill, refusing to be evacuated | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
 | **neighbour** *(base station)* | **Nadia the neighbour**, the town's tinkerer: the offline boxes that keep these chats alive are hers, up on the lampposts for years before the blackout. Her greeting is the game's real tutorial — the courier job, the phone rules — and her `first` mission is the opening delivery. She minds the street's pets and keys too. She also hands every new player the town map: the organizer arms it at runtime by sending her a photo captioned `thisisthenewmap` (blank venue canvas: `assets/town-map-base.png`; see `[map]` in `scenarios/neighbour.toml`) | Rides the base-station Pi (no card of her own — `characters::flash neighbour` refuses) |
 | **cousin** | **Rafa, the player's cousin**, digging firebreaks with the volunteers at the east edge — he can't leave the line, so everything he needs travels by courier | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
-| **sister** | **Mira, the player's sister**, on the desk at the school shelter: she holds the list of who has arrived, so everyone's names pass through her. She is also **the only door to the side plot** — the informant wrote to her desk, and she is the one character who hands his contact on (§The mayor and the informant) | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
-| **mayor** *(base station)* | **The Mayor** — a chat contact like everyone else, but with no scenario pack: his greeting is the emergency notice players read first (situation only — he never encourages the comms he secretly cut), and one trigger phrase is the endgame (§The mayor and the informant) | Shares the base-station Pi with Nadia's bot: same station image, flashed with his identity plus her character files. *(The base AP carries the 30-40 concurrent clients, so it wants to be the best one available — a MikroTik mAP lite, say, not a spare phone)* |
+| **sister** | **Mira, the player's sister**, on the desk at the school shelter: she holds the list of who has arrived, so everyone's names pass through her | Own AP (`OfflineWifi`) + Pi 5: mailbox + bot |
+| **mayor** *(base station)* | **The Mayor** — a chat contact like everyone else, but with no scenario pack: his greeting is the emergency notice players read first (situation only — he never encourages the comms he secretly cut), and one trigger phrase is the endgame (§The mayor and Nadia's secret) | Shares the base-station Pi with Nadia's bot: same station image, flashed with his identity plus her character files. *(The base AP carries the 30-40 concurrent clients, so it wants to be the best one available — a MikroTik mAP lite, say, not a spare phone)* |
 
 Total hardware: **5 × Pi 5** (base [mayor + Nadia], mum, grandpa, cousin,
 sister) + **an AP per station** (§Wi-Fi). Nothing runs off-map any more: no
@@ -97,7 +96,7 @@ two-voice scene, both bots living on that same Pi:
    phones and internet down, be careful. Situation only — he never mentions
    the chats still working, and he never teaches the courier job.
    Encouraging communications is the last thing he wants (§The mayor and
-   the informant); replayed after the endgame, his blandness reads very
+   Nadia's secret); replayed after the endgame, his blandness reads very
    differently.
 2. **Nadia** answers with the real tutorial: the boxes on the lampposts are
    hers — up for years, from long before the blackout — which is why the
@@ -151,8 +150,8 @@ keeps auto-switching away from the station APs.
    originator** (falling back to the full pool when that's all that's left),
    so the walk keeps moving forward instead of ping-ponging between two
    stations. The chat's random timer resets, so the two paths never pile
-   missions on top of each other. One exception: when the delivery earns the
-   informant tip (Mira, once per player), the tip **is** the follow-up — no
+   missions on top of each other. One exception: when the delivery earns
+   Nadia's secret (once per player), the secret **is** the follow-up — no
    regular mission goes out with it, so the side plot isn't buried the
    moment it opens.
 
@@ -162,25 +161,23 @@ fired by the *receiving* character, the one station that does witness a
 success). What bounds the flow is the
 pack — **each template is handed to a given player at most once**, and once a
 character has given out everything it has, it goes quiet (bar acks, Mira's
-comeback line and her informant tip). Five or six templates per character
+comeback line and Nadia's secret). Five or six templates per character
 (28 across the five packs, Nadia's opener included) — ≈ 28 deliveries for a
 solo courier.
 
 Ending: the facilitator calls time; the chats themselves are the score sheet
 (count success replies). No formal end state in software.
 
-### The mayor and the informant (side plot)
+### The mayor and Nadia's secret (side plot)
 
-Two characters have an identity but **no scenario pack and no cast entry**:
-the **mayor** and **Anonymous**. They trade no missions — nothing is ever
-addressed to either of them (a spec bot never acks a delivery) — and
-`characters.just` keeps both out of `larp-cast.toml`: the family doesn't
-know the informant exists. Both are driven by the same **spec bot**
-(`larp-bot spec`, `crates/larp-bot/src/spec.rs`): a small script of
-`name` + `greeting` (sent in order when a contact request is accepted) +
-optional `triggers` (a phrase to listen for in player messages, and what to
-answer). The whole side plot is those two files, `mayor.toml` and
-`anonymous.toml`.
+One character has an identity but **no scenario pack and no cast entry**:
+the **mayor**. He trades no missions — nothing is ever addressed to him (a
+spec bot never acks a delivery) — and `characters.just` keeps him out of
+`larp-cast.toml`. He is driven by the **spec bot** (`larp-bot spec`,
+`crates/larp-bot/src/spec.rs`): a small script of `name` + `greeting` (sent
+in order when a contact request is accepted) + `triggers` (a phrase to
+listen for in player messages, and what to answer). His whole script is one
+file, `mayor.toml`.
 
 **The mayor** runs on the base-station Pi only, next to Nadia's bot. His
 greeting is the emergency notice (above) — deliberately empty of anything
@@ -189,54 +186,46 @@ mentions the chats still working and never teaches the courier job (a unit
 test pins that: no "Nadia", no "copy" in his greeting). He listens for one
 phrase.
 
-**Anonymous has no QR poster at all.** The only way to meet him is **Mira**:
-he wrote to the shelter desk, because that is the desk every name in town
-passes through. Once a player has actually carried a message *to* her, her
-bot follows the success line with her `informant_tip` — her own words plus
-his **add-contact deep link**, `https://dashchat.org/add-contact/<code>`.
-Tapping it opens Dash Chat and sends the contact request; a phone that fails
-to route the tap can paste the same line into Add contact, which accepts the
-link and the bare code alike. This is deterministic, not a chance: one door,
-and it is behind a real delivery. Sent at most once per player (recorded in
-the bot's `state.json`).
-
-Every character bot could carry a tip line — the mechanism is a per-pack
-`informant_tip` field with a `{link}` placeholder — but as shipped exactly
-one does, and a unit test enforces that. More doors would make the side plot
-a lottery; none would make it unreachable.
-
-The side plot is gated on a delivery reaching Mira, so three missions are
-addressed to her (one each from Mama, Grandpa and Nadia) and a courier doing
-the rounds hits one early. Strip them all and the informant would be
-unreachable — the pack linter fails for exactly that: a character with an
-`informant_tip` that nobody is ever sent to.
-
-The informant runs on **Mira's card alone** (`characters.just`
-`informant_character`), where his identity does double duty: it arms his
-service, and her character bot reads its public half to build the link in
-her tip. One identity, one card — like the mayor. The consequence: his
-contact link is only answered **inside Mira's station wifi**, which is why
-her tip says to tap it right there before walking off (a link tapped
-elsewhere just sits in the player's pocket until they're back). When the
-request lands, the bot accepts and whispers into the direct chat: the mayor
-is lying — he lit the fires, he cut the phones, and he is using the
-emergency to control the town. And then the evidence: one line the informant
-copied **word for word** out of the mayor's own written order —
+**The way in is Nadia.** The first time a player carries a delivery *to*
+her, her bot follows the success line with her `secret_tip`: what she saw
+when the town hall called her in to "fix the network" — a line cut clean
+from the inside, and on the mayor's desk an order with his signature. She
+tells it in bursts (blank lines in the pack line split it into separate
+messages, like her `mayor_fallen` eruption), ending with the one line she
+read before someone walked in, **word for word** out of the mayor's own
+written order —
 
 > Let the north side burn until they stop asking questions.
 
-Then the payoff, and the reason this plot lives in the chat app: the
-informant tells the player to do the one thing this game has been teaching
-them all along — **copy that line and paste it into the mayor's own chat**.
-Not a password, not a magic word: his own sentence, handed back to him. The
+This is deterministic, not a chance: one door, and it is behind a real
+delivery. Sent at most once per player (recorded in the bot's
+`state.json`), and it *replaces* that delivery's follow-up mission — the
+secret is the job.
+
+Every character bot could carry the secret — the mechanism is a per-pack
+`secret_tip` field — but as shipped exactly one does, and a unit test
+enforces that. More doors would make the side plot a lottery; none would
+make it unreachable. The side plot is gated on a delivery reaching Nadia,
+so five missions across the packs are addressed to her and a courier doing
+the rounds hits one early. Strip them all and the secret would be
+unreachable — the pack linter fails for exactly that: a character with a
+`secret_tip` that nobody is ever sent to.
+
+The geography does the last step by itself: Nadia's bot lives on the
+base-station Pi, so the player hearing the secret is standing in the one
+wifi where the mayor's chat answers — his poster on the wall right there.
+
+Then the payoff, and the reason this plot lives in the chat app: Nadia
+tells the player to do the one thing this game has been teaching them all
+along — **copy that line and paste it into the mayor's own chat**. Not a
+password, not a magic word: his own sentence, handed back to him. The
 mayor's bot matches it the same forgiving way a delivery is matched
-(whitespace, case and surrounding prose forgiven, so pasting the informant's
-whole message works), and answers with the collapse: those are his words,
-that is his handwriting, the orders to light the fires and cut the network
-are all in the file, and **the mayor flees town**. His last message — *"I'm
-leaving this town tonight and I'm never coming back."* — closes his chat.
-Answered once per message (the op hash is persisted), so a re-sync never
-replays it.
+(whitespace, case and surrounding prose forgiven, so pasting Nadia's whole
+message works), and answers with the collapse: those are his words, that is
+his handwriting, the orders to light the fires and cut the network are all
+in the file, and **the mayor flees town**. His last message — *"I'm leaving
+this town tonight and I'm never coming back."* — closes his chat. Answered
+once per message (the op hash is persisted), so a re-sync never replays it.
 
 Then the win actually *lands*: seconds later **Nadia erupts, unprompted**, in
 her own chat. The player is standing at the base station — her bot shares
@@ -263,17 +252,17 @@ congratulations.
 (Resetting for a new game day = wiping `/var/lib` on the base Pi: the flag
 and the mayor's state both live under it, so they clear together.)
 
-Because the mayor's bot sits on the base station, the last delivery of the
-game is a walk back to where it started. A single player can finish the whole
-plot. A unit test asserts that what the informant hands out is exactly what
-the mayor listens for — a drifted line would make the endgame unreachable.
+Because Nadia and the mayor share the base station, the side plot's last
+step is no walk at all: hear the secret, turn to the poster on the wall,
+paste. A single player can finish the whole plot. A unit test asserts that
+what Nadia's secret hands out is exactly what the mayor listens for — a
+drifted line would make the endgame unreachable.
 
 Nothing has to be hidden on the map any more, and nothing is found by
-accident: the side plot's shape is walk to Mira → get the link → meet the
-informant on the spot → walk his evidence back to the town hall. (There is no
-multi-instance identity anywhere now — informant and mayor are both one
-identity on one card, so the old same-identity-on-every-station collision
-caveats are gone with the poster.)
+accident: the side plot's shape is carry a delivery to Nadia → hear what
+she saw → face the mayor with his own words, right there. (There is no
+multi-instance identity anywhere now — the mayor is one identity on one
+card, so the old same-identity-on-every-station collision caveats are gone.)
 
 ---
 
@@ -326,13 +315,12 @@ larp-bot keygen --out larp-identity.toml           # provision an identity bundl
 larp-bot qr     --identity larp-identity.toml --out qr.png   # derive the printed QR (offline, no Pi needed)
 larp-bot cast   --identity … --out cast.toml       # assemble the public cast file
 larp-bot run    --config /etc/larp-bot/config.toml # a character daemon (loads the flashed bundle)
-larp-bot spec   --config /etc/larp-bot/spec.toml   # a spec-bot daemon: the mayor, or the informant
+larp-bot spec   --config /etc/larp-bot/spec.toml   # a spec-bot daemon: the mayor
 ```
 
-`run` plays a character out of `scenarios/`; `spec` plays one of the two
-pack-less characters out of its own script file (`mayor.toml`,
-`anonymous.toml` — see §The mayor and the informant). `anonymous` is kept as
-an alias of `spec` for the old invocation.
+`run` plays a character out of `scenarios/`; `spec` plays the pack-less
+character out of his own script file (`mayor.toml` — see §The mayor and
+Nadia's secret).
 
 ### Flashable identity (survives wipes and re-flashes)
 
@@ -438,9 +426,6 @@ identity      = "/boot/firmware/larp-identity.toml"  # flashed bundle (see above
 cast          = "/boot/firmware/larp-cast.toml"      # all characters' public ids
 scenarios_dir = "/nix/store/…-scenarios"             # all packs, baked into the image
 data_dir      = "/var/lib/larp-bot"                  # cache only — safe to wipe
-# Optional: the flashed informant bundle, read for its public half only, to
-# build the deep link in a pack's informant_tip. Absent → no tips.
-anonymous_identity = "/boot/firmware/larp-anonymous.toml"
 
 [timing]
 min_interval_secs = 180
@@ -466,12 +451,12 @@ next player message with `text`, once per quiet spell. Only Mira uses it
 desk waiting for names. Tracking is in-memory and baselined on the first
 scan, so bot restarts never trigger it.
 
-A pack may also carry an optional `informant_tip` (a line containing
-`{link}`): after a delivery lands, that character passes the player the
-informant's add-contact deep link, once per player. Only Mira uses this one
-too, and it is the only way into the side plot (§The mayor and the
-informant). The link is built at startup from the flashed
-`larp-anonymous.toml`, so a card without the informant simply never tips.
+A pack may also carry an optional `secret_tip`: the first time a delivery
+lands, that character tells the player the mayor's secret, one message per
+blank-line paragraph, once per player. Only Nadia carries it, and it is the
+only way into the side plot (§The mayor and Nadia's secret). One of its
+bursts is the mayor's trigger line verbatim — a unit test keeps the two in
+sync.
 
 ## 4. NixOS & deployment changes
 
@@ -485,10 +470,6 @@ carry, next to `wifi.env`:
 - `larp-identity.toml` — the character's flashed identity bundle
 - `larp-cast.toml` — the public cast file (flashed too, **not** baked into the
   image: it changes per game, the image doesn't)
-- `larp-anonymous.toml` — the anonymous informant's identity (gates the
-  informant service the same way; **only** the sister's card gets it —
-  `characters.just` `informant_character` — since Mira is the one who hands
-  out his contact)
 - `larp-mayor.toml` — the mayor's identity (gates his service; **only**
   `base-station::flash` writes it, so he exists on exactly one card)
 
@@ -497,18 +478,16 @@ No file → no bot: the card is a plain mailbox appliance. There is now
 captive portal went away — and the station types are nothing but combinations
 of flashed files:
 
-| Station | mailbox | Wi-Fi client | character bot | mayor | informant |
-|---|---|---|---|---|---|
-| base | ✓ | ✓ | ✓ (neighbour) | ✓ | – |
-| mum / grandpa / cousin | ✓ | ✓ | ✓ (identity flashed) | – | – |
-| sister | ✓ | ✓ | ✓ (identity flashed) | – | ✓ |
+| Station | mailbox | Wi-Fi client | character bot | mayor |
+|---|---|---|---|---|
+| base | ✓ | ✓ | ✓ (neighbour) | ✓ |
+| mum / grandpa / cousin / sister | ✓ | ✓ | ✓ (identity flashed) | – |
 
 `just base-station::flash` writes the base card's `wifi.env` (SSID
 `OfflineWifi`, open, by default) plus the mayor's identity AND the
 neighbour's character files (her identity + the cast): the base Pi runs two
 bots, the mayor and Nadia. `characters::flash neighbour` refuses to run — a
-second card with her identity would be a duplicate instance of her. No
-informant here: he is Mira's alone.
+second card with her identity would be a duplicate instance of her.
 
 ### Wi-Fi: every Pi is a client of `OfflineWifi`
 
@@ -592,26 +571,23 @@ Provisioning flow (all offline, on the laptop — implemented as `just` recipes)
 
 1. `just characters::generate` — one identity bundle per scenario pack into
    `secrets/` (gitignored; existing bundles are kept, since re-generating
-   would invalidate the printed posters), plus the mayor's and the anonymous
-   informant's, plus the public `secrets/larp-cast.toml`. Idempotent, and the
-   cast is built from `scenarios/*.toml` alone — so the two spec-bot
-   characters are excluded by construction, and an identity left over from a
-   retired character is ignored rather than resurrected.
+   would invalidate the printed posters), plus the mayor's, plus the public
+   `secrets/larp-cast.toml`. Idempotent, and the cast is built from
+   `scenarios/*.toml` alone — so the spec-bot character is excluded by
+   construction, and an identity left over from a retired character is
+   ignored rather than resurrected.
 2. `just characters::posters` — renders the QR wall-poster PNGs for printing.
    **Six** of them: the five characters and the mayor, all on the
-   base-station wall (his is the one players scan *first*). The informant is
-   skipped on purpose — he is reached through Mira's link, never off a wall.
+   base-station wall (his is the one players scan *first*).
 3. `just characters::flash <character> /dev/sdX` — flashes the station image and
    puts the character's files (`wifi.env` with `WIFI_SSID=OfflineWifi` and an
    empty `WIFI_PASSWORD=` — an **open network** — unless `ssid` / `password`
    arguments say otherwise, plus `larp-identity.toml` and `larp-cast.toml`,
    assembled on the fly from `secrets/`) on the card's boot partition. The
-   sister's card additionally gets `larp-anonymous.toml` — the informant runs
-   there and nowhere else. The neighbour is refused: her bot lives on the
-   base card.
+   neighbour is refused: her bot lives on the base card.
 4. `just base-station::flash /dev/sdX` — the same image, with
    `larp-mayor.toml` plus the neighbour's `larp-identity.toml` and
-   `larp-cast.toml`: two bots on one Pi. No informant.
+   `larp-cast.toml`: two bots on one Pi.
 
 **Seed the base mailbox with the cast's profiles** (once, after the bots have
 booted): each character's profile lives on its bot's announcements topic,
@@ -635,9 +611,7 @@ corner of the map. **She is a Pi station now** (the school shelter desk), so
 nothing below is part of a game day: flash her card with
 `just characters::flash sister` like anybody else's. It is kept — recipes and
 the `sister-droplet` flake config both marked unused — for a future character
-on the far side of a hotspot. Note that whoever plays that role cannot be the
-one who hands out the informant: the droplet carries no informant identity,
-so there is no link for the tip to contain.
+on the far side of a hotspot.
 
 *How it worked:* `just sister::deploy` provisions the whole thing with
 doctl — first run creates an Ubuntu droplet whose cloud-init converts it to
@@ -651,11 +625,9 @@ usage example (see flake.nix) for wiring the bot into an existing NixOS
 host instead — e.g. the droplet already running the cloud mailbox.
 
 `just characters::run <character> [mailbox_url]` still runs any bot on the
-laptop against a mailbox, which is the quickest way to try a pack (or Mira's
-informant tip — the recipe passes `secrets/anonymous-identity.toml` along
-when it exists, so the link in her tip is the real one). State lives in
-`.run/<character>/` (wipe it to simulate a reset; identity survives, it's in
-`secrets/`).
+laptop against a mailbox, which is the quickest way to try a pack (Nadia's
+secret included). State lives in `.run/<character>/` (wipe it to simulate a
+reset; identity survives, it's in `secrets/`).
 
 **Pick the mailbox URL to match the players' app build**: release builds use
 the production mailbox, dev builds may point at staging. A bot synced to a
@@ -686,8 +658,8 @@ Had the player pasted it into Mama's chat instead, she would have answered
 without telling them where. Grandpa never finds out either way.
 
 Mira's station works exactly the same way — she is a Pi like the rest now.
-The one extra beat there: a delivery *to her* is also answered with the
-informant's contact link, which is what opens the side plot.
+The extra beat lives at the base station instead: the first delivery *to
+Nadia* is also answered with her secret, which is what opens the side plot.
 
 ## 6. Risks & open questions
 

@@ -18,11 +18,10 @@ mod map-lite
 
 # Flash the base-station Pi card: the station image plus wifi.env, the
 # mayor's identity, and the NEIGHBOUR's character files (identity + cast —
-# she lives here, so `just characters::flash neighbour` refuses to run). No
-# informant identity: he runs on Mira's card alone (characters.just). The Pi
-# joins <ssid> on boot (open unless a password of 8-63 chars is given). Build
-# the image first with `just image::build`. With no device, the SD card is
-# auto-detected (see image::flash).
+# she lives here, so `just characters::flash neighbour` refuses to run). The
+# Pi joins <ssid> on boot (open unless a password of 8-63 chars is given).
+# Build the image first with `just image::build`. With no device, the SD
+# card is auto-detected (see image::flash).
 [doc("Flash the base-station Pi card (mayor + the neighbour's character bot); the Pi joins wifi <ssid>, open unless a password is given; auto-detects the SD card")]
 flash device="" ssid="OfflineWifi" password="":
     #!/usr/bin/env bash

@@ -24,9 +24,6 @@ let
     cast = "${cfg.castFile}"
     scenarios_dir = "${cfg.scenariosDir}"
     data_dir = "/var/lib/larp-bot"
-    # Only its public half is read: the contact code that goes into Mira's
-    # informant tip. A card without the file just never tips.
-    anonymous_identity = "${cfg.anonymousIdentityFile}"
     # The mayor's spec bot touches this when his trigger fires. Only the base
     # card ever has both bots, so only Nadia ever sees it appear — her
     # mayor_fallen eruption rides on it. NOT inside the mayor's state dir:
@@ -42,9 +39,9 @@ let
     poll_interval_secs = ${toString cfg.timing.pollIntervalSecs}
   '';
 
-  # The spec bots (docs/design.md): scripted characters with no scenario pack
-  # — the anonymous informant and the mayor. Same binary, own identity, own
-  # data dir, each gated on its own flashed identity file.
+  # The spec bot (docs/design.md): a scripted character with no scenario pack
+  # — the mayor. Same binary, own identity, own data dir, gated on his own
+  # flashed identity file.
   specConfigFile =
     unit:
     {
@@ -147,59 +144,28 @@ in
       description = "Directory with all characters' scenario packs (baked into the image).";
     };
 
-    anonymousSpec = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
-      default = null;
-      description = ''
-        The anonymous informant's script (anonymous.toml, baked into the
-        image). When set, a second service runs the informant next to the
-        character bot — gated, like the bot, on its own flashed identity.
-        Only the sister's card is flashed with that identity
-        (characters.just informant_character): she is the one who hands out
-        his contact, so he runs where her tip is tapped and nowhere else.
-      '';
-    };
-
-    anonymousAvatar = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
-      default = null;
-      description = ''
-        The informant's chat avatar PNG (baked into the image). Explicit,
-        unlike the scenario packs' sibling <character>.png convention: the
-        spec is copied into the store as a lone file.
-      '';
-    };
-
-    anonymousIdentityFile = lib.mkOption {
-      type = lib.types.str;
-      default = "/boot/firmware/larp-anonymous.toml";
-      description = ''
-        The flashed anonymous identity bundle. The informant service is
-        gated on this path existing, and the character bot reads its public
-        half to build the add-contact deep link Mira hands out (the informant
-        has no QR poster). Missing means no informant and no tips, and the
-        character bot runs as usual.
-      '';
-    };
-
     mayorSpec = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
       description = ''
         The mayor's script (mayor.toml, baked into the image): his greeting
-        is the game's onboarding, and his trigger phrase is the endgame.
-        When set, a third service runs him — gated, like the others, on his
-        own flashed identity. Only the base station card gets that identity
-        (base-station.just), so he exists once, where the game begins —
-        sharing the Pi with the neighbour's character bot, whose greeting
-        carries the actual onboarding.
+        is the official emergency notice, and his trigger phrase is the
+        endgame. When set, a second service runs him — gated, like the
+        character bot, on his own flashed identity. Only the base station
+        card gets that identity (base-station.just), so he exists once,
+        where the game begins — sharing the Pi with the neighbour's
+        character bot, whose greeting carries the actual onboarding.
       '';
     };
 
     mayorAvatar = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
-      description = "The mayor's chat avatar PNG (baked into the image).";
+      description = ''
+        The mayor's chat avatar PNG (baked into the image). Explicit,
+        unlike the scenario packs' sibling <character>.png convention: the
+        spec is copied into the store as a lone file.
+      '';
     };
 
     mayorIdentityFile = lib.mkOption {
@@ -278,21 +244,9 @@ in
       environment.RUST_LOG = lib.mkDefault "larp_bot=info,dashchat_node=warn,mailbox_client=warn";
     };
 
-    # The anonymous informant (docs/design.md): dormant unless the card was
-    # flashed with the anonymous identity. Only the sister's card is
-    # (characters.just), so he runs exactly where Mira hands his link out.
-    systemd.services.larp-bot-anonymous =
-      specService "larp-bot-anonymous" "LARP anonymous informant bot (Dash Chat node)"
-        {
-          identityFile = cfg.anonymousIdentityFile;
-          spec = cfg.anonymousSpec;
-          avatar = cfg.anonymousAvatar;
-          triggeredFlag = null;
-        };
-
-    # The mayor: onboarding in his greeting, the endgame in his trigger. Only
-    # the base-station card is flashed with his identity, so unlike the
-    # informant he exists exactly once.
+    # The mayor: the official notice in his greeting, the endgame in his
+    # trigger. Only the base-station card is flashed with his identity, so
+    # he exists exactly once.
     systemd.services.larp-bot-mayor =
       specService "larp-bot-mayor" "LARP mayor bot (Dash Chat node)" {
         identityFile = cfg.mayorIdentityFile;

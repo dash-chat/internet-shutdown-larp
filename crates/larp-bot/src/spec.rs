@@ -1,28 +1,17 @@
 //! Spec bots: scripted characters that have **no scenario pack and no cast
 //! entry**, driven entirely by a small TOML script (`name` + `greeting` +
-//! optional `triggers`). Two characters run this way, and between them they
-//! are the whole side plot (docs/design.md):
+//! optional `triggers`). One character runs this way (docs/design.md):
 //!
-//! - **the mayor**, whose QR poster hangs at the base station and whose
-//!   greeting *is* the game's onboarding — he explains the fires, the copy-
-//!   paste-and-walk mechanic, and the mobile-data rule, in his first
-//!   messages. His trigger is the endgame: paste the line the informant
-//!   leaked out of his own written order into his chat and he comes apart;
-//! - **the anonymous informant**, who has no poster at all. Mira hands out
-//!   his contact as a deep link once a player has carried something to her
-//!   (`informant_tip` in her pack). He has no triggers; what he gives out is
-//!   the mayor's own sentence, which is what ends the mayor.
+//! **the mayor**, whose QR poster hangs at the base station. His greeting is
+//! the official notice — fires, networks down, be careful — and his trigger
+//! is the endgame: paste the line Nadia saw in his own written order
+//! (`secret_tip` in her pack) into his chat and he comes apart.
 //!
-//! Neither appears in `larp-cast.toml`. Only Mira knows the informant exists,
-//! and all she has of him is the contact link she passes on.
-//!
-//! Both spec bots run in exactly one place: the mayor on the base-station Pi
-//! (his identity is only flashed there), the informant on the sister's Pi
-//! (same mechanism — see characters.just). One identity, one card, one op
-//! log each; there is no multi-instance identity anywhere any more. The
-//! practical consequence for the informant: his contact link is only
-//! answered inside Mira's station wifi, which is why her tip says to tap it
-//! there.
+//! He does not appear in `larp-cast.toml`, and he runs in exactly one place:
+//! the base-station Pi (his identity is only flashed there — see
+//! characters.just). One identity, one card, one op log; there is no
+//! multi-instance identity anywhere any more. Nadia's bot shares that Pi,
+//! which is how her eruption sees his collapse.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -57,7 +46,7 @@ pub struct Trigger {
     pub reply: Vec<String>,
 }
 
-/// A spec bot's script (`anonymous.toml` / `mayor.toml`, baked into the
+/// A spec bot's script (`mayor.toml`, baked into the
 /// image).
 #[derive(Clone, Debug, Deserialize)]
 pub struct Spec {
@@ -65,7 +54,7 @@ pub struct Spec {
     pub name: String,
     /// Sent in order, once, when a player's contact request is accepted.
     pub greeting: Vec<String>,
-    /// Phrases to listen for afterwards. Empty for the informant.
+    /// Phrases to listen for afterwards. Empty means the bot only ever greets.
     #[serde(default)]
     pub triggers: Vec<Trigger>,
 }
@@ -140,7 +129,7 @@ pub struct SpecConfig {
     pub mailbox_url: String,
     /// The flashed identity bundle (see characters.just).
     pub identity: PathBuf,
-    /// The script file (`anonymous.toml` / `mayor.toml`, baked into the image).
+    /// The script file (`mayor.toml`, baked into the image).
     pub spec: PathBuf,
     /// Optional chat avatar PNG. Explicit (unlike the scenario packs' sibling
     /// convention) because the spec is deployed as a lone store file.
@@ -237,9 +226,8 @@ pub struct SpecBot {
 pub async fn run(config: SpecConfig) -> Result<()> {
     let bundle = IdentityBundle::load(&config.identity)?;
     let spec = Spec::load(&config.spec)?;
-    // Same agreement the character bot enforces: the name a QR or deep link
-    // embeds (bundle) must match the profile the bot publishes (spec) —
-    // the informant's deep link is minted from his bundle alone.
+    // Same agreement the character bot enforces: the name a QR poster
+    // embeds (bundle) must match the profile the bot publishes (spec).
     anyhow::ensure!(
         bundle.qr_profile_name() == spec.name,
         "identity bundle name {:?} != spec profile name {:?} for {:?} — \
@@ -519,13 +507,13 @@ impl SpecBot {
 mod tests {
     use super::*;
 
-    const INFORMANT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../anonymous.toml");
     const MAYOR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../mayor.toml");
+    const SCENARIOS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../scenarios");
 
     fn spec() -> Spec {
         toml::from_str(
             r#"
-            name = "Anonymous"
+            name = "Fixture"
             greeting = ["the mayor lies", "the code is x"]
             "#,
         )
@@ -593,7 +581,7 @@ mod tests {
         )
         .unwrap();
         s.lint().unwrap();
-        // What a player actually pastes: the informant's whole message, case
+        // What a player actually pastes: Nadia's whole secret message, case
         // mangled, wrapped in their own words.
         assert!(
             s.triggered_by("look what they sent me:\n  LET THE NORTH   side burn \n— his own words")
@@ -605,7 +593,6 @@ mod tests {
 
     #[test]
     fn shipped_specs_lint() {
-        Spec::load(INFORMANT).unwrap();
         Spec::load(MAYOR).unwrap();
     }
 
@@ -623,22 +610,23 @@ mod tests {
         }
     }
 
-    /// The whole side plot in one assertion: what the informant hands out has
-    /// to be what the mayor listens for, or the endgame is unreachable.
+    /// The whole side plot in one assertion: what Nadia's secret hands out
+    /// has to be what the mayor listens for, or the endgame is unreachable.
     #[test]
-    fn the_informant_hands_out_what_the_mayor_listens_for() {
-        let informant = Spec::load(INFORMANT).unwrap();
+    fn the_secret_tip_hands_out_what_the_mayor_listens_for() {
         let mayor = Spec::load(MAYOR).unwrap();
-        assert!(
-            informant.triggers.is_empty(),
-            "the informant only tells; he has nothing to be told"
-        );
         assert!(!mayor.triggers.is_empty(), "the mayor has no endgame trigger");
-        let told = informant.greeting.concat();
+        let scenarios = crate::scenario::Scenarios::load_dir(Path::new(SCENARIOS)).unwrap();
+        let told = scenarios
+            .packs
+            .values()
+            .filter_map(|p| p.secret_tip.as_deref())
+            .collect::<Vec<_>>()
+            .concat();
         for trigger in &mayor.triggers {
             assert!(
                 normalize(&told).contains(&normalize(&trigger.phrase)),
-                "the informant never gives out {:?} — players cannot end the game",
+                "no secret_tip gives out {:?} — players cannot end the game",
                 trigger.phrase
             );
         }

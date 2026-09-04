@@ -59,8 +59,8 @@ pub struct BotState {
     /// Each template is used at most once per player.
     #[serde(default)]
     pub fired: BTreeMap<String, Vec<String>>,
-    /// Direct chats already given the informant's contact (hex chat ids).
-    /// At most one tip per player: after it, repeats are noise.
+    /// Direct chats already told the mayor's secret (hex chat ids).
+    /// At most one telling per player: after it, repeats are noise.
     #[serde(default)]
     pub tipped: std::collections::BTreeSet<String>,
     /// Direct chats already told the mayor has fallen (hex chat ids) — the
@@ -98,7 +98,7 @@ impl BotState {
 /// How long a human would plausibly take to type `text`: one second for
 /// every four words. Awaited before every message a bot sends — an instant
 /// reply reads as a machine, a beat of "typing" reads as a person. Shared
-/// with the spec bots (the mayor, the informant).
+/// with the mayor's spec bot.
 pub(crate) async fn typing_pause(text: &str) {
     let words = text.split_whitespace().count() as u64;
     tokio::time::sleep(Duration::from_millis(words * 1000 / 4)).await;
@@ -238,7 +238,7 @@ pub(crate) async fn register_mailbox(node: &Node, url: &str) {
 /// of `create_direct_chat_space` having run, and it filters out contact
 /// requests that were never accepted.
 ///
-/// Shared by the character bot and the spec bots (the informant, the mayor).
+/// Shared by the character bot and the mayor's spec bot.
 pub(crate) async fn direct_chats(
     node: &Node,
     me: DeviceId,
@@ -320,44 +320,12 @@ pub(crate) async fn chat_messages(
         .collect())
 }
 
-/// How a character hands out the informant's contact, once a delivery lands.
-///
-/// The informant has no QR poster: this is the only way a player meets him.
-/// His identity is flashed onto the tipping character's card alone (Mira's —
-/// characters.just), where it does double duty: it arms the informant
-/// service, and this bot reads its public half to build the add-contact deep
-/// link. Tapping the link only gets an answer inside that station's wifi,
-/// which is why her tip says to do it there.
-#[derive(Clone, Debug)]
-pub struct InformantTip {
-    /// `https://dashchat.org/add-contact/<code>`.
-    pub link: String,
-}
-
-impl InformantTip {
-    /// Build the tip from the flashed informant bundle. `None` (with a log
-    /// line) when the card carries none.
-    pub fn from_identity_file(path: &Path) -> Option<Self> {
-        match IdentityBundle::load(path).and_then(|b| b.contact_code()) {
-            Ok(code) => Some(Self {
-                link: crate::qr::contact_deep_link(&code),
-            }),
-            Err(err) => {
-                warn!(path = %path.display(), ?err, "no informant identity, tips disabled");
-                None
-            }
-        }
-    }
-}
-
 pub struct Bot {
     node: Node,
     bundle: IdentityBundle,
     cast: ResolvedCast,
     scenarios: Scenarios,
     timing: Timing,
-    /// `None` on a card without the informant, or for a pack with no tip line.
-    informant: Option<InformantTip>,
     /// The flag the mayor's spec bot touches when his trigger fires
     /// (`triggered` in his data dir). Polled each tick; only ever exists on
     /// the base station, where his bot and this one share the Pi.
@@ -390,11 +358,6 @@ pub async fn run(config: BotConfig) -> Result<()> {
 
     register_mailbox(&node, &config.mailbox_url).await;
 
-    let informant = config
-        .anonymous_identity
-        .as_deref()
-        .and_then(InformantTip::from_identity_file);
-
     let state_path = config.data_dir.join("state.json");
     Bot::new(
         node,
@@ -402,7 +365,6 @@ pub async fn run(config: BotConfig) -> Result<()> {
         cast,
         scenarios,
         config.timing,
-        informant,
         config.mayor_fallen_flag.clone(),
         state_path,
     )?
@@ -417,7 +379,6 @@ impl Bot {
         cast: ResolvedCast,
         scenarios: Scenarios,
         timing: Timing,
-        informant: Option<InformantTip>,
         mayor_fallen_flag: Option<PathBuf>,
         state_path: PathBuf,
     ) -> Result<Self> {
@@ -445,7 +406,6 @@ impl Bot {
             cast,
             scenarios,
             timing,
-            informant,
             mayor_fallen_flag,
             state: BotState::load(&state_path),
             state_path,
@@ -574,11 +534,16 @@ impl Bot {
                     .scenarios
                     .pack(&self.bundle.character)
                     .expect("checked at startup");
-                let greeting = pack.greeting.clone();
+                let greeting = pack.greeting_messages();
                 let map = pack.map.clone();
                 info!(player = %device, "greeting a new player");
-                typing_pause(&greeting).await;
-                self.node.send_message(chat, greeting, None, None).await?;
+                // One message per blank-line paragraph, each with its own
+                // typing pause — Nadia's tutorial reads as chat bursts
+                // instead of one wall of text.
+                for message in greeting {
+                    typing_pause(&message).await;
+                    self.node.send_message(chat, message, None, None).await?;
+                }
                 // The town map follows as its own message, photo attached —
                 // where the other stations physically are. Only Nadia's pack
                 // carries a [map], and it only fires once the organizer has
@@ -688,7 +653,7 @@ impl Bot {
         // pasted messages would.
         let mut replies: Vec<(Option<String>, String)> = Vec::new();
         // Characters whose missions were delivered here in this scan. Any
-        // entry means a delivery was acked — the moment the informant tip may
+        // entry means a delivery was acked — the moment the secret tip may
         // follow, and the trigger for the follow-up mission (which prefers
         // destinations outside this set).
         let mut delivered_from: BTreeSet<String> = BTreeSet::new();
@@ -840,17 +805,17 @@ impl Bot {
                 dirty = true;
             }
         }
-        let tipped_now = !delivered_from.is_empty() && self.maybe_tip_informant(chat, key).await?;
+        let tipped_now = !delivered_from.is_empty() && self.maybe_tell_secret(chat, key).await?;
         if tipped_now {
             dirty = true;
         }
         if dirty {
             self.state.save(&self.state_path)?;
         }
-        // When the tip just went out, it IS the follow-up: handing the player
-        // the informant's contact opens the side plot, and stacking a regular
-        // mission on top would bury it. Only Mira ever tips, once per player —
-        // her later deliveries earn ordinary follow-ups again.
+        // When the secret just went out, it IS the follow-up: it opens the
+        // side plot, and stacking a regular mission on top would bury it.
+        // Only Nadia ever tells it, once per player — her later deliveries
+        // earn ordinary follow-ups again.
         if !delivered_from.is_empty() && !tipped_now {
             self.fire_followup_mission(chat, key, &delivered_from)
                 .await?;
@@ -889,34 +854,35 @@ impl Bot {
         Ok(())
     }
 
-    /// Hand the player the informant's contact.
+    /// Tell the player the mayor's secret.
     ///
     /// Called right after a delivery is acked, and deterministic: carrying a
-    /// message to a character who has a tip line always earns it. The line
-    /// goes out with the informant's add-contact deep link substituted in,
-    /// and the chat is marked so it never happens twice. Returns whether the
-    /// state changed.
+    /// message to a character who has a `secret_tip` always earns it. The
+    /// secret goes out one paragraph per message, each with its own typing
+    /// pause, and the chat is marked so it never happens twice. Returns
+    /// whether the state changed.
     ///
-    /// Silent when the card has no informant identity or the pack has no tip
-    /// line — as shipped, every character but Mira is in the second case.
-    async fn maybe_tip_informant(&mut self, chat: ChatId, key: &str) -> Result<bool> {
+    /// Silent when the pack has no tip — as shipped, every character but
+    /// Nadia is in that case. Tipped is only recorded after every burst is
+    /// out: a failure mid-way re-runs the whole secret next delivery, and a
+    /// duplicated line beats a player with half a secret.
+    async fn maybe_tell_secret(&mut self, chat: ChatId, key: &str) -> Result<bool> {
         if self.state.tipped.contains(key) {
             return Ok(false);
         }
-        let Some(informant) = self.informant.clone() else {
-            return Ok(false);
-        };
-        let Some(tip) = self
+        let messages = self
             .scenarios
             .pack(&self.bundle.character)
             .expect("checked at startup")
-            .informant_tip_message(&informant.link)
-        else {
+            .secret_tip_messages();
+        if messages.is_empty() {
             return Ok(false);
-        };
-        info!(chat = %key, "passing the informant's contact to a player");
-        typing_pause(&tip).await;
-        self.node.send_message(chat, tip, None, None).await?;
+        }
+        info!(chat = %key, "telling a player the mayor's secret");
+        for message in messages {
+            typing_pause(&message).await;
+            self.node.send_message(chat, message, None, None).await?;
+        }
         self.state.tipped.insert(key.to_string());
         Ok(true)
     }

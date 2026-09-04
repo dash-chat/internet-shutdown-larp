@@ -20,14 +20,13 @@ whose bot rides the base-station Pi. The offline boxes that keep the chats
 alive are hers (up for years before the blackout), her greeting is the real
 tutorial, and her first mission opens the game.
 
-Two more have no missions and no cast entry, and between them they are the
-side plot (`mayor.toml`, `anonymous.toml`): **the Mayor**, whose QR poster
-players scan first — an emergency notice that deliberately never encourages
-the comms he secretly cut — and **Anonymous**, who has no poster at all:
-Mira hands out his contact as a deep link once a player has carried
-something to her. What he gives them is one line copied word for word out of
-the mayor's own written order. Pasting that line into the mayor's chat, like
-every other message in this game, ends it.
+One more has no missions and no cast entry, and he is the side plot
+(`mayor.toml`): **the Mayor**, whose QR poster players scan first — an
+emergency notice that deliberately never encourages the comms he secretly
+cut. The way in is Nadia: the first time a player carries a delivery to
+her, she tells them what she saw in the town hall — ending with one line
+she read word for word off the mayor's own written order. Pasting that line
+into the mayor's chat, like every other message in this game, ends it.
 
 ## What's here
 
@@ -37,7 +36,7 @@ every other message in this game, ends it.
   a scripted pack-less character with an optional trigger phrase (`spec`).
   Also the provisioning tool (`keygen` / `qr` / `cast`).
 - `scenarios/` — the four family characters' mission packs (pure content).
-- `mayor.toml` / `anonymous.toml` — the two spec-bot scripts (the side plot).
+- `mayor.toml` — the spec-bot script (the side plot's endgame).
 - `nix/` — the NixOS modules and packages.
 - `flake.nix` — extends the plain
   [raspberry-pi-mailbox-server](https://github.com/dash-chat/raspberry-pi-mailbox-server)

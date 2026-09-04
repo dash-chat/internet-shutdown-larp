@@ -2,10 +2,6 @@
 # on her own Pi station: the desk at the school shelter, with the list of who
 # has arrived. Everyone's names pass through her.
 #
-# She is also the only way into the side plot: the informant wrote to HER
-# desk, and she passes his contact on (informant_tip below) once a player has
-# carried something to her. His bot runs on her card alone (characters.just).
-#
 # Voice: the youngest one, texting fast, half a thought per line.
 
 name = "Mira (sister)"
@@ -13,15 +9,6 @@ name = "Mira (sister)"
 greeting = """Mira here. They've put me on the desk at the school shelter, so I've got the list of who's made it in. Don't leave me guessing about you lot, please."""
 
 misdelivered = """This one's not for me!"""
-
-# The informant's ONLY way into the game. After a player brings her a message
-# meant for her, she passes his contact on — always, once per player (see
-# crates/larp-bot/src/bot.rs). {link} becomes his add-contact deep link.
-#
-# "While you're still here" is load-bearing, not colour: his bot runs on THIS
-# card only, so a link tapped elsewhere sits unanswered until the player is
-# back in her station's wifi.
-informant_tip = """Wait, don't go yet. Something came to this desk with no name on it — someone inside the town hall, saying the fires weren't bad luck. I'm not putting that in front of Mama. Tap this and talk to them yourself: {link}"""
 
 # Mira answers the first message from the players after this long without
 # hearing from them — she's been staring at the door, waiting for names.

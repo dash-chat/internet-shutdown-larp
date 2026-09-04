@@ -9,9 +9,9 @@
 //!          careful) and grandpa's bot answers with the success line.
 //!          Pasting the same mission back at mum instead earns a
 //!          "this message is not for me!" nudge. The completed delivery
-//!          also earns the informant's contact as a deep link (there is no
-//!          informant poster) — once, and only for a real delivery — and
-//!          the tip REPLACES the usual follow-up mission. A second delivery
+//!          also earns the mayor's secret, told as one message per
+//!          paragraph — once, and only for a real delivery — and the
+//!          secret REPLACES the usual follow-up mission. A second delivery
 //!          finds the chat already tipped and earns the follow-up, drawn
 //!          away from mum (the delivered mission's originator).
 //! Phase 3: wipe mum's bot's data dir, restart it from the same
@@ -26,7 +26,7 @@ use dashchat_node::testing::TestNode;
 use dashchat_node::{ChatId, NodeConfig, Profile};
 use mailbox_client::mem::MemMailbox;
 
-use larp_bot::bot::{Bot, BotState, InformantTip, build_node};
+use larp_bot::bot::{Bot, BotState, build_node};
 use larp_bot::cast::Cast;
 use larp_bot::config::Timing;
 use larp_bot::identity::IdentityBundle;
@@ -45,7 +45,9 @@ const GP_SIDE_MISSION: &str = "GP-MISSION-3: the shelter needs blankets, carry t
 const GP_SIDE_SUCCESS: &str = "SIS-ACK-1: blankets on the way.";
 const MUM_MISDELIVERED: &str = "MUM-NOPE: this message is not for me!";
 const MUM_AVATAR: &str = "data:image/png;base64,AQID";
-const GP_TIP: &str = "GP-TIP: somebody inside the town hall wants you: {link}";
+// Two paragraphs, so the test pins the burst behavior: one message each.
+const GP_TIP_1: &str = "GP-TIP: I saw the mayor's order on his desk myself.";
+const GP_TIP_2: &str = "GP-TIP-LINE: let the north side burn.";
 
 fn test_scenarios() -> Scenarios {
     let mut packs = BTreeMap::new();
@@ -57,14 +59,14 @@ fn test_scenarios() -> Scenarios {
             comeback: None,
             misdelivered: Some(MUM_MISDELIVERED.into()),
             // No tip here: mum only ever gets the mission pasted back at her
-            // (a misdelivery), which must never earn the informant.
-            informant_tip: None,
+            // (a misdelivery), which must never earn the secret.
+            secret_tip: None,
             mayor_fallen: None,
             map: None,
             // The opener is what mum hands out in the test; the second
             // template exists so the player can retype it by hand (matching
             // is text-based) for a second delivery at grandpa — the one that
-            // earns a follow-up, the first being eaten by the informant tip.
+            // earns a follow-up, the first being eaten by the secret.
             missions: vec![
                 Mission {
                     first: true,
@@ -89,7 +91,7 @@ fn test_scenarios() -> Scenarios {
             greeting: "GP-GREETING: grandpa online.".into(),
             comeback: None,
             misdelivered: None,
-            informant_tip: Some(GP_TIP.into()),
+            secret_tip: Some(format!("{GP_TIP_1}\n\n{GP_TIP_2}")),
             mayor_fallen: None,
             map: None,
             // The opener goes out on the first-mission delay; the other two
@@ -128,7 +130,7 @@ fn test_scenarios() -> Scenarios {
             greeting: "SIS-GREETING: sis online.".into(),
             comeback: None,
             misdelivered: None,
-            informant_tip: None,
+            secret_tip: None,
             mayor_fallen: None,
             map: None,
             missions: vec![],
@@ -223,7 +225,6 @@ async fn start_bot(
     bundle: &IdentityBundle,
     cast: &Cast,
     mailbox: &MemMailbox<MailboxOperation>,
-    informant: Option<InformantTip>,
 ) -> RunningBot {
     let (node, rx) = build_node(data_dir, bundle, test_node_config())
         .await
@@ -235,7 +236,6 @@ async fn start_bot(
         cast.resolve().unwrap(),
         test_scenarios(),
         fast_timing(),
-        informant,
         None,
         data_dir.join("state.json"),
     )
@@ -281,23 +281,8 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
     // --- Stations come up.
     let mum_dir = tempfile::tempdir().unwrap();
     let gp_dir = tempfile::tempdir().unwrap();
-    // The tipping character's card carries the informant's identity (in the
-    // shipped game that is Mira, and only her). Here it is grandpa, because
-    // he is the one who receives the delivery in this test.
-    let informant_bundle = IdentityBundle::generate("anonymous");
-    let informant_link = qr::contact_deep_link(&informant_bundle.contact_code().unwrap());
-    let informant = InformantTip {
-        link: informant_link.clone(),
-    };
-    let mum_bot = start_bot(mum_dir.path(), &mum_bundle, &cast, &mailbox, None).await;
-    let _hosp_bot = start_bot(
-        gp_dir.path(),
-        &gp_bundle,
-        &cast,
-        &mailbox,
-        Some(informant.clone()),
-    )
-    .await;
+    let mum_bot = start_bot(mum_dir.path(), &mum_bundle, &cast, &mailbox).await;
+    let _hosp_bot = start_bot(gp_dir.path(), &gp_bundle, &cast, &mailbox).await;
 
     // --- A player arrives and scans both wall posters.
     let p1 = player("p1", &mailbox).await;
@@ -374,29 +359,21 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
         "the success line should be a reply to the delivery, not a loose message"
     );
 
-    // The delivery earns the informant: his contact arrives as a tappable
-    // add-contact deep link, since he has no poster to scan any more. Sent
-    // plain, not threaded — it answers nothing, it starts something.
-    let expected_tip = GP_TIP.replace("{link}", &informant_link);
-    wait_until("grandpa passes on the informant", Duration::from_secs(90), || async {
-        messages_of(&p1, gp_chat).await.contains(&expected_tip)
+    // The delivery earns the secret: both paragraphs of grandpa's tip land
+    // as separate messages, neither threaded — the secret answers nothing,
+    // it starts something.
+    wait_until("grandpa tells the secret", Duration::from_secs(90), || async {
+        let msgs = messages_of(&p1, gp_chat).await;
+        msgs.contains(&GP_TIP_1.to_string()) && msgs.contains(&GP_TIP_2.to_string())
     })
     .await;
-    assert!(
-        messages_with_replies(&p1, gp_chat)
-            .await
-            .contains(&(expected_tip.clone(), false)),
-        "the informant tip should be its own message, not a reply"
-    );
-    // The link the player taps really does encode the informant's contact.
-    let code = expected_tip
-        .rsplit("/add-contact/")
-        .next()
-        .expect("the tip carries a deep link");
-    assert_eq!(
-        qr::decode_contact_code(code).unwrap().device_pubkey,
-        informant_bundle.device_id().unwrap()
-    );
+    let with_replies = messages_with_replies(&p1, gp_chat).await;
+    for part in [GP_TIP_1, GP_TIP_2] {
+        assert!(
+            with_replies.contains(&(part.to_string(), false)),
+            "each burst of the secret should be its own message, not a reply"
+        );
+    }
     // Once per player: grandpa's remaining deliveries stay tip-free.
     wait_until("grandpa records the tip", Duration::from_secs(30), || async {
         BotState::load(&gp_dir.path().join("state.json"))
@@ -405,7 +382,7 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
     })
     .await;
 
-    // The tip ate the follow-up: a delivery that hands out the informant
+    // The secret ate the follow-up: a delivery that earns the secret
     // must NOT also hand out a regular mission — the side plot is the job.
     // The tip lands after the follow-up decision, so by now it's final.
     assert!(
@@ -458,14 +435,13 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
             .contains(&(MUM_MISDELIVERED.to_string(), true)),
         "the misdelivery nudge should be a reply to the message it turns away"
     );
-    // The informant tip is NOT a reply: it opens a subject of its own, and
-    // this is mum's chat, where no tip may appear at all.
+    // This is mum's chat, where no part of the secret may appear at all.
     assert!(
         !messages_of(&p1, mum_chat)
             .await
             .iter()
-            .any(|t| t.contains("/add-contact/")),
-        "mum has no tip line — a misdelivery must not hand out the informant"
+            .any(|t| t.contains("GP-TIP")),
+        "mum has no secret — a misdelivery must not tell it"
     );
 
     // The origin bot recorded the mission it handed out (one per player).
@@ -483,7 +459,7 @@ async fn paste_delivery_roundtrip_and_wipe_survival() {
     mum_bot.node.shutdown().await.expect("mum node shuts down");
     std::fs::remove_dir_all(mum_dir.path()).unwrap();
     std::fs::create_dir_all(mum_dir.path()).unwrap();
-    let _ff_bot2 = start_bot(mum_dir.path(), &mum_bundle, &cast, &mailbox, None).await;
+    let _ff_bot2 = start_bot(mum_dir.path(), &mum_bundle, &cast, &mailbox).await;
 
     // The SAME printed poster still onboards a brand-new player...
     let p2 = player("p2", &mailbox).await;
