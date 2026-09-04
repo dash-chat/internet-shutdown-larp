@@ -195,7 +195,7 @@ messages, like her `mayor_fallen` eruption), ending with the one line she
 read before someone walked in, **word for word** out of the mayor's own
 written order —
 
-> Let the north side burn until they stop asking questions.
+> The fires stay lit and comms shut down until this town learns to be quiet.
 
 This is deterministic, not a chance: one door, and it is behind a real
 delivery. Sent at most once per player (recorded in the bot's

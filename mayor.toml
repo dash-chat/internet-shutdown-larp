@@ -37,7 +37,7 @@ greeting = [
 # the players deliver it to him the way they deliver everything else. Answered
 # once per message (the op hash is remembered), so a re-sync never replays it.
 [[triggers]]
-phrase = "Let the north side burn until they stop asking questions"
+phrase = "The fires stay lit and comms shut down until this town learns to be quiet"
 reply = [
   """Where did you get that.""",
   """Answer me. That paper has never left my office. Never.""",
