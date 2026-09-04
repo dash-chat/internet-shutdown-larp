@@ -14,7 +14,7 @@ greeting = """It's Mama, love. Thank god this thing works — the phone's been d
 # no: working out where it belongs is the players' job.
 misdelivered = """Love, this one isn't for me!"""
 
-# No informant_tip: only Mira hands out the informant (scenarios/sister.toml).
+# No secret_tip: only Nadia carries the mayor's secret (scenarios/neighbour.toml).
 
 [[missions]]
 to = "grandpa"

@@ -10,7 +10,7 @@ greeting = """Amir here. Top of the hill. Good to know this thing still reaches 
 
 misdelivered = """Not for me, this one!"""
 
-# No informant_tip: only Mira hands out the informant (see mum.toml).
+# No secret_tip: only Nadia carries the mayor's secret (scenarios/neighbour.toml).
 
 [[missions]]
 to = "neighbour"

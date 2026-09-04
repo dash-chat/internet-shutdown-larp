@@ -10,7 +10,7 @@ greeting = """Rafa. I'm with the volunteers at the fire line, east side, and the
 
 misdelivered = """Not for me — wrong chat!"""
 
-# No informant_tip: only Mira hands out the informant (see mum.toml).
+# No secret_tip: only Nadia carries the mayor's secret (scenarios/neighbour.toml).
 
 [[missions]]
 to = "mum"

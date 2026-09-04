@@ -1,6 +1,6 @@
-# The mayor (docs/design.md). A spec bot like the informant, not a scenario
-# pack — keep this file out of scenarios/, where every *.toml is parsed as a
-# mission pack. Texts are sent VERBATIM, in order.
+# The mayor (docs/design.md). A spec bot, not a scenario pack — keep this
+# file out of scenarios/, where every *.toml is parsed as a mission pack.
+# Texts are sent VERBATIM, in order.
 #
 # His QR poster hangs at the base station and is the FIRST thing players
 # scan. He gives the SITUATION only — fires, networks down, be careful — an
@@ -13,12 +13,13 @@
 # handing the player onward. His bot runs on the base-station Pi only, so
 # his downfall lands where the game began.
 #
-# The trigger is not a password: it is the line the informant copied out of
-# the mayor's own order (anonymous.toml), pasted back into his chat like every
-# other message in this game. It MUST stay word-for-word identical to the line
-# the informant hands out — a unit test in crates/larp-bot/src/spec.rs
-# enforces it. Matching is forgiving about case, whitespace and surrounding
-# prose, so a player who pastes the informant's whole message still lands it.
+# The trigger is not a password: it is the line Nadia read off the mayor's
+# own order (secret_tip in scenarios/neighbour.toml), pasted back into his
+# chat like every other message in this game. It MUST stay word-for-word
+# identical to the line her secret hands out — a unit test in
+# crates/larp-bot/src/spec.rs enforces it. Matching is forgiving about case,
+# whitespace and surrounding prose, so a player who pastes Nadia's whole
+# message still lands it.
 #
 # Voice: a small-town mayor being reassuring, a bit informal. The collapse is
 # the same man typing with his hands shaking — short lines, no rhetoric left.
@@ -32,9 +33,9 @@ greeting = [
   """Please be careful out there. Stay out of the smoke, and don't take risks.""",
 ]
 
-# The endgame. The informant leaks this line out of the mayor's own order; the
-# players deliver it to him the way they deliver everything else. Answered once
-# per message (the op hash is remembered), so a re-sync never replays it.
+# The endgame. Nadia's secret leaks this line out of the mayor's own order;
+# the players deliver it to him the way they deliver everything else. Answered
+# once per message (the op hash is remembered), so a re-sync never replays it.
 [[triggers]]
 phrase = "Let the north side burn until they stop asking questions"
 reply = [
