@@ -50,21 +50,22 @@ The whole street is out celebrating — THANK YOU. It's over! You can relax now.
 #
 # The geography does the last step for us: her bot lives on the base-station
 # Pi, so the player hearing this is standing in the one wifi where the
-# mayor's chat answers — his poster is on the wall right there.
-secret_tip = """Wait. Before you run off again — come here. You've been carrying everyone's words all day. You've earned some truth back.
+# mayor's chat answers.
+secret_tip = """Wait — before you go. There's something you need to know.
 
-Two days ago they called me into the town hall. "The network's down, Nadia, come fix it." There was nothing to fix — the line into the mayor's office was cut clean. From the INSIDE.
+I was in the town hall just now. On the mayor's desk there was an order with his signature on it.
 
-And on his desk, half under a folder, an order with his signature on it. I only got to read one line before someone came in. I haven't stopped reading it in my head since. Word for word it said:
+He ordered the fires. He ordered the shut down of the internet. He wants to control the town through fear. He's been doing this for years now.
 
-Let the north side burn until they stop asking questions.
+It's time we stop him.
 
-The fires are his. The blackout is his. He wants this town scared, cut off, and doing what it's told.
+This is the line I remember most. Copy it into the Mayor's chat to unmask him:
 
-His poster is on the wall right here. Copy that line — his own words, exactly as I sent it — paste it into his chat, and stay to watch him read it."""
+The fires stay lit and comms shut down until this town learns to be quiet."""
 
-# Sent as its own message right after the greeting, with the town map photo
-# attached — where everyone is holed up. The photo is NOT in the repo: the
+# Sent as its own message, town map photo attached — where everyone is
+# holed up. It lands just before the greeting's last burst ("To start with,
+# I need you…"): the map arrives before she sends the player off. The photo is NOT in the repo: the
 # organizer draws it (assets/town-map-base.png is the blank venue) and arms
 # her bot at runtime by sending it as a photo captioned with update_trigger
 # in their own chat with her. Each new trigger photo replaces the map on the

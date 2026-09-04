@@ -535,38 +535,48 @@ impl Bot {
                     .pack(&self.bundle.character)
                     .expect("checked at startup");
                 let greeting = pack.greeting_messages();
-                let map = pack.map.clone();
+                let mut map = pack.map.clone();
                 info!(player = %device, "greeting a new player");
                 // One message per blank-line paragraph, each with its own
                 // typing pause — Nadia's tutorial reads as chat bursts
-                // instead of one wall of text.
-                for message in greeting {
-                    typing_pause(&message).await;
-                    self.node.send_message(chat, message, None, None).await?;
-                }
-                // The town map follows as its own message, photo attached —
-                // where the other stations physically are. Only Nadia's pack
-                // carries a [map], and it only fires once the organizer has
-                // armed one at runtime (a photo captioned with the trigger —
-                // see process_chat_messages). Unarmed, the greeting stands
-                // alone: a bare "here is a map" with no map would be worse.
-                if let Some(map) = map {
-                    if let Some(meta) = self.state.map_media.clone() {
-                        match self.node.load_media(meta).await {
-                            Ok(media) => {
-                                typing_pause(&map.text).await;
-                                self.node
-                                    .send_message(chat, map.text, Some(media), None)
-                                    .await?;
-                            }
-                            // Arming proved the blobs were local, so this is
-                            // exceptional — but a bad map must never block
-                            // greetings.
-                            Err(err) => {
-                                warn!(?err, "armed town map unavailable — greeting without it")
+                // instead of one wall of text. The town map (its own
+                // message, photo attached — where the other stations
+                // physically are) slots in BEFORE the last burst: the
+                // closing line is the call to action ("get a message
+                // through to your mum"), and the map is context to hand
+                // over before sending the player off, not after. Only
+                // Nadia's pack carries a [map], and it only fires once the
+                // organizer has armed one at runtime (a photo captioned
+                // with the trigger — see process_chat_messages). Unarmed,
+                // the greeting stands alone: a bare "here is a map" with
+                // no map would be worse.
+                let last = greeting.len().saturating_sub(1);
+                for (i, message) in greeting.into_iter().enumerate() {
+                    if i == last {
+                        if let Some(map) = map.take() {
+                            if let Some(meta) = self.state.map_media.clone() {
+                                match self.node.load_media(meta).await {
+                                    Ok(media) => {
+                                        typing_pause(&map.text).await;
+                                        self.node
+                                            .send_message(chat, map.text, Some(media), None)
+                                            .await?;
+                                    }
+                                    // Arming proved the blobs were local, so
+                                    // this is exceptional — but a bad map
+                                    // must never block greetings.
+                                    Err(err) => {
+                                        warn!(
+                                            ?err,
+                                            "armed town map unavailable — greeting without it"
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
+                    typing_pause(&message).await;
+                    self.node.send_message(chat, message, None, None).await?;
                 }
                 self.state.greeted.insert(key.clone());
                 self.state.save(&self.state_path)?;

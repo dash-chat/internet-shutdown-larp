@@ -71,9 +71,10 @@ pub struct Pack {
     /// she is the one character who can actually see it happen.
     #[serde(default)]
     pub mayor_fallen: Option<String>,
-    /// The town map, sent as its own message right after the greeting: a
-    /// short line plus a photo attachment, so a new player knows where the
-    /// other stations physically are. Only Nadia carries one — she is the
+    /// The town map, sent as its own message just before the greeting's
+    /// last burst (the call to action): a short line plus a photo
+    /// attachment, so a new player knows where the other stations
+    /// physically are before being sent off. Only Nadia carries one — she is the
     /// character whose greeting is the tutorial. The photo is armed at
     /// RUNTIME (see [`MapMessage`]): until someone sends her one captioned
     /// with the trigger, greetings go out with no map message at all.
@@ -174,7 +175,7 @@ fn split_paragraphs(raw: &str) -> Vec<String> {
 /// itself is NOT in the repo — the organizer draws it (assets/
 /// town-map-base.png is the blank canvas) and arms the bot at runtime by
 /// sending it a photo captioned `update_trigger` in any direct chat. The bot
-/// keeps the latest such photo and attaches it after every greeting from
+/// keeps the latest such photo and attaches it inside every greeting from
 /// then on; a fresh trigger message replaces it on the spot.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MapMessage {
